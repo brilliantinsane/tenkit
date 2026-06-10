@@ -1,6 +1,9 @@
 /// <reference types="node" />
 
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import { resolveTenantConfig } from '../tenant-configs';
@@ -30,4 +33,17 @@ test('invalid Tenant Slug throws a clear configuration error', () => {
     () => resolveTenantConfig({ tenantSlug: 'missing-tenant' }),
     /Invalid Tenant Slug "missing-tenant". Expected one of: first-tenant, second-tenant/,
   );
+});
+
+test('selected Tenant with missing required assets fails clearly', () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'tenant-assets-'));
+
+  try {
+    assert.throws(
+      () => resolveTenantConfig({ tenantSlug: 'first-tenant', projectRoot }),
+      /Missing required Tenant asset "assets\/first-tenant\/icons\/icon\.png"/,
+    );
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
 });

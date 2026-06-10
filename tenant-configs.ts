@@ -4,6 +4,8 @@ import {
   type TenantAppConfig,
   type TenantSlug,
 } from '@/types/tenant-config.types';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 export const configs: TenantAppConfig = {
   'first-tenant': {
@@ -43,6 +45,7 @@ export const configs: TenantAppConfig = {
 };
 
 type TenantConfigResolverInput = {
+  projectRoot?: string;
   tenantSlug?: unknown;
 };
 
@@ -53,7 +56,36 @@ function isTenantSlug(value: unknown): value is TenantSlug {
   return typeof value === 'string' && configuredTenantSlugs.includes(value as TenantSlug);
 }
 
-export function resolveTenantConfig({ tenantSlug }: TenantConfigResolverInput = {}): TenantConfig {
+function getRequiredTenantAssetPaths(tenantSlug: TenantSlug): string[] {
+  const assetPath = `assets/${tenantSlug}`;
+  const icons = `${assetPath}/icons`;
+  const iosIcon = `${assetPath}/app.icon`;
+
+  return [
+    `${icons}/icon.png`,
+    `${icons}/android-icon-foreground.png`,
+    `${icons}/android-icon-background.png`,
+    `${icons}/android-icon-monochrome.png`,
+    `${icons}/splash-icon.png`,
+    `${iosIcon}/icon.json`,
+    `${iosIcon}/Assets/ios-icon-default.png`,
+  ];
+}
+
+function validateTenantAssets(tenant: TenantConfig, projectRoot: string) {
+  for (const assetPath of getRequiredTenantAssetPaths(tenant.slug)) {
+    if (!existsSync(join(projectRoot, assetPath))) {
+      throw new Error(
+        `Missing required Tenant asset "${assetPath}" for Tenant Slug "${tenant.slug}"`,
+      );
+    }
+  }
+}
+
+export function resolveTenantConfig({
+  projectRoot = process.cwd(),
+  tenantSlug,
+}: TenantConfigResolverInput = {}): TenantConfig {
   const selectedTenantSlug = tenantSlug === undefined ? defaultTenantSlug : tenantSlug;
 
   if (!isTenantSlug(selectedTenantSlug)) {
@@ -62,5 +94,9 @@ export function resolveTenantConfig({ tenantSlug }: TenantConfigResolverInput = 
     );
   }
 
-  return configs[selectedTenantSlug];
+  const tenant = configs[selectedTenantSlug];
+
+  validateTenantAssets(tenant, projectRoot);
+
+  return tenant;
 }
