@@ -1,6 +1,6 @@
 import 'tsx/cjs';
 
-import { TenantSlug } from '@/types/tenant-config.types';
+import { type TenantSlug } from '@/types/tenant-config.types';
 import { ConfigContext, ExpoConfig } from 'expo/config';
 import { configs } from './tenant-configs';
 

@@ -19,6 +19,10 @@ Categories:
 
 Example: `feat(components): add new prop to avatar component`
 
+### Package Manager
+
+Use Bun for package scripts and dependency management. Do not use npm.
+
 ## Agent skills
 
 ### Issue tracker

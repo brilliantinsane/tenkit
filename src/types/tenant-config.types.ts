@@ -1,7 +1,7 @@
 import { Android, IOS } from '@expo/config-types';
 import { ExpoConfig } from 'expo/config';
 
-export const TENANT_SLUGS = ['first-tenant', 'second-tenant'];
+export const TENANT_SLUGS = ['first-tenant', 'second-tenant'] as const;
 
 export type TenantSlug = (typeof TENANT_SLUGS)[number];
 
@@ -13,7 +13,8 @@ export type TenantTheme = TenantColors;
 
 export type ExtraConfig = ExpoConfig['extra'] & {};
 
-type TenantConfig = {
+export type TenantConfig = {
+  tenantId: number;
   name: ExpoConfig['name'];
   slug: TenantSlug;
   version: ExpoConfig['version'];
