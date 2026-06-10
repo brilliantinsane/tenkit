@@ -1,17 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { globalStyles } from '@/constants/globals';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { StyleSheet } from 'react-native';
 
 export default function Index() {
+  const { tenantId } = useTenantConfig();
   return (
-    <View style={styles.container}>
-      <Text>TenantKit</Text>
-    </View>
+    <ThemedView style={[globalStyles.centeredContainer, styles.screen]}>
+      <ThemedText>TenantKit</ThemedText>
+      <ThemedText>Current tenantId: {tenantId}</ThemedText>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  screen: {
+    gap: 12,
   },
 });
