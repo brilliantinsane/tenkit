@@ -5,9 +5,9 @@ Domain language for a prototype kit that can produce distinct Expo applications 
 ## Language
 
 **Tenant**:
-For the current prototype, an independently branded application identity. Later, a Tenant will narrow to a switchable in-app customer or account inside a Business Model.
+An independently branded application identity. Each Tenant is configured as its own application.
 _Avoid_: App Variant
 
 **Business Model**:
-A future application-level model that can contain multiple switchable Tenants.
+A future concept that may group or shape Tenant behaviour, but is intentionally out of scope for the current prototype.
 _Avoid_: BM
