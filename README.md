@@ -1,19 +1,28 @@
-# Welcome to your Expo app 👋
+# Expo Tenant Kit
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Prototype kit for producing distinct Expo applications from configured Tenants.
 
 ## Get started
 
 1. Install dependencies
 
    ```bash
-   npm install
+   bun install
    ```
 
-2. Start the app
+2. Choose a Tenant for local development
 
    ```bash
-   npx expo start
+   cp .env.example .env.local
+   ```
+
+   Set `TENANT_SLUG` to one of the accepted Tenant Slugs, such as `first-tenant` or
+   `second-tenant`. If `TENANT_SLUG` is omitted, the first configured Tenant is used.
+
+3. Start the app
+
+   ```bash
+   bun expo start
    ```
 
 In the output, you'll find options to open the app in a
@@ -23,34 +32,39 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Tenant Selection Contract
 
-## Get a fresh project
+Each entry in `tenant-configs.ts` represents one independently branded application.
+`TENANT_SLUG` is the build-time selector for that configured Tenant.
 
-When you're ready, run:
+The selected Tenant config is the source of truth for:
+
+- Tenant ID
+- native app identity
+- package identity
+- app scheme
+- minimal theme accent
+- required native/app asset paths
+
+Invalid Tenant Slugs fail during config resolution. Required assets for the selected
+Tenant are validated before the dynamic Expo config output is trusted.
+
+Runtime app code reads Tenant ID from `Constants.expoConfig.extra.tenantId`. There is no
+active `EXPO_PUBLIC_TENANT_ID` runtime path.
+
+Business Model is a future concept and is intentionally out of scope for this prototype
+slice.
+
+## Checks
 
 ```bash
-npm run reset-project
+bun test tests/tenant-configs.test.ts tests/tenant-runtime-config.test.ts
+bunx tsc --noEmit --pretty false
+bun run lint
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Expo Docs
 
-### Other setup steps
+This repo targets Expo SDK 56. Read the exact versioned docs before changing Expo code:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+https://docs.expo.dev/versions/v56.0.0/
