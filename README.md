@@ -75,6 +75,7 @@ Prototype kit for producing distinct Expo applications from configured Tenants.
    bun run start
    ```
 
+   This remains the normal Expo start command. It reads `TENANT_SLUG` from `.env.local`.
    The Expo CLI output includes options for opening the app in a development build, Android
    emulator, iOS simulator, web browser, or Expo Go.
 
@@ -101,7 +102,7 @@ Prototype kit for producing distinct Expo applications from configured Tenants.
 
    Full Tenant config lives in `tenant-configs.ts`.
 
-2. **Configure the selected Tenant**
+2. **Configure the selected Tenant for normal Expo start**
 
    Set the selected Tenant in `.env.local`:
 
@@ -109,34 +110,100 @@ Prototype kit for producing distinct Expo applications from configured Tenants.
    TENANT_SLUG=second-tenant
    ```
 
-   For a one-off command, pass the Tenant Slug inline:
+   `bun run start` reads this file. Build preparation pulls EAS env vars and can update
+   `.env.local`, but the CLI does not manually edit it.
+
+3. **Configure EAS for each Tenant before Build Preparation**
+
+   Each Tenant maps to exactly one EAS Project. This OSS starter keeps Tenant EAS Project IDs
+   empty, so downstream private apps must create or find their own EAS Projects first.
+
+   For each Tenant:
 
    ```bash
-   TENANT_SLUG=second-tenant bun run ios
+   eas login
    ```
 
-3. **Run the configured Tenant on iOS**
+   - Create or find one EAS Project in your Expo account or organization for the selected Tenant.
+   - Copy that EAS Project ID.
+   - Paste it into `tenant-configs.ts` at `configs['first-tenant'].extra.eas.projectId`, replacing
+     `first-tenant` with the selected Tenant Slug.
+   - Repeat for every Tenant you intend to build.
+   - Replace `EXPO_OWNER` in `project-config.ts` with your Expo account or organization owner.
+
+   Optional helper:
+
+   ```bash
+   TENANT_SLUG=first-tenant eas init
+   ```
+
+   Use `eas init` only to create or discover the Tenant's EAS Project ID. If it prints a
+   `projectId` and then exits with an error because this app uses dynamic Expo config, copy the
+   printed ID and paste it into `tenant-configs.ts`.
+
+   In each EAS Project, create environment variables for the EAS environments you use:
+   `development`, `preview`, and `production`. Each environment must include `TENANT_SLUG`, and
+   its value must match the Tenant Slug for that EAS Project. For example, the EAS Project for
+   `second-tenant` should have `TENANT_SLUG=second-tenant` in each configured environment.
+
+   Never put `EAS_PROJECT_ID` in EAS environment variables. EAS Project IDs live in
+   `tenant-configs.ts`; they are public identifiers, not secrets.
+
+4. **Prepare native projects for a Tenant**
+
+   Use build preparation after changing Tenant, Tenant Environment, native identity, package name,
+   scheme, icons, splash assets, or plugin config:
+
+   ```bash
+   bun run build:prepare
+   ```
+
+   The command prompts for Tenant, platform, and Tenant Environment. It pulls EAS env vars first,
+   validates that `.env.local` contains the selected `TENANT_SLUG`, then runs clean Expo prebuild.
+
+   Non-interactive examples:
+
+   ```bash
+   bun run build:prepare -- --tenant second-tenant --env development --platform ios
+   bun run build:prepare -- --tenant second-tenant --env preview --android
+   bun run build:prepare -- --tenant second-tenant --env production --both
+   ```
+
+5. **Run the prepared Tenant on native targets**
 
    ```bash
    bun run ios
-   ```
-
-4. **Run the configured Tenant on Android**
-
-   ```bash
    bun run android
    ```
 
-5. **Regenerate native projects after native config changes**
+   These are stock Expo run commands. They do not prompt for Tenant, pull EAS env vars, or prebuild.
+   Use them after build preparation has already produced the native projects you need.
 
-   If a Tenant's native identity, package name, scheme, icons, splash assets, or plugin config
-   changes, regenerate native projects before running the native app:
+   Direct Expo examples:
 
    ```bash
-   TENANT_SLUG=second-tenant bun expo prebuild --clean
+   bun expo run ios --device
+   bun expo run android --device
    ```
 
-6. **Add or update a Tenant**
+6. **Reset native projects to the default Tenant**
+
+   ```bash
+   bun run build:reset
+   ```
+
+   Reset uses `first-tenant`, the `development` Tenant Environment, and both platforms. It pulls
+   EAS development env vars, validates `TENANT_SLUG`, and runs clean prebuild.
+
+7. **EAS authentication**
+
+   Build preparation and reset require the global EAS CLI because they run `eas env:pull`.
+   If it is missing, install it globally using the official EAS CLI installation instructions.
+
+   Locally, the CLI runs `eas login` when needed before pulling env vars. In CI, set `EXPO_TOKEN`
+   and pass all required flags so the command never prompts.
+
+8. **Add or update a Tenant**
 
    To add a Tenant, update:
 
@@ -150,7 +217,7 @@ Prototype kit for producing distinct Expo applications from configured Tenants.
 ## Checks
 
 ```bash
-bun test tests/tenant-configs.test.ts tests/tenant-runtime-config.test.ts
+bun test tests
 bunx tsc --noEmit --pretty false
 bun run lint
 ```
