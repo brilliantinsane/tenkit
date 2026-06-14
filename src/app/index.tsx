@@ -1,5 +1,5 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/ui/themed-text';
+import { ThemedView } from '@/components/ui/themed-view';
 import { globalStyles } from '@/constants/globals';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { StyleSheet } from 'react-native';

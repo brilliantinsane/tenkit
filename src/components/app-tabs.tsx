@@ -6,7 +6,7 @@ const AppTabs = () => {
 
   return (
     <NativeTabs
-      indicatorColor={colors.accent}
+      backgroundColor={colors.background}
       labelStyle={{
         selected: { color: colors.accent },
       }}
