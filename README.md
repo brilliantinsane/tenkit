@@ -1,218 +1,216 @@
-# Expo Tenant Kit
+![Expo Tenant Kit banner](docs/readme-banner.svg)
 
-Prototype kit for producing distinct Expo applications from configured Tenants.
+Expo Tenant Kit lets you maintain one Expo codebase and ship it as separate branded mobile apps for different customers, brands, or markets.
 
-## Setup Instructions
+It uses a build-time `TENANT_SLUG` to apply each tenant's native app identity, metadata, icons, splash assets, theme values, runtime config, and EAS project mapping.
 
-1. **Clone the repository**
+## Why This Exists
 
-   ```bash
-   git clone <repository-url>
-   cd expo-tenant-kit
-   ```
+Many mobile products start as one app, then need a second app with a different name, icon, bundle identifier, package name, theme, and EAS project. Copying the whole repository works once, but it creates drift immediately.
 
-2. **Install nvm (Node Version Manager) globally on the system**
+This kit keeps the shared application code in one place and moves brand-specific native identity into typed Tenant config. Pick a Tenant, prepare the native project, and build the branded app that belongs to that Tenant.
 
-   - Mac and Linux: `https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script`
-   - Mac using Brew: `https://formulae.brew.sh/formula/nvm`
-   - Windows: `https://github.com/coreybutler/nvm-windows?tab=readme-ov-file#nvm-for-windows`
+## What You Get
 
-3. **Verify nvm is correctly installed**
+- **One shared Expo app** using Expo Router, React Native, TypeScript, and Bun.
+- **Typed Tenant config** for app name, slug, version, scheme, iOS bundle identifier, Android package name, accent color, and EAS metadata.
+- **Tenant-specific native assets** for icons, Android adaptive icons, splash imagery, and iOS app icon catalogs.
+- **Dynamic Expo config** that applies the selected Tenant at build time from `TENANT_SLUG`.
+- **Runtime Tenant metadata** exposed through Expo config and consumed with `useTenantConfig()`.
+- **Build Preparation CLI** that pulls the selected Tenant's EAS environment values into `.env.local`, validates the Tenant Slug, and runs clean Expo prebuild.
+- **Tests around the Tenant workflow** so config resolution, CLI planning, runtime config, and EAS JSON behavior stay intentional.
 
-   ```bash
-   nvm -v
-   ```
+## What This Is Not
 
-4. **Use the correct Node.js version**
+Expo Tenant Kit is not a backend multi-tenancy system, an in-app tenant switcher, or a finished white-label product. It is a project foundation for build-time tenantized Expo apps where each Tenant becomes its own native application.
 
-   ```bash
-   nvm use
-   ```
+The demo Tenants are placeholders. Downstream apps should replace names, package IDs, assets, EAS project IDs, and product UI with real Tenant data.
 
-   If the version from `.nvmrc` is not installed yet, run:
+## How It Works
 
-   ```bash
-   nvm install
-   nvm use
-   ```
+| Area                  | File                               | Purpose                                                                        |
+| --------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| Tenant list and types | `src/types/tenant-config.types.ts` | Defines accepted Tenant Slugs and the shape of each Tenant config.             |
+| Tenant config         | `tenant-configs.ts`                | Stores each Tenant's native identity, theme, assets, and EAS project metadata. |
+| Expo app config       | `app.config.ts`                    | Resolves the active Tenant and injects its identity into Expo's native config. |
+| Project owner         | `project-config.ts`                | Holds the Expo account or organization owner for downstream projects.          |
+| Build CLI             | `scripts/tenant-cli.ts`            | Provides `build-prepare`, `build-reset`, and `doctor` commands.                |
+| Build planning        | `scripts/tenant-cli-core.ts`       | Validates Tenant, environment, platform, EAS project ID, and CI requirements.  |
+| Build execution       | `scripts/tenant-cli-runtime.ts`    | Pulls EAS env vars, validates `.env.local`, and runs Expo prebuild.            |
+| Runtime Tenant hook   | `src/hooks/use-tenant-config.ts`   | Reads the resolved Tenant metadata from Expo runtime config.                   |
+| Tenant assets         | `assets/<tenant-slug>/`            | Holds required native icon and splash assets per Tenant.                       |
 
-5. **Install Bun**
+## Current Demo Tenants
 
-   Use Bun for package scripts and dependency management in this repo. Do not use npm for local
-   setup, scripts, or dependency changes.
+| Tenant Slug     | App Name       | Tenant ID | Accent    | Native IDs                         |
+| --------------- | -------------- | --------: | --------- | ---------------------------------- |
+| `first-tenant`  | `FirstTenant`  |       `1` | `#208AEF` | `com.brilliantinsane.firsttenant`  |
+| `second-tenant` | `SecondTenant` |       `2` | `#ca0b09` | `com.brilliantinsane.secondtenant` |
 
-   ```bash
-   bun --version
-   ```
+If `TENANT_SLUG` is omitted, the first configured Tenant is used.
 
-   If Bun is not installed, follow `https://bun.sh/docs/installation`.
+## Quick Start
 
-6. **Install dependencies**
+### 1. Clone the repository
 
-   ```bash
-   bun install
-   ```
+```bash
+git clone <repository-url>
+cd expo-tenant-kit
+```
 
-7. **Configure environment**
+### 2. Use the project Node version
 
-   Create a `.env.local` file from the example file:
+Install `nvm` from the [official nvm instructions](https://github.com/nvm-sh/nvm), then run:
 
-   ```bash
-   cp .env.example .env.local
-   ```
+```bash
+nvm install
+nvm use
+```
 
-   Set `TENANT_SLUG` to one of the accepted Tenant Slugs, such as `first-tenant` or
-   `second-tenant`. If `TENANT_SLUG` is omitted, the first configured Tenant is used.
+### 3. Install Bun
 
-8. **Configure VS Code**
+Use Bun for package scripts and dependency management in this repo. Do not use npm for local setup, scripts, or dependency changes.
 
-   If you use VS Code, install the recommended workspace extensions when prompted. This repo
-   already includes workspace settings and a Prettier config.
+```bash
+bun --version
+```
 
-9. **Start the app**
+If Bun is missing, install it from the [official Bun installation guide](https://bun.sh/docs/installation).
 
-   ```bash
-   bun run start
-   ```
+### 4. Install dependencies
 
-   This remains the normal Expo start command. It reads `TENANT_SLUG` from `.env.local`.
-   The Expo CLI output includes options for opening the app in a development build, Android
-   emulator, iOS simulator, web browser, or Expo Go.
+```bash
+bun install
+```
 
-10. **Run the default Tenant on iOS**
+### 5. Configure the local Tenant
 
-    ```bash
-    bun run ios
-    ```
+Create `.env.local` from the example file:
 
-11. **Run the default Tenant on Android**
+```bash
+cp .env.example .env.local
+```
 
-    ```bash
-    bun run android
-    ```
+Set `TENANT_SLUG` to one of the accepted Tenant Slugs:
 
-## Per Tenant Instructions
+```bash
+TENANT_SLUG=first-tenant
+```
 
-1. **Choose a Tenant Slug**
+You can also use:
 
-   Accepted Tenant Slugs currently live in `src/types/tenant-config.types.ts`:
+```bash
+TENANT_SLUG=second-tenant
+```
 
-   - `first-tenant` - the default Tenant when `TENANT_SLUG` is omitted.
-   - `second-tenant` - the second configured Tenant.
+### 6. Start the app
 
-   Full Tenant config lives in `tenant-configs.ts`.
+```bash
+bun run start
+```
 
-2. **Configure the selected Tenant for normal Expo start**
+Expo CLI will show options for opening the app in a development build, Android emulator, iOS simulator, web browser, or Expo Go.
 
-   Set the selected Tenant in `.env.local`:
+## Common Workflows
 
-   ```bash
-   TENANT_SLUG=second-tenant
-   ```
+### Run the selected Tenant locally
 
-   `bun run start` reads this file. Build preparation pulls EAS env vars and can update
-   `.env.local`, but the CLI does not manually edit it.
+```bash
+bun run ios
+bun run android
+bun run web
+```
 
-3. **Configure EAS for each Tenant before Build Preparation**
+These commands use the Tenant already present in `.env.local`. They do not pull EAS env vars or regenerate native projects.
 
-   Each Tenant maps to exactly one EAS Project. This OSS starter keeps Tenant EAS Project IDs
-   empty, so downstream private apps must create or find their own EAS Projects first.
+### Prepare native projects for a Tenant
 
-   For each Tenant:
+Run Build Preparation after changing Tenant, Tenant Environment, native identity, package name, scheme, icons, splash assets, or plugin config:
+
+```bash
+bun run build:prepare
+```
+
+The command prompts for Tenant, platform, and Tenant Environment. It pulls EAS env vars first, validates that `.env.local` contains the selected `TENANT_SLUG`, then runs clean Expo prebuild.
+
+Non-interactive examples:
+
+```bash
+bun run build:prepare -- --tenant second-tenant --env development --platform ios
+bun run build:prepare -- --tenant second-tenant --env preview --android
+bun run build:prepare -- --tenant second-tenant --env production --both
+```
+
+### Reset native projects to the default Tenant
+
+```bash
+bun run build:reset
+```
+
+Reset uses `first-tenant`, the `development` Tenant Environment, and both platforms. It pulls EAS development env vars, validates `TENANT_SLUG`, and runs clean prebuild.
+
+## EAS Setup
+
+Each Tenant maps to exactly one EAS Project. This open source starter intentionally keeps Tenant EAS Project IDs empty, so downstream apps must create or find their own EAS Projects first.
+
+For each Tenant:
+
+1. Log in with EAS CLI:
 
    ```bash
    eas login
    ```
 
-   - Create or find one EAS Project in your Expo account or organization for the selected Tenant.
-   - Copy that EAS Project ID.
-   - Paste it into `tenant-configs.ts` at `configs['first-tenant'].extra.eas.projectId`, replacing
-     `first-tenant` with the selected Tenant Slug.
-   - Repeat for every Tenant you intend to build.
-   - Replace `EXPO_OWNER` in `project-config.ts` with your Expo account or organization owner.
+2. Create or find one EAS Project in your Expo account or organization for the selected Tenant.
+3. Copy that EAS Project ID.
+4. Paste it into `tenant-configs.ts` at `configs['first-tenant'].extra.eas.projectId`, replacing `first-tenant` with the selected Tenant Slug.
+5. Repeat for every Tenant you intend to build.
+6. Replace `EXPO_OWNER` in `project-config.ts` with your Expo account or organization owner.
 
-   Optional helper:
+Optional helper:
 
-   ```bash
-   TENANT_SLUG=first-tenant eas init
-   ```
+```bash
+TENANT_SLUG=first-tenant eas init
+```
 
-   Use `eas init` only to create or discover the Tenant's EAS Project ID. If it prints a
-   `projectId` and then exits with an error because this app uses dynamic Expo config, copy the
-   printed ID and paste it into `tenant-configs.ts`.
+Use `eas init` only to create or discover the Tenant's EAS Project ID. If it prints a `projectId` and then exits with an error because this app uses dynamic config, copy the printed ID and paste it into `tenant-configs.ts`.
 
-   In each EAS Project, create environment variables for the EAS environments you use:
-   `development`, `preview`, and `production`. Each environment must include `TENANT_SLUG`, and
-   its value must match the Tenant Slug for that EAS Project. For example, the EAS Project for
-   `second-tenant` should have `TENANT_SLUG=second-tenant` in each configured environment.
+In each EAS Project, create environment variables for the EAS environments you use: `development`, `preview`, and `production`. Each environment must include `TENANT_SLUG`, and its value must match the Tenant Slug for that EAS Project.
 
-   Never put `EAS_PROJECT_ID` in EAS environment variables. EAS Project IDs live in
-   `tenant-configs.ts`; they are public identifiers, not secrets.
+Never put `EAS_PROJECT_ID` in EAS environment variables. EAS Project IDs live in `tenant-configs.ts`; they are public identifiers, not secrets.
 
-4. **Prepare native projects for a Tenant**
+## Add A Tenant
 
-   Use build preparation after changing Tenant, Tenant Environment, native identity, package name,
-   scheme, icons, splash assets, or plugin config:
+To add a Tenant, update:
 
-   ```bash
-   bun run build:prepare
-   ```
+- `src/types/tenant-config.types.ts` to add the Tenant Slug to `TENANT_SLUGS`.
+- `tenant-configs.ts` to add the Tenant's config entry.
+- `assets/<tenant-slug>/icons/` with required Android and general icon assets.
+- `assets/<tenant-slug>/app.icon/` with required iOS icon asset catalog files.
 
-   The command prompts for Tenant, platform, and Tenant Environment. It pulls EAS env vars first,
-   validates that `.env.local` contains the selected `TENANT_SLUG`, then runs clean Expo prebuild.
+Required asset paths are validated when the dynamic Expo config resolves the selected Tenant.
 
-   Non-interactive examples:
+## Project Structure
 
-   ```bash
-   bun run build:prepare -- --tenant second-tenant --env development --platform ios
-   bun run build:prepare -- --tenant second-tenant --env preview --android
-   bun run build:prepare -- --tenant second-tenant --env production --both
-   ```
-
-5. **Run the prepared Tenant on native targets**
-
-   ```bash
-   bun run ios
-   bun run android
-   ```
-
-   These are stock Expo run commands. They do not prompt for Tenant, pull EAS env vars, or prebuild.
-   Use them after build preparation has already produced the native projects you need.
-
-   Direct Expo examples:
-
-   ```bash
-   bun expo run ios --device
-   bun expo run android --device
-   ```
-
-6. **Reset native projects to the default Tenant**
-
-   ```bash
-   bun run build:reset
-   ```
-
-   Reset uses `first-tenant`, the `development` Tenant Environment, and both platforms. It pulls
-   EAS development env vars, validates `TENANT_SLUG`, and runs clean prebuild.
-
-7. **EAS authentication**
-
-   Build preparation and reset require the global EAS CLI because they run `eas env:pull`.
-   If it is missing, install it globally using the official EAS CLI installation instructions.
-
-   Locally, the CLI runs `eas login` when needed before pulling env vars. In CI, set `EXPO_TOKEN`
-   and pass all required flags so the command never prompts.
-
-8. **Add or update a Tenant**
-
-   To add a Tenant, update:
-
-   - `src/types/tenant-config.types.ts` - add the Tenant Slug to `TENANT_SLUGS`.
-   - `tenant-configs.ts` - add the Tenant's config entry.
-   - `assets/<tenant-slug>/icons/` - add required Android/general icons.
-   - `assets/<tenant-slug>/app.icon/` - add required iOS icon asset catalog files.
-
-   Required asset paths are validated when the dynamic Expo config resolves the selected Tenant.
+```text
+.
+├── app.config.ts                 # Dynamic Expo config resolved from TENANT_SLUG
+├── assets/
+│   ├── first-tenant/             # Native assets for FirstTenant
+│   └── second-tenant/            # Native assets for SecondTenant
+├── scripts/
+│   ├── tenant-cli.ts             # Bun CLI entrypoint
+│   ├── tenant-cli-core.ts        # Tenant workflow planning and validation
+│   └── tenant-cli-runtime.ts     # EAS/env/prebuild execution
+├── src/
+│   ├── app/                      # Expo Router screens
+│   ├── hooks/                    # Runtime Tenant and theme hooks
+│   ├── providers/                # App providers
+│   ├── types/                    # Tenant and app types
+│   └── utils/                    # Runtime config and tenant accent helpers
+├── tenant-configs.ts             # Tenant registry
+└── tests/                        # Tenant workflow tests
+```
 
 ## Checks
 
@@ -221,6 +219,15 @@ bun test tests
 bunx tsc --noEmit --pretty false
 bun run lint
 ```
+
+## Showcase Direction
+
+The banner uses the main visual story: one Expo codebase can produce multiple branded native apps. A future landing page should show the same idea with real simulator screenshots once the app surface is more complete:
+
+- one shared product flow,
+- two or more Tenant-branded app identities,
+- a short build workflow preview,
+- and a clear note that each Tenant maps to its own native identity and EAS Project.
 
 ## Expo Docs
 
