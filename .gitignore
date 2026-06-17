@@ -36,9 +36,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# local issue tracker
-.scratch/
-
 example
 
 # generated native folders
