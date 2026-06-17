@@ -55,7 +55,7 @@ If `TENANT_SLUG` is omitted, the first configured Tenant is used.
 
 ```bash
 git clone <repository-url>
-cd expo-tenant-kit
+cd tenkit
 ```
 
 ### 2. Use the project Node version
