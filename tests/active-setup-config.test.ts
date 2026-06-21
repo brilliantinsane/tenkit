@@ -21,7 +21,7 @@ test('valid Slug resolves to the matching App Variant config', () => {
 
   assert.equal(appVariant.appVariantId, 2);
   assert.equal(appVariant.slug, 'second-tenant');
-  assert.equal(appVariant.name, 'SecondTenant');
+  assert.equal(appVariant.name, 'Second Tenant');
 });
 
 test('resolved White Label Apps config does not expose top-level runtime Tenant metadata', () => {

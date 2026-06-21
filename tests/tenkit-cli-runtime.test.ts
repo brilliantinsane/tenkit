@@ -121,7 +121,7 @@ test('build preparation with missing App Variant EAS Project ID fails before aut
           log: (message) => events.push(message),
         },
       ),
-    /App Variant "FirstTenant" \(1\) is missing an EAS Project ID/,
+    /App Variant "First Tenant" \(1\) is missing an EAS Project ID/,
   );
 
   assert.deepEqual(events, []);
@@ -192,7 +192,7 @@ test('local build preparation logs in before EAS env pull and prebuild', async (
   assert.deepEqual(events, [
     'Preparing build',
     'Setup Type: white-label-apps',
-    'App Variant: FirstTenant (first-tenant)',
+    'App Variant: First Tenant (first-tenant)',
     'Environment: development',
     'Platform: ios',
     'Before pulling env vars from EAS you need to log in.',
@@ -235,7 +235,7 @@ test('build preparation fails before prebuild when EAS env pull does not create 
     assert.deepEqual(events, [
       'Preparing build',
       'Setup Type: white-label-apps',
-      'App Variant: FirstTenant (first-tenant)',
+      'App Variant: First Tenant (first-tenant)',
       'Environment: development',
       'Platform: ios',
       'Running: APP_VARIANT_SLUG=first-tenant eas env:pull --environment development --path .env.local --non-interactive',
@@ -352,7 +352,7 @@ test('build reset prepares default App Variant development environment for both 
   assert.deepEqual(events, [
     'Resetting build',
     'Setup Type: white-label-apps',
-    'App Variant: FirstTenant (first-tenant)',
+    'App Variant: First Tenant (first-tenant)',
     'Environment: development',
     'Platform: both',
     'Running: APP_VARIANT_SLUG=first-tenant eas env:pull --environment development --path .env.local --non-interactive',
@@ -408,7 +408,7 @@ test('local White Label Apps build prompts for missing App Variant, platform, an
   assert.deepEqual(events.slice(0, 5), [
     'Preparing build',
     'Setup Type: white-label-apps',
-    'App Variant: SecondTenant (second-tenant)',
+    'App Variant: Second Tenant (second-tenant)',
     'Environment: preview',
     'Platform: android',
   ]);
