@@ -36,8 +36,12 @@ function createProjectRoot() {
   return projectRoot;
 }
 
-test('setup lists both installable Setup Types', () => {
-  assert.deepEqual(getImplementedSetupTypes(), ['white-label-apps', 'single-app-runtime-tenants']);
+test('setup lists installable Setup Types', () => {
+  assert.deepEqual(getImplementedSetupTypes(), [
+    'white-label-apps',
+    'single-app-runtime-tenants',
+    'generic-with-standalone-app-variants',
+  ]);
 });
 
 test('setup dry-run prints the Single App Runtime Tenants file plan without writing', async () => {
@@ -72,7 +76,7 @@ test('setup dry-run prints the Single App Runtime Tenants file plan without writ
   }
 });
 
-test('setup prompt offers White Label Apps and Single App Runtime Tenants', async () => {
+test('setup prompt offers all installable Setup Types', async () => {
   const projectRoot = createProjectRoot();
   let choices: { name: string; value: string }[] = [];
 
@@ -98,7 +102,48 @@ test('setup prompt offers White Label Apps and Single App Runtime Tenants', asyn
     assert.deepEqual(choices, [
       { name: 'white-label-apps (current)', value: 'white-label-apps' },
       { name: 'single-app-runtime-tenants', value: 'single-app-runtime-tenants' },
+      {
+        name: 'generic-with-standalone-app-variants',
+        value: 'generic-with-standalone-app-variants',
+      },
     ]);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('setup dry-run prints the Generic With Standalone file plan without writing', async () => {
+  const projectRoot = createProjectRoot();
+  const events: string[] = [];
+
+  try {
+    const result = await runSetup(
+      {
+        setupType: 'generic-with-standalone-app-variants',
+        yes: true,
+        dryRun: true,
+      },
+      {
+        ci: true,
+        projectRoot,
+        promptSelect: async () => {
+          throw new Error('non-interactive setup should not prompt');
+        },
+        promptConfirm: async () => {
+          throw new Error('dry-run with --yes should not confirm');
+        },
+        log: (message) => events.push(message),
+        formatFiles: () => events.push('format'),
+      },
+    );
+
+    assert.equal(result.applied, false);
+    assert.equal(existsSync(join(projectRoot, 'src/active-setup/manifest.ts')), false);
+    assert.equal(events[0], 'Setup Type: generic-with-standalone-app-variants');
+    assert.equal(events[1], 'Active Setup changes:');
+    assert.ok(events.includes('- write src/active-setup/manifest.ts'));
+    assert.ok(events.includes('- write src/active-setup/runtime-tenants.ts'));
+    assert.equal(events.includes('format'), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -277,8 +322,57 @@ test('forced setup applies the scaffold output and uses starter-provided assets'
   }
 });
 
+test('Generic With Standalone setup writes manifest and Runtime Tenant data without assets', () => {
+  const projectRoot = createProjectRoot();
+  const plan = planSetup('generic-with-standalone-app-variants');
+
+  try {
+    mkdirSync(join(projectRoot, 'src/active-setup'), { recursive: true });
+    writeFileSync(join(projectRoot, 'src/active-setup/manifest.ts'), 'locally changed');
+    writeFileSync(join(projectRoot, 'src/active-setup/runtime-tenants.ts'), 'locally changed');
+
+    assert.deepEqual(findBlockedSetupTargets({ plan, projectRoot }), [
+      'src/active-setup/manifest.ts',
+      'src/active-setup/runtime-tenants.ts',
+    ]);
+
+    const result = applySetupPlan({ plan, projectRoot, force: true });
+
+    assert.equal(result.applied, true);
+
+    const manifest = readFileSync(join(projectRoot, 'src/active-setup/manifest.ts'), 'utf8');
+    const runtimeData = readFileSync(
+      join(projectRoot, 'src/active-setup/runtime-tenants.ts'),
+      'utf8',
+    );
+
+    assert.match(manifest, /setupType: 'generic-with-standalone-app-variants'/);
+    assert.match(manifest, /slug: 'atlas-network'/);
+    assert.match(manifest, /slug: 'west-studio'/);
+    assert.match(manifest, /role: 'generic'/);
+    assert.match(manifest, /role: 'standalone'/);
+    assert.match(runtimeData, /North Studio/);
+    assert.match(runtimeData, /South Studio/);
+    assert.match(runtimeData, /East Studio/);
+    assert.match(runtimeData, /West Studio/);
+    assert.equal(existsSync(join(projectRoot, 'assets/atlas-network/icons/icon.png')), false);
+    assert.equal(existsSync(join(projectRoot, 'assets/west-studio/icons/icon.png')), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test('setup file plan describes setup-owned writes', () => {
   const plan = planSetup('single-app-runtime-tenants');
+
+  assert.deepEqual(formatSetupFilePlan(plan), [
+    'write src/active-setup/manifest.ts',
+    'write src/active-setup/runtime-tenants.ts',
+  ]);
+});
+
+test('Generic With Standalone setup file plan describes setup-owned writes', () => {
+  const plan = planSetup('generic-with-standalone-app-variants');
 
   assert.deepEqual(formatSetupFilePlan(plan), [
     'write src/active-setup/manifest.ts',

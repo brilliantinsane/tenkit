@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { Android, IOS } from '@expo/config-types';
 import { ExpoConfig } from 'expo/config';
 
-export const SETUP_TYPES = ['white-label-apps', 'single-app-runtime-tenants'] as const;
+export const SETUP_TYPES = [
+  'white-label-apps',
+  'single-app-runtime-tenants',
+  'generic-with-standalone-app-variants',
+] as const;
 
 export type SetupType = (typeof SETUP_TYPES)[number];
 export type AppVariantId = number;
@@ -42,6 +46,18 @@ export type AppVariantWithRuntimeTenantAccess = AppVariant & {
   runtimeTenantAccess: RuntimeTenantAccess;
 };
 
+export type GenericAppVariant = AppVariantWithRuntimeTenantAccess & {
+  role: 'generic';
+};
+
+export type StandaloneAppVariant = AppVariant & {
+  role: 'standalone';
+  standaloneRuntimeTenantId: RuntimeTenantId;
+  runtimeTenantAccess?: never;
+};
+
+export type GenericAppSetupVariant = GenericAppVariant | StandaloneAppVariant;
+
 export type WhiteLabelAppsSetup = {
   setupType: 'white-label-apps';
   appVariants: readonly AppVariant[];
@@ -53,7 +69,12 @@ export type SingleAppRuntimeTenantsSetup = {
   appVariant: AppVariantWithRuntimeTenantAccess;
 };
 
-export type ActiveSetup = WhiteLabelAppsSetup | SingleAppRuntimeTenantsSetup;
+export type GenericAppSetup = {
+  setupType: 'generic-with-standalone-app-variants';
+  appVariants: readonly GenericAppSetupVariant[];
+};
+
+export type ActiveSetup = WhiteLabelAppsSetup | SingleAppRuntimeTenantsSetup | GenericAppSetup;
 
 export type ActiveSetupBootstrap = {
   setupType: SetupType;
@@ -63,6 +84,7 @@ export type ActiveSetupBootstrap = {
   };
   theme: AppVariantTheme;
   runtimeTenantAccess?: RuntimeTenantAccess;
+  standaloneRuntimeTenantId?: RuntimeTenantId;
 };
 
 export type ResolvedAppVariantConfig = AppVariant & {
@@ -174,6 +196,80 @@ function validateSingleAppRuntimeTenantsSetup(activeSetup: SingleAppRuntimeTenan
   validateAppVariant(activeSetup.appVariant);
 }
 
+function validateGenericAppSetup(activeSetup: GenericAppSetup) {
+  if (!Array.isArray(activeSetup.appVariants) || activeSetup.appVariants.length === 0) {
+    fail('Generic App Setup must include at least one App Variant');
+  }
+
+  for (const appVariant of activeSetup.appVariants) {
+    validateAppVariant(appVariant);
+
+    if (appVariant.role === 'generic') {
+      if (!appVariant.runtimeTenantAccess) {
+        fail('Generic App Variant must declare selectable Runtime Tenant Access');
+      }
+    } else if (appVariant.role === 'standalone') {
+      assertPositiveInteger(
+        appVariant.standaloneRuntimeTenantId,
+        'Standalone App Variant Runtime Tenant ID',
+      );
+
+      if (appVariant.runtimeTenantAccess) {
+        fail('Standalone App Variants must use a direct Runtime Tenant ID');
+      }
+    } else {
+      fail(`Invalid App Variant role ${JSON.stringify(appVariant.role)}`);
+    }
+  }
+
+  const genericAppVariants = activeSetup.appVariants.filter(
+    (appVariant): appVariant is GenericAppVariant => appVariant.role === 'generic',
+  );
+
+  if (genericAppVariants.length !== 1) {
+    fail(
+      `Generic App Setup must include exactly one Generic App Variant, found ${genericAppVariants.length}`,
+    );
+  }
+
+  const duplicateAppVariantId = findDuplicate(
+    activeSetup.appVariants.map((appVariant) => appVariant.appVariantId),
+  );
+
+  if (duplicateAppVariantId) {
+    fail(`Duplicate App Variant ID "${duplicateAppVariantId}" in Active Setup Manifest`);
+  }
+
+  const duplicateSlug = findDuplicate(activeSetup.appVariants.map((appVariant) => appVariant.slug));
+
+  if (duplicateSlug) {
+    fail(`Duplicate Slug "${duplicateSlug}" in Active Setup Manifest`);
+  }
+
+  const standaloneRuntimeTenantIds = activeSetup.appVariants
+    .filter((appVariant): appVariant is StandaloneAppVariant => appVariant.role === 'standalone')
+    .map((appVariant) => appVariant.standaloneRuntimeTenantId);
+  const duplicateStandaloneRuntimeTenantId = findDuplicate(standaloneRuntimeTenantIds);
+
+  if (duplicateStandaloneRuntimeTenantId) {
+    fail(
+      `Duplicate standalone Runtime Tenant assignment "${duplicateStandaloneRuntimeTenantId}" in Active Setup Manifest`,
+    );
+  }
+
+  const genericAllowedRuntimeTenantIds =
+    genericAppVariants[0]?.runtimeTenantAccess.allowedRuntimeTenantIds ?? [];
+  const standaloneRuntimeTenantInGenericAccess = standaloneRuntimeTenantIds.find(
+    (runtimeTenantId) => genericAllowedRuntimeTenantIds.includes(runtimeTenantId),
+  );
+
+  if (standaloneRuntimeTenantInGenericAccess !== undefined) {
+    fail(
+      `Standalone Runtime Tenant ID "${standaloneRuntimeTenantInGenericAccess}" must not appear in Generic App Variant Runtime Tenant Access`,
+    );
+  }
+}
+
 export function defineActiveSetup<TActiveSetup extends ActiveSetup>(
   activeSetup: TActiveSetup,
 ): TActiveSetup {
@@ -185,6 +281,8 @@ export function defineActiveSetup<TActiveSetup extends ActiveSetup>(
 
   if (activeSetup.setupType === 'single-app-runtime-tenants') {
     validateSingleAppRuntimeTenantsSetup(activeSetup);
+  } else if (activeSetup.setupType === 'generic-with-standalone-app-variants') {
+    validateGenericAppSetup(activeSetup);
   } else {
     validateWhiteLabelAppsSetup(activeSetup);
   }
@@ -203,6 +301,18 @@ export function getAppVariants(activeSetup: ActiveSetup): readonly AppVariant[] 
 export function getDefaultAppVariant(activeSetup: ActiveSetup): AppVariant {
   if (activeSetup.setupType === 'single-app-runtime-tenants') {
     return activeSetup.appVariant;
+  }
+
+  if (activeSetup.setupType === 'generic-with-standalone-app-variants') {
+    const genericAppVariant = activeSetup.appVariants.find(
+      (appVariant) => appVariant.role === 'generic',
+    );
+
+    if (!genericAppVariant) {
+      fail('Generic App Setup has no Generic App Variant');
+    }
+
+    return genericAppVariant;
   }
 
   const defaultAppVariantId =
@@ -239,6 +349,15 @@ function validateAppVariantAssets(appVariant: AppVariant, projectRoot: string) {
       fail(`Missing required App Variant asset "${assetPath}" for Slug "${appVariant.slug}"`);
     }
   }
+}
+
+function hasStandaloneRuntimeTenantId(
+  appVariant: AppVariant,
+): appVariant is AppVariant & { standaloneRuntimeTenantId: RuntimeTenantId } {
+  return (
+    'standaloneRuntimeTenantId' in appVariant &&
+    typeof appVariant.standaloneRuntimeTenantId === 'number'
+  );
 }
 
 export function resolveAppVariantConfig({
@@ -278,6 +397,9 @@ export function resolveAppVariantConfig({
     theme: appVariant.theme,
     ...(appVariant.runtimeTenantAccess
       ? { runtimeTenantAccess: appVariant.runtimeTenantAccess }
+      : {}),
+    ...(hasStandaloneRuntimeTenantId(appVariant)
+      ? { standaloneRuntimeTenantId: appVariant.standaloneRuntimeTenantId }
       : {}),
   };
 

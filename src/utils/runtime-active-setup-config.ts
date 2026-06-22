@@ -14,14 +14,18 @@ function isActiveSetupBootstrap(value: unknown): value is ActiveSetupBootstrap {
     setupType?: unknown;
     appVariant?: { id?: unknown; slug?: unknown };
     theme?: { accent?: unknown };
+    standaloneRuntimeTenantId?: unknown;
   };
 
   return (
     (candidate.setupType === 'white-label-apps' ||
-      candidate.setupType === 'single-app-runtime-tenants') &&
+      candidate.setupType === 'single-app-runtime-tenants' ||
+      candidate.setupType === 'generic-with-standalone-app-variants') &&
     typeof candidate.appVariant?.id === 'number' &&
     typeof candidate.appVariant.slug === 'string' &&
-    typeof candidate.theme?.accent === 'string'
+    typeof candidate.theme?.accent === 'string' &&
+    (candidate.standaloneRuntimeTenantId === undefined ||
+      typeof candidate.standaloneRuntimeTenantId === 'number')
   );
 }
 

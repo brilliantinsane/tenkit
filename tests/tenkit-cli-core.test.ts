@@ -21,6 +21,18 @@ function withProjectIds(setup: ActiveSetup = activeSetup): ActiveSetup {
     };
   }
 
+  if (setup.setupType === 'generic-with-standalone-app-variants') {
+    return {
+      ...setup,
+      appVariants: setup.appVariants.map((appVariant, index) => ({
+        ...appVariant,
+        eas: {
+          projectId: `${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}-1111-1111-1111-111111111111`,
+        },
+      })),
+    };
+  }
+
   return {
     ...setup,
     appVariants: setup.appVariants.map((appVariant, index) => ({

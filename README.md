@@ -2,7 +2,7 @@
 
 Tenkit lets you maintain one Expo codebase and ship it as separate branded mobile apps, or as one app that opens multiple runtime business contexts.
 
-Tenkit is cloneable-starter-first: the root app has exactly one **Active Setup** at a time. The default Active Setup is **White Label Apps**, where each branded native application is an **App Variant**. **Single App Runtime Tenants** is also available as a local Scaffold, where one App Variant can open multiple **Runtime Tenants** inside the same native app.
+Tenkit is cloneable-starter-first: the root app has exactly one **Active Setup** at a time. The default Active Setup is **White Label Apps**, where each branded native application is an **App Variant**. **Single App Runtime Tenants** is also available as a local Scaffold, where one App Variant can open multiple **Runtime Tenants** inside the same native app. **Generic With Standalone App Variants** is available as a local Scaffold for one generic App Variant plus selected standalone App Variants.
 
 ## Why This Exists
 
@@ -28,7 +28,7 @@ Tenkit keeps shared application code in one place and moves setup-specific nativ
 - A typed Active Setup Manifest at `src/active-setup/manifest.ts`.
 - Standard Expo config fields resolved from the selected App Variant.
 - Public runtime bootstrap data under `extra.activeSetup`.
-- Local-source Single App Runtime Tenants shared model and Scaffold.
+- Local-source Single App Runtime Tenants and Generic With Standalone App Variants shared models and Scaffolds.
 - A single local CLI surface: `pnpm tenkit setup`, `pnpm tenkit build`, `pnpm tenkit reset`, and `pnpm tenkit doctor`.
 - Tests around Active Setup resolution, runtime config, CLI planning/runtime behavior, setup file-plan safety, EAS JSON, and example conformance.
 
@@ -167,6 +167,34 @@ The Scaffold writes setup-owned Active Setup files:
 
 It does not modify shared app entry points, native assets, EAS project state, local env files, or native `ios/` and `android/` directories. Starter values are intentionally generated as editable local data rather than prompted one field at a time.
 
+### Scaffold Generic With Standalone App Variants
+
+Inspect the file plan first:
+
+```bash
+pnpm tenkit setup --setup-type generic-with-standalone-app-variants --dry-run --yes
+```
+
+Apply it explicitly:
+
+```bash
+pnpm tenkit setup --setup-type generic-with-standalone-app-variants --yes --force
+```
+
+This Scaffold writes the same setup-owned Active Setup files:
+
+- `src/active-setup/manifest.ts`
+- `src/active-setup/runtime-tenants.ts`
+
+The generated Starter Data includes `Atlas Network` as the Generic App Variant. Its Runtime Tenant Access allows `North Studio`, `South Studio`, and `East Studio`. `West Studio` remains a Runtime Tenant, but it is opened by its own Standalone App Variant and is excluded from the generic picker.
+
+In this Setup Type, `runtimeTenants` means all known business contexts for the Active Setup. App Variant access decides which Runtime Tenants each installed app can open. A Generic App Variant uses selectable Runtime Tenant Access; a Standalone App Variant opens its direct Runtime Tenant.
+
+The Scaffold does not write, copy, or generate assets. Native assets are expected under the existing Slug-based convention:
+
+- `assets/atlas-network/...`
+- `assets/west-studio/...`
+
 ### Doctor
 
 ```bash
@@ -223,6 +251,7 @@ Required asset paths are validated when dynamic Expo config resolves the selecte
 │   ├── second-tenant/                    # Native assets for SecondTenant
 │   └── acme-app/                         # Native starter assets for Single App Runtime Tenants
 ├── examples/
+│   ├── generic-with-standalone-app-variants/ # Opt-in generic plus standalone reference
 │   └── single-app-runtime-tenants/       # Opt-in local-source reference example
 ├── scripts/
 │   ├── tenkit-cli.ts                     # TypeScript CLI entrypoint
@@ -254,6 +283,12 @@ Opt-in Single App Runtime Tenants example check:
 
 ```bash
 pnpm exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
+```
+
+Opt-in Generic With Standalone App Variants example check:
+
+```bash
+pnpm exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
 ```
 
 ## Expo Docs

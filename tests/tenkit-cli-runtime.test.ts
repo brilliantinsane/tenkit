@@ -11,6 +11,7 @@ import { runBuild, runReset } from '../scripts/tenkit-cli-runtime';
 import { activeSetup } from '../src/active-setup/manifest';
 import { type ActiveSetup } from '../src/setup-types/core';
 import { defineSingleAppRuntimeTenantsSetup } from '../src/setup-types/single-app-runtime-tenants';
+import { genericAppStarterData } from '../starter-data/generic-with-standalone-app-variants';
 
 function withProjectIds(setup: ActiveSetup = activeSetup): ActiveSetup {
   if (setup.setupType === 'single-app-runtime-tenants') {
@@ -22,6 +23,18 @@ function withProjectIds(setup: ActiveSetup = activeSetup): ActiveSetup {
           projectId: '11111111-1111-1111-1111-111111111111',
         },
       },
+    };
+  }
+
+  if (setup.setupType === 'generic-with-standalone-app-variants') {
+    return {
+      ...setup,
+      appVariants: setup.appVariants.map((appVariant, index) => ({
+        ...appVariant,
+        eas: {
+          projectId: `${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}${index + 1}-1111-1111-1111-111111111111`,
+        },
+      })),
     };
   }
 
@@ -75,6 +88,8 @@ const singleAppRuntimeTenantsSetup = defineSingleAppRuntimeTenantsSetup({
     },
   },
 });
+
+const genericWithStandaloneSetup = withProjectIds(genericAppStarterData.setup);
 
 function recordCommandAndWritePulledEnv(
   events: string[],
@@ -452,4 +467,93 @@ test('Single App Runtime Tenants build skips App Variant and Runtime Tenant prom
   assert.deepEqual(prompts, ['Select a platform:', 'Select an App Variant Environment:']);
   assert.equal(events[1], 'Setup Type: single-app-runtime-tenants');
   assert.equal(events[2], 'App Variant: Acme App (acme-app)');
+});
+
+test('Generic With Standalone build prompts by App Variant name and resolves the selected Slug', async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'generic-with-standalone-prompt-'));
+  const prompts: string[] = [];
+  let appVariantChoices: { name: string; value: string }[] = [];
+  const events: string[] = [];
+
+  try {
+    await runBuild(
+      {},
+      {
+        ci: false,
+        expoToken: undefined,
+        activeSetup: genericWithStandaloneSetup,
+        projectRoot,
+        isEasInstalled: () => true,
+        isEasLoggedIn: () => true,
+        promptSelect: async ({ message, choices }) => {
+          prompts.push(message);
+
+          if (message === 'Select an App Variant:') {
+            appVariantChoices = choices;
+            return 'west-studio';
+          }
+
+          if (message === 'Select a platform:') {
+            return 'android';
+          }
+
+          return 'preview';
+        },
+        runCommand: (command) => {
+          recordCommandAndWritePulledEnv(events, command, projectRoot);
+        },
+        log: (message) => events.push(message),
+      },
+    );
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+
+  assert.deepEqual(prompts, [
+    'Select an App Variant:',
+    'Select a platform:',
+    'Select an App Variant Environment:',
+  ]);
+  assert.deepEqual(appVariantChoices, [
+    { name: 'Atlas Network (atlas-network)', value: 'atlas-network' },
+    { name: 'West Studio (west-studio)', value: 'west-studio' },
+  ]);
+  assert.equal(events[1], 'Setup Type: generic-with-standalone-app-variants');
+  assert.equal(events[2], 'App Variant: West Studio (west-studio)');
+  assert.equal(events.at(-1), 'pnpm expo prebuild --clean --platform android west-studio');
+  assert.equal(prompts.includes('Select a Runtime Tenant:'), false);
+});
+
+test('Generic With Standalone reset prepares Atlas Network development environment for both platforms', async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'generic-with-standalone-reset-'));
+  const events: string[] = [];
+
+  try {
+    await runReset({
+      ci: false,
+      expoToken: undefined,
+      activeSetup: genericWithStandaloneSetup,
+      projectRoot,
+      isEasInstalled: () => true,
+      isEasLoggedIn: () => true,
+      promptSelect: async () => {
+        throw new Error('reset should not prompt');
+      },
+      runCommand: (command) => {
+        recordCommandAndWritePulledEnv(events, command, projectRoot);
+      },
+      log: (message) => events.push(message),
+    });
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+
+  assert.deepEqual(events.slice(0, 5), [
+    'Resetting build',
+    'Setup Type: generic-with-standalone-app-variants',
+    'App Variant: Atlas Network (atlas-network)',
+    'Environment: development',
+    'Platform: both',
+  ]);
+  assert.equal(events.at(-1), 'pnpm expo prebuild --clean atlas-network');
 });

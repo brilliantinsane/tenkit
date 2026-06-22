@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { dirname, join } from 'node:path';
 
 import { type SetupType } from '../src/setup-types/core';
+import { genericAppStarterData } from '../starter-data/generic-with-standalone-app-variants';
 import { singleAppRuntimeTenantsStarterData } from '../starter-data/single-app-runtime-tenants';
 import { whiteLabelAppsStarterSetup } from '../starter-data/white-label-apps';
 
@@ -39,7 +40,11 @@ export type ApplySetupPlanResult = {
   operations: readonly SetupFileOperation[];
 };
 
-const IMPLEMENTED_SETUP_TYPES = ['white-label-apps', 'single-app-runtime-tenants'] as const;
+const IMPLEMENTED_SETUP_TYPES = [
+  'white-label-apps',
+  'single-app-runtime-tenants',
+  'generic-with-standalone-app-variants',
+] as const;
 
 export function getImplementedSetupTypes(): SetupType[] {
   return [...IMPLEMENTED_SETUP_TYPES];
@@ -75,6 +80,24 @@ function createWhiteLabelAppsPlan(): SetupFilePlan {
       {
         kind: 'delete',
         path: 'src/active-setup/runtime-tenants.ts',
+      },
+    ],
+  };
+}
+
+function createGenericWithStandaloneAppVariantsPlan(): SetupFilePlan {
+  return {
+    setupType: 'generic-with-standalone-app-variants',
+    operations: [
+      {
+        kind: 'write',
+        path: 'src/active-setup/manifest.ts',
+        contents: renderGenericWithStandaloneAppVariantsManifest(),
+      },
+      {
+        kind: 'write',
+        path: 'src/active-setup/runtime-tenants.ts',
+        contents: renderGenericWithStandaloneAppVariantsRuntimeData(),
       },
     ],
   };
@@ -144,6 +167,22 @@ export const activeSetup = defineWhiteLabelAppsSetup(${formatTsValue(whiteLabelA
 `;
 }
 
+function renderGenericWithStandaloneAppVariantsManifest(): string {
+  return `import { defineGenericAppSetup } from '@/setup-types/generic-app';
+
+export const activeSetup = defineGenericAppSetup(${formatTsValue(genericAppStarterData.setup)});
+`;
+}
+
+function renderGenericWithStandaloneAppVariantsRuntimeData(): string {
+  return `import { type RuntimeTenant } from '@/setup-types/generic-app';
+
+// Runtime Tenants are all known business contexts for this Active Setup.
+// App Variant access decides which Runtime Tenants each installed app can open.
+export const runtimeTenants = ${formatTsValue(genericAppStarterData.runtimeTenants)} satisfies readonly RuntimeTenant[];
+`;
+}
+
 export function planSetup(setupType: string): SetupFilePlan {
   if (setupType === 'white-label-apps') {
     return createWhiteLabelAppsPlan();
@@ -151,6 +190,10 @@ export function planSetup(setupType: string): SetupFilePlan {
 
   if (setupType === 'single-app-runtime-tenants') {
     return createSingleAppRuntimeTenantsPlan();
+  }
+
+  if (setupType === 'generic-with-standalone-app-variants') {
+    return createGenericWithStandaloneAppVariantsPlan();
   }
 
   throw new Error(
