@@ -17,7 +17,7 @@ export function createProgram() {
 
   program
     .command('setup')
-    .description('Scaffold a Setup Type into the root Active Setup')
+    .description('Scaffold a Setup Type into the Playground Active Setup')
     .option('--setup-type <setup-type>', 'Setup Type to scaffold')
     .option('--yes', 'Confirm the normal setup file plan')
     .option('--force', 'Explicitly replace existing setup target paths')

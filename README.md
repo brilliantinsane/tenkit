@@ -1,8 +1,10 @@
 # tenkit
 
-![Tenkit banner](assets/hero.png)
+![Tenkit banner](apps/playground/assets/hero.png)
 
 Build and ship multiple Expo apps from one codebase.
+
+Tenkit is currently a pnpm monorepo shell with one runnable Expo **Playground** app in `apps/playground`. The Playground proves the setup model in a real app while future public CLI, web, and Template work stay out of this repository surface for now.
 
 Tenkit helps you build one mobile product and ship it as many different apps, each with its own name, icon, colors, app-store identity, and build setup.
 
@@ -11,9 +13,10 @@ Instead of copying the same Expo project every time a new customer, venue, brand
 ## Highlights
 
 - Ship multiple branded mobile apps from one Expo codebase.
+- Run the current Expo Playground from `apps/playground`.
 - Keep app name, icon, scheme, bundle ID, package name, theme, and EAS project configuration in typed setup data.
 - Switch app variants locally with `APP_VARIANT_SLUG`.
-- Prepare clean native projects with one CLI command: `pnpm tenkit build`.
+- Prepare clean native projects with one Playground CLI command: `pnpm tenkit build`.
 - Support white-label apps, single-app runtime tenants, and hybrid generic-plus-standalone setups.
 - Expose public runtime bootstrap data through `extra.activeSetup`.
 - Validate setup behavior with focused tests around app variants, runtime tenants, CLI planning, Expo config, and example conformance.
@@ -60,11 +63,11 @@ Tenkit separates the app you build from the businesses or brands it can represen
 
 | Concept            | Meaning                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| **Active Setup**   | The setup model currently installed in the root app.                                                               |
+| **Active Setup**   | The setup model currently installed in the Playground app.                                                         |
 | **App Variant**    | A build-time native app identity: app name, slug, scheme, bundle ID, package name, assets, theme, and EAS project. |
 | **Runtime Tenant** | A business, organization, customer, venue, or context opened at runtime.                                           |
 | **Scaffold**       | A local setup operation that rewrites setup-owned starter files.                                                   |
-| **Example**        | An opt-in reference that proves a setup model without being imported by the root app.                              |
+| **Example**        | An opt-in reference that proves a setup model without being imported by the Playground app.                        |
 
 Build Preparation selects an App Variant. Runtime Tenant selection, when a setup uses tenants, remains an in-app runtime concern.
 
@@ -95,10 +98,10 @@ pnpm install
 
 ### 4. Choose a local app variant
 
-Create `.env.local`:
+Create the Playground `.env.local`:
 
 ```bash
-cp .env.example .env.local
+cp apps/playground/.env.example apps/playground/.env.local
 ```
 
 Set `APP_VARIANT_SLUG` to one of the default app variants:
@@ -113,7 +116,7 @@ or:
 APP_VARIANT_SLUG=second-tenant
 ```
 
-If `APP_VARIANT_SLUG` is omitted, Tenkit uses the default App Variant from `src/active-setup/manifest.ts`.
+If `APP_VARIANT_SLUG` is omitted, Tenkit uses the default App Variant from `apps/playground/src/active-setup/manifest.ts`.
 
 ### 5. Start the app
 
@@ -121,7 +124,14 @@ If `APP_VARIANT_SLUG` is omitted, Tenkit uses the default App Variant from `src/
 pnpm run start
 ```
 
-Expo CLI will show options for opening the app in a development build, Android emulator, iOS simulator, web browser, or Expo Go.
+The root command routes to the Playground package. Expo CLI will show options for opening the app in a development build, Android emulator, iOS simulator, web browser, or Expo Go.
+
+You can also run the same Playground-local command from the app directory:
+
+```bash
+cd apps/playground
+pnpm run start
+```
 
 ## Common Workflows
 
@@ -133,7 +143,7 @@ pnpm run android
 pnpm run web
 ```
 
-These commands use the App Variant already present in `.env.local`. They do not pull EAS environment variables or regenerate native projects.
+These commands use the App Variant already present in `apps/playground/.env.local`. They do not pull EAS environment variables or regenerate native projects.
 
 ### Prepare native projects for a variant
 
@@ -143,7 +153,7 @@ Use Build Preparation after changing App Variant, native identity, package name,
 pnpm tenkit build
 ```
 
-The command prompts for App Variant, platform, and environment when needed. It pulls EAS environment variables, validates that `.env.local` contains the selected `APP_VARIANT_SLUG`, then runs clean Expo prebuild.
+The command prompts for App Variant, platform, and environment when needed. It pulls EAS environment variables, validates that `apps/playground/.env.local` contains the selected `APP_VARIANT_SLUG`, then runs clean Expo prebuild.
 
 Non-interactive examples:
 
@@ -167,6 +177,8 @@ Reset uses the Active Setup default App Variant, the `development` App Variant E
 pnpm tenkit doctor
 ```
 
+The `tenkit` command is Playground-only local tooling for Scaffold, Build Preparation, reset, and diagnostics. It is not a public CLI package and does not provide a public `create` or `init` flow.
+
 ## Current Default Setup
 
 White Label Apps is installed by default.
@@ -176,14 +188,14 @@ White Label Apps is installed by default.
 | `1`            | `first-tenant`  | `First Tenant`  | `#208AEF` | `com.brilliantinsane.firsttenant`  |
 | `2`            | `second-tenant` | `Second Tenant` | `#ef8520` | `com.brilliantinsane.secondtenant` |
 
-The default setup lives in `src/active-setup/manifest.ts`.
+The default setup lives in `apps/playground/src/active-setup/manifest.ts`.
 
 ## Scaffold Another Setup Model
 
 Scaffolds rewrite setup-owned Active Setup files:
 
-- `src/active-setup/manifest.ts`
-- `src/active-setup/runtime-tenants.ts`
+- `apps/playground/src/active-setup/manifest.ts`
+- `apps/playground/src/active-setup/runtime-tenants.ts`
 
 They do not modify shared app entry points, native projects, EAS project state, or local environment files.
 
@@ -221,8 +233,8 @@ The starter data includes `Atlas Network` as the Generic App Variant. It can ope
 
 Native assets are expected under the existing slug-based convention:
 
-- `assets/atlas-network/...`
-- `assets/west-studio/...`
+- `apps/playground/assets/atlas-network/...`
+- `apps/playground/assets/west-studio/...`
 
 ## EAS Setup
 
@@ -240,13 +252,14 @@ For each App Variant:
 
 2. Create or find one EAS Project in your Expo account or organization.
 3. Copy that EAS Project ID.
-4. Paste it into `src/active-setup/manifest.ts` at the App Variant's `eas.projectId`.
+4. Paste it into `apps/playground/src/active-setup/manifest.ts` at the App Variant's `eas.projectId`.
 5. Repeat for every App Variant you intend to build.
-6. Replace `EXPO_OWNER` in `project-config.ts` with your Expo account or organization owner.
+6. Replace `EXPO_OWNER` in `apps/playground/project-config.ts` with your Expo account or organization owner.
 
 Optional helper:
 
 ```bash
+cd apps/playground
 APP_VARIANT_SLUG=first-tenant eas init
 ```
 
@@ -260,9 +273,9 @@ Do not put `EAS_PROJECT_ID` in EAS environment variables. EAS Project IDs live i
 
 For the default White Label Apps setup, update:
 
-- `src/active-setup/manifest.ts` to add the App Variant.
-- `assets/<slug>/icons/` with required Android and general icon assets.
-- `assets/<slug>/app.icon/` with required iOS icon asset catalog files.
+- `apps/playground/src/active-setup/manifest.ts` to add the App Variant.
+- `apps/playground/assets/<slug>/icons/` with required Android and general icon assets.
+- `apps/playground/assets/<slug>/app.icon/` with required iOS icon asset catalog files.
 
 Required asset paths are validated when dynamic Expo config resolves the selected App Variant.
 
@@ -270,18 +283,23 @@ Required asset paths are validated when dynamic Expo config resolves the selecte
 
 ```text
 .
-├── app.config.ts                         # Dynamic Expo config
-├── assets/                               # Variant-specific native assets
-├── examples/                             # Opt-in setup model references
-├── scripts/                              # Tenkit CLI and setup runtime
-├── src/
-│   ├── active-setup/                     # Installed setup manifest and runtime data
-│   ├── app/                              # Expo Router screens
-│   ├── hooks/                            # Runtime hooks
-│   ├── providers/                        # App providers
-│   ├── setup-types/                      # Shared setup model implementation
-│   └── utils/                            # Runtime config and accent helpers
-└── tests/                                # Setup, CLI, config, and example tests
+├── apps/
+│   └── playground/
+│       ├── app.config.ts                 # Dynamic Expo config
+│       ├── assets/                       # Variant-specific native assets
+│       ├── examples/                     # Opt-in setup model references
+│       ├── scripts/                      # Playground Tenkit CLI and setup runtime
+│       ├── src/
+│       │   ├── active-setup/             # Installed setup manifest and runtime data
+│       │   ├── app/                      # Expo Router screens
+│       │   ├── hooks/                    # Runtime hooks
+│       │   ├── providers/                # App providers
+│       │   ├── setup-types/              # Setup model implementation
+│       │   └── utils/                    # Runtime config and accent helpers
+│       └── tests/                        # Setup, CLI, config, and example tests
+├── packages/                             # Empty future package area
+├── package.json                          # Private workspace command surface
+└── pnpm-workspace.yaml                   # pnpm workspace configuration
 ```
 
 ## Checks
@@ -297,8 +315,8 @@ pnpm lint
 Example-specific checks:
 
 ```bash
-pnpm exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
-pnpm exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
+pnpm -F playground exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
+pnpm -F playground exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
 ```
 
 ## Expo SDK

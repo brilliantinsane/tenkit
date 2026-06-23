@@ -2,12 +2,17 @@
 
 # dependencies
 node_modules/
+.pnpm-store/
 
 # Expo
 .expo/
 dist/
+apps/*/.expo/
+apps/*/dist/
 web-build/
+apps/*/web-build/
 expo-env.d.ts
+apps/*/expo-env.d.ts
 
 # Native
 .kotlin/
@@ -41,3 +46,5 @@ example
 # generated native folders
 /ios
 /android
+/apps/*/ios
+/apps/*/android

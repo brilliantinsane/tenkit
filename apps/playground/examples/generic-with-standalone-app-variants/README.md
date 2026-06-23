@@ -1,6 +1,6 @@
 # Generic With Standalone App Variants Example
 
-This is a living local-source reference for Tenkit's **Generic With Standalone App Variants** Setup Type. It is an **Example**, not a **Template**, not public `tenkit init` packaging, and not the default root **Active Setup**.
+This is a living local-source reference for Tenkit's **Generic With Standalone App Variants** Setup Type. It is an **Example**, not a **Template**, not public `tenkit init` packaging, and not the default Playground **Active Setup**.
 
 The model is: one **Generic App Variant** can open multiple selectable **Runtime Tenants**, while selected **Runtime Tenants** may ship as dedicated **Standalone App Variants**. Build Preparation selects an App Variant only; Runtime Tenant selection remains an in-app/runtime concern.
 
@@ -27,14 +27,14 @@ pnpm tenkit setup --setup-type generic-with-standalone-app-variants --dry-run --
 pnpm tenkit setup --setup-type generic-with-standalone-app-variants --yes --force
 ```
 
-The Scaffold writes setup-owned root files for editable starter data. It does not modify shared app entry points, generate native assets, create EAS projects, write local env files, or run native prebuild. Native assets are expected under `assets/atlas-network/` and `assets/west-studio/`.
+The Scaffold writes setup-owned Playground files for editable starter data. It does not modify shared app entry points, generate native assets, create EAS projects, write local env files, or run native prebuild. Native assets are expected under `assets/atlas-network/` and `assets/west-studio/`.
 
 ## Verification
 
 Default clone checks do not run example-specific tests. Verify this example explicitly with:
 
 ```bash
-pnpm exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
+pnpm -F playground exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
 ```
 
 ## Out Of Scope

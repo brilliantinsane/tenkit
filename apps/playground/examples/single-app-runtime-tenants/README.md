@@ -1,6 +1,6 @@
 # Single App Runtime Tenants Example
 
-This is a living local-source reference for Tenkit's **Single App Runtime Tenants** Setup Type. It is not the default root Active Setup, not standalone Template packaging, and not a replacement for **White Label Apps**.
+This is a living local-source reference for Tenkit's **Single App Runtime Tenants** Setup Type. It is not the default Playground Active Setup, not standalone Template packaging, and not a replacement for **White Label Apps**.
 
 The model is: one **App Variant** owns the native app identity, and that app can open multiple **Runtime Tenants** at runtime. Build Preparation selects the App Variant only; Runtime Tenant selection remains an in-app/runtime concern.
 
@@ -35,14 +35,14 @@ pnpm tenkit setup --setup-type single-app-runtime-tenants --dry-run --yes
 pnpm tenkit setup --setup-type single-app-runtime-tenants --yes --force
 ```
 
-The Scaffold writes setup-owned root files for an editable starter App Variant. It does not modify shared app entry points, native assets, EAS project state, local env files, or native `ios/` and `android/` directories.
+The Scaffold writes setup-owned Playground files for an editable starter App Variant. It does not modify shared app entry points, native assets, EAS project state, local env files, or native `ios/` and `android/` directories.
 
 ## Verification
 
 Default clone checks do not run example-specific tests. Verify this example explicitly with:
 
 ```bash
-pnpm exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
+pnpm -F playground exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
 ```
 
 ## Out Of Scope
