@@ -1,0 +1,30 @@
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+import { useBrand, useColors } from '@/theme/ThemeContext';
+
+export default function AppTabs() {
+  const colors = useColors();
+  const brand = useBrand();
+
+  return (
+    <NativeTabs
+      backgroundColor={colors.background}
+      indicatorColor={colors.secondaryBackground}
+      iconColor=\{{
+        selected: brand.accent,
+      }}
+      labelStyle=\{{
+        selected: { color: brand.accent },
+      }}
+    >
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="explore">
+        <NativeTabs.Trigger.Icon sf="safari" md="explore" />
+        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}

@@ -4,3 +4,4 @@ dist
 apps/*/dist
 coverage
 .local-tmp
+*.hbs

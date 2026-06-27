@@ -1,7 +1,7 @@
 import { Text, type TextProps } from 'react-native';
 
-import { ThemeColor, Typography } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Typography } from '@/constants/theme';
+import { type ThemeColor, useTheme } from '@/theme/ThemeContext';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -9,19 +9,24 @@ export type ThemedTextProps = TextProps & {
 };
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
-  const { colors } = useTheme();
+  const { brand, colors } = useTheme();
+  const color = themeColor
+    ? themeColor in colors
+      ? colors[themeColor as keyof typeof colors]
+      : brand[themeColor as keyof typeof brand]
+    : colors.text;
 
   return (
     <Text
       style={[
-        { color: colors[themeColor ?? 'text'] },
+        { color },
         type === 'default' && Typography.default,
         type === 'title' && Typography.title,
         type === 'small' && Typography.small,
         type === 'smallBold' && Typography.smallBold,
         type === 'subtitle' && Typography.subtitle,
         type === 'link' && Typography.link,
-        type === 'linkPrimary' && [Typography.link, { color: colors.accent }],
+        type === 'linkPrimary' && [Typography.link, { color: brand.accent }],
         type === 'code' && Typography.code,
         style,
       ]}

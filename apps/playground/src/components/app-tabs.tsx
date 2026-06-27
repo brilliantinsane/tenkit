@@ -1,17 +1,17 @@
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '@/theme/ThemeContext';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 const AppTabs = () => {
-  const { colors } = useTheme();
+  const { brand, colors } = useTheme();
 
   return (
     <NativeTabs
       backgroundColor={colors.background}
       labelStyle={{
-        selected: { color: colors.accent },
+        selected: { color: brand.accent },
       }}
       iconColor={{
-        selected: colors.accent,
+        selected: brand.accent,
       }}
     >
       <NativeTabs.Trigger name="index">

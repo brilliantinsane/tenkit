@@ -1,0 +1,35 @@
+import { ThemeProvider } from 'expo-router/react-navigation';
+import { StatusBar } from 'expo-status-bar';
+
+import AppTabs from '@/components/app-tabs';
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+import { getNavigationTheme } from '@/theme/colors';
+import { ColorsProvider, useTheme } from '@/theme/ThemeContext';
+
+function RootLayoutInner() {
+  const { brand, dark } = useTheme();
+
+  return (
+    <>
+      <ThemeProvider value={getNavigationTheme(dark, brand.primary)}>
+        <AppTabs />
+      </ThemeProvider>
+      <StatusBar style={dark ? 'light' : 'dark'} />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  const { theme } = useAppVariantConfig();
+
+  return (
+    <ColorsProvider
+      brandOverride=\{{
+        primary: theme.accent,
+        accent: theme.accent,
+      }}
+    >
+      <RootLayoutInner />
+    </ColorsProvider>
+  );
+}

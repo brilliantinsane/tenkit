@@ -1,0 +1,35 @@
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function ExploreScreen() {
+  return (
+    <ThemedView style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedText type="subtitle">Explore</ThemedText>
+        <View style={styles.section}>
+          <ThemedText type="smallBold">Project shape</ThemedText>
+          <ThemedText themeColor="secondaryText">
+            This app uses Expo Router native tabs, TypeScript, and a dynamic Expo config.
+          </ThemedText>
+        </View>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    gap: 20,
+    padding: 24,
+  },
+  section: {
+    gap: 8,
+  },
+});

@@ -9,7 +9,7 @@
 
 Build and ship multiple Expo apps from one codebase.
 
-Tenkit is currently a pnpm monorepo shell with one runnable Expo **Playground** app in `apps/playground`. The Playground proves the setup model in a real app while future public CLI, web, and Template work stay out of this repository surface for now.
+Tenkit is currently a pnpm monorepo with one runnable Expo **Playground** app in `apps/playground` and a private Template generation proof in `packages/template-generator`. The Playground proves setup models in a real app; the Template generator proves that promoted setup material can become a fresh generated Expo project. Public CLI and web builder surfaces remain future work.
 
 Tenkit helps you build one mobile product and ship it as many different apps, each with its own name, icon, colors, app-store identity, and build setup.
 
@@ -23,6 +23,7 @@ Instead of copying the same Expo project every time a new customer, venue, brand
 - Switch app variants locally with `APP_VARIANT_SLUG`.
 - Prepare clean native projects with one Playground CLI command: `pnpm tenkit build`.
 - Support white-label apps, single-app runtime tenants, and hybrid generic-plus-standalone setups.
+- Generate and verify a private White Label Apps Template proof from owned source material.
 - Expose public runtime bootstrap data through `extra.activeSetup`.
 - Validate setup behavior with focused tests around app variants, runtime tenants, CLI planning, Expo config, and example conformance.
 
@@ -184,6 +185,20 @@ pnpm tenkit doctor
 
 The `tenkit` command is Playground-only local tooling for Scaffold, Build Preparation, reset, and diagnostics. It is not a public CLI package and does not provide a public `create` or `init` flow.
 
+### Generate the Template proof
+
+The private Template generator can render a fresh White Label Apps Expo project into a separate folder. This is proof tooling for the future public create flow, not the public CLI surface.
+
+```bash
+pnpm generate:white-label-proof -- --target ../tenkit-white-label-proof
+```
+
+To run the full generated-output proof, including generated project shape checks, dependency installation, TypeScript, and Expo config evaluation:
+
+```bash
+pnpm verify:generated-white-label
+```
+
 ## Current Default Setup
 
 White Label Apps is installed by default.
@@ -302,7 +317,8 @@ Required asset paths are validated when dynamic Expo config resolves the selecte
 │       │   ├── setup-types/              # Setup model implementation
 │       │   └── utils/                    # Runtime config and accent helpers
 │       └── tests/                        # Setup, CLI, config, and example tests
-├── packages/                             # Empty future package area
+├── packages/
+│   └── template-generator/               # Private Template source and generation proof
 ├── package.json                          # Private workspace command surface
 └── pnpm-workspace.yaml                   # pnpm workspace configuration
 ```
@@ -324,6 +340,14 @@ pnpm -F playground exec tsx --test examples/single-app-runtime-tenants/runtime-t
 pnpm -F playground exec tsx --test examples/generic-with-standalone-app-variants/runtime-tenant-access.test.ts
 ```
 
+Template-generator checks:
+
+```bash
+pnpm template-generator:test
+pnpm template-generator:typecheck
+pnpm verify:generated-white-label
+```
+
 ## Expo SDK
 
 This repo targets Expo SDK 56.
@@ -335,3 +359,7 @@ https://docs.expo.dev/versions/v56.0.0/
 ## License
 
 This repository includes an MIT license.
+
+<p align="center">
+  <img alt="chart" src="https://shieldcn.dev/chart/github/stars/brilliantinsane/tenkit.svg?theme=zinc" />
+</p>
