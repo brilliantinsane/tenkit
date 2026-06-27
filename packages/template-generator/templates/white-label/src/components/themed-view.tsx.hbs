@@ -1,0 +1,15 @@
+import { View, type ViewProps } from 'react-native';
+
+import { useColors, type SystemThemeColor } from '@/theme/ThemeContext';
+
+export type ThemedViewProps = ViewProps & {
+  type?: SystemThemeColor;
+};
+
+export function ThemedView({ style, type, ...otherProps }: ThemedViewProps) {
+  const colors = useColors();
+
+  return (
+    <View style={[{ backgroundColor: colors[type ?? 'background'] }, style]} {...otherProps} />
+  );
+}

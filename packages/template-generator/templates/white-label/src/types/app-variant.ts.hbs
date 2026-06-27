@@ -1,0 +1,39 @@
+import { Android, IOS } from '@expo/config-types';
+import { ExpoConfig } from 'expo/config';
+
+export type AppVariantId = number;
+
+export type AppVariantTheme = {
+  accent: string;
+};
+
+export type AppVariantEasProject = {
+  projectId: string;
+};
+
+export type AppVariantBootstrap = {
+  id: AppVariantId;
+  slug: string;
+};
+
+export type AppVariantConfigExtra = {
+  eas: AppVariantEasProject;
+  appVariant: AppVariantBootstrap;
+  theme: AppVariantTheme;
+};
+
+export type AppVariant = {
+  appVariantId: AppVariantId;
+  slug: string;
+  name: ExpoConfig['name'];
+  version: ExpoConfig['version'];
+  scheme: string;
+  bundleIdentifier: IOS['bundleIdentifier'];
+  packageName: Android['package'];
+  theme: AppVariantTheme;
+  eas: AppVariantEasProject;
+};
+
+export type ResolvedAppVariantConfig = AppVariant & {
+  extra: AppVariantConfigExtra;
+};

@@ -1,29 +1,49 @@
 import AppTabs from '@/components/app-tabs';
-import { useTheme } from '@/hooks/use-theme';
-import { AppThemeProvider } from '@/providers/app-theme-provider';
+import { useActiveSetupConfig } from '@/hooks/use-active-setup-config';
+import { getNavigationTheme } from '@/theme/colors';
+import { ColorsProvider, useTheme } from '@/theme/ThemeContext';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
+import { ThemeProvider } from 'expo-router/react-navigation';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+const DEFAULT_BRAND_ACCENT = '#208AEF';
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+function normalizeBrandAccent(accent: string): string {
+  return HEX_COLOR_PATTERN.test(accent) ? accent : DEFAULT_BRAND_ACCENT;
+}
+
 function AppLayout() {
-  const { colors } = useTheme();
+  const { brand, colors, dark } = useTheme();
+
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <AppTabs />
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <>
+      <ThemeProvider value={getNavigationTheme(dark, brand.primary)}>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <AppTabs />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </ThemeProvider>
+      <StatusBar style={dark ? 'light' : 'dark'} />
+    </>
   );
 }
 
 export default function RootLayout() {
-  const dark = useColorScheme() === 'dark';
+  const { theme } = useActiveSetupConfig();
+  const accent = normalizeBrandAccent(theme.accent);
+
   return (
-    <>
-      <AppThemeProvider>
-        <AppLayout />
-      </AppThemeProvider>
-      <StatusBar style={dark ? 'light' : 'dark'} />
-    </>
+    <ColorsProvider
+      brandOverride={{
+        primary: accent,
+        accent,
+        onPrimary: '#FFFFFF',
+        onAccent: '#FFFFFF',
+      }}
+    >
+      <AppLayout />
+    </ColorsProvider>
   );
 }

@@ -1,0 +1,99 @@
+import {
+  TabList,
+  TabSlot,
+  TabTrigger,
+  Tabs,
+  type TabListProps,
+  type TabTriggerSlotProps,
+} from 'expo-router/ui';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useBrand, useColors } from '@/theme/ThemeContext';
+
+export default function AppTabs() {
+  return (
+    <Tabs>
+      <TabSlot style={styles.slot} />
+      <TabList asChild>
+        <CustomTabList>
+          <TabTrigger name="home" href="/" asChild>
+            <TabButton>Home</TabButton>
+          </TabTrigger>
+          <TabTrigger name="explore" href="/explore" asChild>
+            <TabButton>Explore</TabButton>
+          </TabTrigger>
+        </CustomTabList>
+      </TabList>
+    </Tabs>
+  );
+}
+
+function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  const brand = useBrand();
+
+  return (
+    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+      <ThemedView type={isFocused ? 'secondaryBackground' : 'background'} style={styles.tabButton}>
+        <ThemedText style={isFocused ? { color: brand.accent } : undefined} type="smallBold">
+          {children}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+function CustomTabList(props: TabListProps) {
+  const colors = useColors();
+
+  return (
+    <View {...props} style={styles.tabListContainer}>
+      <ThemedView
+        type="secondaryBackground"
+        style={[styles.innerContainer, { borderColor: colors.separator }]}
+      >
+        <ThemedText type="smallBold" style={styles.brandText}>
+          {{projectName}}
+        </ThemedText>
+        {props.children}
+      </ThemedView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  slot: {
+    height: '100%',
+  },
+  tabListContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 16,
+    position: 'absolute',
+    width: '100%',
+  },
+  innerContainer: {
+    alignItems: 'center',
+    borderRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: 8,
+    maxWidth: 800,
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
+  brandText: {
+    marginRight: 'auto',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  tabButton: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+});

@@ -1,0 +1,32 @@
+{
+  "name": "@tenkit/template-generator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./generator": "./src/generator.ts",
+    "./writer": "./src/writer.ts",
+    "./local-proof": "./src/local-proof.ts"
+  },
+  "scripts": {
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit --pretty false",
+    "generate:white-label-proof": "tsx scripts/generate-white-label-proof.ts",
+    "verify:generated-white-label": "tsx scripts/verify-generated-white-label-app.ts"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.9.3",
+    "tsdown": "^0.22.3",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.5",
+    "handlebars": "^4.7.9",
+    "is-binary-path": "^3.0.0",
+    "pathe": "^2.0.3",
+    "tinyglobby": "^0.2.17"
+  }
+}
