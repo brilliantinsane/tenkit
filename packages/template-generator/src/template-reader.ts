@@ -11,6 +11,7 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 export type TemplateContext = {
   packageName: string;
   projectName: string;
+  projectNameStringLiteral: string;
 };
 
 const templatesRoot = resolve(fileURLToPath(new URL('../templates', import.meta.url)));

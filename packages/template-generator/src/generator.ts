@@ -35,8 +35,11 @@ function normalizePackageName(value: string | undefined): string {
 }
 
 function normalizeTemplateContext(config: WhiteLabelAppsProjectConfig): TemplateContext {
+  const projectName = normalizeName(config.projectName, DEFAULT_PROJECT_NAME);
+
   return {
-    projectName: normalizeName(config.projectName, DEFAULT_PROJECT_NAME),
+    projectName,
+    projectNameStringLiteral: JSON.stringify(projectName),
     packageName: normalizePackageName(config.packageName),
   };
 }

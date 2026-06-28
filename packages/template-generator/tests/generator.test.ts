@@ -225,6 +225,22 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.doesNotMatch(paths.join('\n'), /base-expo|templates\/assets/);
 });
 
+test('White Label Apps Template serializes project names used inside TSX', () => {
+  const tree = generateWhiteLabelAppsProject({
+    setupType: 'white-label-apps',
+    projectName: 'ACME <Pilot> {One}',
+    packageName: 'acme-pilot',
+  });
+  const appTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
+
+  assert.match(appTabs, /const projectName = "ACME <Pilot> \{One\}";/);
+  assert.match(
+    appTabs,
+    /<ThemedText type="smallBold" style=\{styles\.brandText\}>\n\s+\{projectName\}/,
+  );
+  assert.doesNotMatch(appTabs, />\s*ACME <Pilot> \{One\}\s*</);
+});
+
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {
   const tree = generateProject({ setupType: 'white-label-apps' });
   const generatedSource = tree

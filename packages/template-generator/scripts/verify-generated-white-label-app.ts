@@ -76,6 +76,7 @@ async function main() {
     await runWhiteLabelGenerationProof({
       targetDir,
       git: 'init',
+      projectName: 'ACME <Pilot> {One}',
       playgroundDir: resolve(workspaceRoot, 'apps/playground'),
     });
     await configureTestGitIdentity(targetDir);
@@ -96,6 +97,7 @@ async function main() {
     const tenkitCliRuntime = await readText(join(targetDir, 'scripts/tenkit-cli-runtime.ts'));
     const app = await readText(join(targetDir, 'src/app/index.tsx'));
     const layout = await readText(join(targetDir, 'src/app/_layout.tsx'));
+    const webTabs = await readText(join(targetDir, 'src/components/app-tabs.web.tsx'));
     const pnpmWorkspace = await readText(join(targetDir, 'pnpm-workspace.yaml'));
 
     assert.equal(packageJson.name, 'tenkit-white-label-app');
@@ -160,6 +162,9 @@ async function main() {
     assert.match(tenkitCliRuntime, /\.env\.local/);
     assert.match(app, /App Variant/);
     assert.match(layout, /ColorsProvider/);
+    assert.match(webTabs, /const projectName = "ACME <Pilot> \{One\}";/);
+    assert.match(webTabs, /\{projectName\}/);
+    assert.doesNotMatch(webTabs, />\s*ACME <Pilot> \{One\}\s*</);
     assert.match(pnpmWorkspace, /allowBuilds:\n  esbuild: true/);
     assert.doesNotMatch(pnpmWorkspace, /unrs-resolver/);
     assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
@@ -227,6 +232,7 @@ async function main() {
       tenkitCliRuntime,
       app,
       layout,
+      webTabs,
     ].join('\n');
     assert.doesNotMatch(combinedGeneratedSource, /apps\/playground/);
     assert.doesNotMatch(combinedGeneratedSource, /from ['"].*playground/);

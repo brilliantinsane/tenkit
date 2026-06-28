@@ -2,9 +2,8 @@ import { ThemedView } from '@/components/ui/themed-view';
 import { globalStyles } from '@/constants/globals';
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useTheme } from '@/theme/ThemeContext';
-import { FieldGroup, Host, Picker, Row, Spacer, Switch, Text } from '@expo/ui';
+import { FieldGroup, Host, Picker, Row, Spacer, Text } from '@expo/ui';
 import { scrollContentBackground } from '@expo/ui/swift-ui/modifiers';
-import { Appearance } from 'react-native';
 
 const SettingsScreen = () => {
   const { colors, dark } = useTheme();
@@ -25,18 +24,6 @@ const SettingsScreen = () => {
           }}
           modifiers={[scrollContentBackground('hidden')]}
         >
-          <Row alignment="center">
-            <Text>Dark appearance</Text>
-
-            <Spacer flexible />
-
-            <Switch
-              value={dark}
-              onValueChange={(value) => {
-                Appearance.setColorScheme(value ? 'dark' : 'light');
-              }}
-            />
-          </Row>
           {hasRuntimeTenantSelection && activeRuntimeTenantId ? (
             <Row alignment="center">
               <Text>Active tenant</Text>

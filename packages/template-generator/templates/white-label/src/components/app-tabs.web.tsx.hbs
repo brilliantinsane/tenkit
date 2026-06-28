@@ -12,6 +12,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useBrand, useColors } from '@/theme/ThemeContext';
 
+const projectName = {{projectNameStringLiteral}};
+
 export default function AppTabs() {
   return (
     <Tabs>
@@ -54,7 +56,7 @@ function CustomTabList(props: TabListProps) {
         style={[styles.innerContainer, { borderColor: colors.separator }]}
       >
         <ThemedText type="smallBold" style={styles.brandText}>
-          {{projectName}}
+          {projectName}
         </ThemedText>
         {props.children}
       </ThemedView>

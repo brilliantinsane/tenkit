@@ -104,6 +104,50 @@ test('writer preflights existing file conflicts before writing generated files',
   }
 });
 
+test('writer rejects symlinked parent directories that escape the target before writing', async (t) => {
+  const tempRoot = await createTempRoot();
+  const targetDir = join(tempRoot, 'target');
+  const outsideDir = join(tempRoot, 'outside');
+
+  try {
+    await fs.ensureDir(targetDir);
+    await fs.ensureDir(outsideDir);
+
+    try {
+      await fs.symlink(outsideDir, join(targetDir, 'src'), 'dir');
+    } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        ['EPERM', 'EACCES'].includes(String(error.code))
+      ) {
+        t.skip('filesystem does not allow creating directory symlinks');
+        return;
+      }
+
+      throw error;
+    }
+
+    await assert.rejects(
+      () =>
+        writeProject({
+          targetDir,
+          tree: [
+            { path: 'README.md', contents: 'generated\n' },
+            { path: 'src/index.ts', contents: 'export {};\n' },
+          ],
+        }),
+      /symlinked parent/,
+    );
+
+    assert.equal(await fs.pathExists(join(targetDir, 'README.md')), false);
+    assert.equal(await fs.pathExists(join(outsideDir, 'index.ts')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
 test('writer validates duplicate normalized generated paths before writing', async () => {
   assert.equal(validateVirtualFilePath('src/../README.md'), 'README.md');
 

@@ -95,6 +95,67 @@ async function assertTargetDirectory(targetDir: string) {
   }
 }
 
+async function resolveRealTargetDir(targetDir: string): Promise<string> {
+  if (await pathExists(targetDir)) {
+    return fs.realpath(targetDir);
+  }
+
+  return resolve(targetDir);
+}
+
+async function assertWritableParentsStayInsideTarget({
+  targetDir,
+  target,
+}: {
+  targetDir: string;
+  target: { relativePath: string; path: string };
+}) {
+  const parentPath = dirname(target.relativePath);
+
+  if (parentPath === '.') {
+    return;
+  }
+
+  const realTargetDir = await resolveRealTargetDir(targetDir);
+  let currentPath = resolve(targetDir);
+
+  for (const segment of parentPath.split('/')) {
+    currentPath = resolve(currentPath, segment);
+
+    if (!(await pathExists(currentPath))) {
+      continue;
+    }
+
+    const parentStats = await fs.lstat(currentPath);
+
+    if (parentStats.isSymbolicLink()) {
+      const realParentPath = await fs.realpath(currentPath);
+
+      if (!isSameOrInside(realParentPath, realTargetDir)) {
+        throw new Error(
+          `Refusing to write generated project file ${target.relativePath} through symlinked parent ${segment}.`,
+        );
+      }
+
+      const linkedStats = await fs.stat(currentPath);
+
+      if (!linkedStats.isDirectory()) {
+        throw new Error(
+          `Generated project parent ${segment} for ${target.relativePath} is not a directory.`,
+        );
+      }
+
+      continue;
+    }
+
+    if (!parentStats.isDirectory()) {
+      throw new Error(
+        `Generated project parent ${segment} for ${target.relativePath} is not a directory.`,
+      );
+    }
+  }
+}
+
 function assertTargetIsAllowed(targetDir: string, forbiddenTargetRoots: readonly string[] = []) {
   for (const forbiddenRoot of forbiddenTargetRoots) {
     if (isSameOrInside(targetDir, forbiddenRoot)) {
@@ -131,9 +192,16 @@ async function planVirtualFileWrite({
   overwrite: WriteProjectOverwriteMode;
 }): Promise<WriteTarget> {
   const target = resolveTargetPath(targetDir, file);
+  await assertWritableParentsStayInsideTarget({ targetDir, target });
 
   if (await pathExists(target.path)) {
-    const targetStats = await fs.stat(target.path);
+    const targetStats = await fs.lstat(target.path);
+
+    if (targetStats.isSymbolicLink()) {
+      throw new Error(
+        `Refusing to write generated project file ${target.relativePath} through a symbolic link.`,
+      );
+    }
 
     if (targetStats.isDirectory()) {
       throw new Error(`Generated project file ${target.relativePath} exists as a directory.`);
