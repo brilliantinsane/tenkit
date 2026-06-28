@@ -36,20 +36,29 @@ async function configureTestGitIdentity(cwd: string): Promise<void> {
 }
 
 async function runGeneratedCommand(cwd: string, command: string, args: string[]) {
+  const commandText = [command, ...args].join(' ');
+
   try {
     await execFileAsync(command, args, {
       cwd,
       maxBuffer: 10 * 1024 * 1024,
     });
   } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'stderr' in error &&
-      typeof error.stderr === 'string'
-    ) {
+    if (error && typeof error === 'object') {
+      const details: string[] = [];
+
+      if ('code' in error && error.code !== undefined) {
+        details.push(`exit code ${String(error.code)}`);
+      }
+
+      if ('signal' in error && error.signal !== undefined) {
+        details.push(`signal ${String(error.signal)}`);
+      }
+
       throw new Error(
-        `Generated app command failed: ${command} ${args.join(' ')}\n${error.stderr}`,
+        `Generated app verification command failed: ${commandText}${
+          details.length > 0 ? ` (${details.join(', ')})` : ''
+        }. Re-run that command in the generated app for full output.`,
       );
     }
 
@@ -232,7 +241,7 @@ async function main() {
     await runGeneratedCommand(targetDir, 'pnpm', ['run', 'typecheck']);
     await runGeneratedCommand(targetDir, 'pnpm', ['expo:config']);
 
-    console.log(`Verified generated White Label Apps Expo app at ${targetDir}`);
+    console.log('Verified generated White Label Apps Expo app.');
   } finally {
     await fs.remove(tempRoot);
   }

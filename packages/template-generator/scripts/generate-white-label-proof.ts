@@ -97,6 +97,7 @@ async function main() {
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
   const targetDir = resolveFromInitialWorkingDirectory(args.target);
+  const displayTargetDir = args.target;
 
   const result = await runWhiteLabelGenerationProof({
     targetDir,
@@ -108,7 +109,7 @@ async function main() {
   });
 
   if (args.install) {
-    console.log(`Installing dependencies in ${result.targetDir}`);
+    console.log('Installing dependencies...');
     const installed = await runPnpmInstall(result.targetDir);
 
     if (!installed) {
@@ -126,7 +127,7 @@ async function main() {
   console.log('Your Tenkit White Label app is ready!');
   console.log('');
   console.log('To run your project:');
-  console.log(`- cd ${result.targetDir}`);
+  console.log(`- cd ${displayTargetDir}`);
   console.log('- pnpm run android');
   console.log('- pnpm run ios');
   console.log('- pnpm run web');
