@@ -542,6 +542,10 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
   assert.match(readme, /third proof Template/);
   assert.match(readme, /future public project-creation CLI/);
+  assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
+  assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
+  assert.match(readme, /Atlas Network App Variant's EAS environment/);
+  assert.match(readme, /West Studio App Variant's EAS environment/);
   assert.doesNotMatch(readme, /public create entrypoint|web builder|publishing/);
 });
 

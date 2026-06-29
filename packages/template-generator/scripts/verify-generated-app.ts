@@ -325,6 +325,10 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.match(readme, /Generic With Standalone App Variants project/);
   assert.match(readme, /third proof Template/);
   assert.match(readme, /Generated App Local CLI/);
+  assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
+  assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
+  assert.match(readme, /Atlas Network App Variant's EAS environment/);
+  assert.match(readme, /West Studio App Variant's EAS environment/);
   assert.match(envExample, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
   assert.match(appConfig, /resolveAppVariantConfig/);

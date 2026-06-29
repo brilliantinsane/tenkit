@@ -50,11 +50,23 @@ Runtime Tenants do not own native asset folders.
 
 ## Build Preparation
 
-Set `EXPO_OWNER` in `src/constants/project-config.ts`, set each App Variant's EAS Project ID in `src/constants/app-variants.ts`, then run:
+Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
 
 ```bash
 pnpm tenkit build
+pnpm tenkit reset
+pnpm tenkit doctor
 ```
+
+`pnpm tenkit build` asks for App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity. Runtime Tenant selection remains runtime behavior and is not part of Build Preparation.
+
+Before using build preparation:
+
+1. Set `EXPO_OWNER` in `src/constants/project-config.ts` to your Expo account or organization. It starts blank on purpose, so build preparation fails clearly instead of using Tenkit's Expo account.
+2. Create or link an EAS Project for each App Variant.
+3. Paste each EAS Project ID into `src/constants/app-variants.ts`.
+4. Add `APP_VARIANT_SLUG=atlas-network` to the Atlas Network App Variant's EAS environment.
+5. Add `APP_VARIANT_SLUG=west-studio` to the West Studio App Variant's EAS environment.
 
 For CI or non-interactive use:
 
@@ -62,8 +74,6 @@ For CI or non-interactive use:
 pnpm tenkit build --slug atlas-network --env development --platform ios
 pnpm tenkit build --slug west-studio --env production --android
 ```
-
-Build Preparation prompts for App Variant, App Variant Environment, and platform. It never prompts for Runtime Tenant selection.
 
 Reset native build state to the default Generic App Variant:
 
