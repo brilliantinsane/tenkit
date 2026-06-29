@@ -1,0 +1,251 @@
+import { appVariants } from '@/constants/app-variants';
+import { runtimeTenants } from '@/constants/runtime-tenants';
+import {
+  type AppVariant,
+  type GenericAppVariant,
+  type StandaloneAppVariant,
+} from '@/types/app-variant';
+import {
+  type NormalizedCapabilityProfile,
+  type NormalizedRuntimeTenant,
+  type RawCapabilityProfile,
+  type RuntimeTenant,
+  type RuntimeTenantId,
+} from '@/types/runtime-tenant';
+
+type RuntimeTenantAccessInput = {
+  appVariant?: AppVariant;
+  runtimeTenants?: readonly RuntimeTenant[];
+};
+
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+export function normalizeCapabilityProfile(
+  capabilities?: RawCapabilityProfile,
+): NormalizedCapabilityProfile {
+  return {
+    featureA: capabilities?.featureA ?? false,
+    featureB: capabilities?.featureB ?? false,
+    featureC: capabilities?.featureC ?? false,
+  };
+}
+
+function normalizeRuntimeTenant(runtimeTenant: RuntimeTenant): NormalizedRuntimeTenant {
+  return {
+    runtimeTenantId: runtimeTenant.runtimeTenantId,
+    name: runtimeTenant.name,
+    capabilities: normalizeCapabilityProfile(runtimeTenant.capabilities),
+  };
+}
+
+function mapRuntimeTenantsById(
+  availableRuntimeTenants: readonly RuntimeTenant[],
+): Map<RuntimeTenantId, RuntimeTenant> {
+  return new Map(
+    availableRuntimeTenants.map((runtimeTenant) => [runtimeTenant.runtimeTenantId, runtimeTenant]),
+  );
+}
+
+function findDuplicateRuntimeTenantId(
+  runtimeTenantIds: readonly RuntimeTenantId[],
+): RuntimeTenantId | undefined {
+  const seenRuntimeTenantIds = new Set<RuntimeTenantId>();
+
+  for (const runtimeTenantId of runtimeTenantIds) {
+    if (seenRuntimeTenantIds.has(runtimeTenantId)) {
+      return runtimeTenantId;
+    }
+
+    seenRuntimeTenantIds.add(runtimeTenantId);
+  }
+}
+
+function getAppVariantRuntimeTenantIds(availableAppVariants: readonly AppVariant[]) {
+  return availableAppVariants
+    .filter(
+      (candidate): candidate is StandaloneAppVariant => candidate.role === 'standalone',
+    )
+    .map((candidate) => candidate.standaloneRuntimeTenantId);
+}
+
+function validateRuntimeTenantRecords(availableRuntimeTenants: readonly RuntimeTenant[]) {
+  const availableRuntimeTenantIds = availableRuntimeTenants.map(
+    (runtimeTenant) => runtimeTenant.runtimeTenantId,
+  );
+  const duplicateRuntimeTenantId = findDuplicateRuntimeTenantId(availableRuntimeTenantIds);
+
+  if (duplicateRuntimeTenantId !== undefined) {
+    fail(`Duplicate Runtime Tenant ID "${duplicateRuntimeTenantId}" in Runtime Tenant list`);
+  }
+
+  return new Set(availableRuntimeTenantIds);
+}
+
+function validateGenericAppVariantAccess(
+  genericAppVariant: GenericAppVariant,
+  availableRuntimeTenantIds: Set<RuntimeTenantId>,
+  standaloneRuntimeTenantIds: readonly RuntimeTenantId[],
+) {
+  const { defaultRuntimeTenantId, allowedRuntimeTenantIds } =
+    genericAppVariant.runtimeTenantAccess;
+  const duplicateAllowedRuntimeTenantId = findDuplicateRuntimeTenantId(allowedRuntimeTenantIds);
+
+  if (duplicateAllowedRuntimeTenantId !== undefined) {
+    fail(
+      `Duplicate allowed Runtime Tenant ID "${duplicateAllowedRuntimeTenantId}" in Runtime Tenant Access`,
+    );
+  }
+
+  if (!allowedRuntimeTenantIds.includes(defaultRuntimeTenantId)) {
+    fail(
+      `Default Runtime Tenant ID "${defaultRuntimeTenantId}" must be included in allowed Runtime Tenant IDs: ${allowedRuntimeTenantIds.join(', ')}`,
+    );
+  }
+
+  const missingRuntimeTenantIds = allowedRuntimeTenantIds.filter(
+    (runtimeTenantId) => !availableRuntimeTenantIds.has(runtimeTenantId),
+  );
+
+  if (missingRuntimeTenantIds.length > 0) {
+    fail(
+      `Generic App Variant allows missing Runtime Tenant IDs: ${missingRuntimeTenantIds.join(', ')}`,
+    );
+  }
+
+  const standaloneRuntimeTenantInGenericAccess = standaloneRuntimeTenantIds.find(
+    (runtimeTenantId) => allowedRuntimeTenantIds.includes(runtimeTenantId),
+  );
+
+  if (standaloneRuntimeTenantInGenericAccess !== undefined) {
+    fail(
+      `Standalone Runtime Tenant ID "${standaloneRuntimeTenantInGenericAccess}" must not appear in Generic App Variant Runtime Tenant Access`,
+    );
+  }
+}
+
+function validateStandaloneAppVariantAccess(
+  standaloneAppVariant: StandaloneAppVariant,
+  availableRuntimeTenantIds: Set<RuntimeTenantId>,
+) {
+  if (!availableRuntimeTenantIds.has(standaloneAppVariant.standaloneRuntimeTenantId)) {
+    fail(
+      `Standalone App Variant "${standaloneAppVariant.name}" references missing Runtime Tenant ID "${standaloneAppVariant.standaloneRuntimeTenantId}"`,
+    );
+  }
+}
+
+function validateGenericAppVariantCount() {
+  const genericAppVariants = appVariants.filter((candidate) => candidate.role === 'generic');
+
+  if (genericAppVariants.length !== 1) {
+    fail(
+      `Generic With Standalone App Variants must include exactly one Generic App Variant, found ${genericAppVariants.length}`,
+    );
+  }
+}
+
+export function validateRuntimeTenantAccess({
+  appVariant: resolvedAppVariant,
+  runtimeTenants: availableRuntimeTenants = runtimeTenants,
+}: RuntimeTenantAccessInput = {}): void {
+  const availableRuntimeTenantIds = validateRuntimeTenantRecords(availableRuntimeTenants);
+  const standaloneRuntimeTenantIds = getAppVariantRuntimeTenantIds(appVariants);
+  const duplicateStandaloneRuntimeTenantId =
+    findDuplicateRuntimeTenantId(standaloneRuntimeTenantIds);
+
+  validateGenericAppVariantCount();
+
+  if (duplicateStandaloneRuntimeTenantId !== undefined) {
+    fail(
+      `Duplicate standalone Runtime Tenant assignment "${duplicateStandaloneRuntimeTenantId}" in App Variants`,
+    );
+  }
+
+  for (const candidate of appVariants) {
+    if (candidate.role === 'generic') {
+      validateGenericAppVariantAccess(
+        candidate,
+        availableRuntimeTenantIds,
+        standaloneRuntimeTenantIds,
+      );
+    } else {
+      validateStandaloneAppVariantAccess(candidate, availableRuntimeTenantIds);
+    }
+  }
+
+  if (resolvedAppVariant?.role === 'generic') {
+    validateGenericAppVariantAccess(
+      resolvedAppVariant,
+      availableRuntimeTenantIds,
+      standaloneRuntimeTenantIds,
+    );
+  } else if (resolvedAppVariant?.role === 'standalone') {
+    validateStandaloneAppVariantAccess(resolvedAppVariant, availableRuntimeTenantIds);
+  }
+}
+
+export function resolveDefaultRuntimeTenant({
+  appVariant: resolvedAppVariant,
+  runtimeTenants: availableRuntimeTenants = runtimeTenants,
+}: RuntimeTenantAccessInput = {}): NormalizedRuntimeTenant {
+  if (!resolvedAppVariant) {
+    fail('Cannot resolve a default Runtime Tenant without an App Variant');
+  }
+
+  validateRuntimeTenantAccess({
+    appVariant: resolvedAppVariant,
+    runtimeTenants: availableRuntimeTenants,
+  });
+
+  const runtimeTenantById = mapRuntimeTenantsById(availableRuntimeTenants);
+  const runtimeTenantId =
+    resolvedAppVariant.role === 'generic'
+      ? resolvedAppVariant.runtimeTenantAccess.defaultRuntimeTenantId
+      : resolvedAppVariant.standaloneRuntimeTenantId;
+  const defaultRuntimeTenant = runtimeTenantById.get(
+    runtimeTenantId,
+  );
+
+  if (!defaultRuntimeTenant) {
+    fail(`Default Runtime Tenant ID "${runtimeTenantId}" does not exist`);
+  }
+
+  return normalizeRuntimeTenant(defaultRuntimeTenant);
+}
+
+export function resolveSelectableRuntimeTenants({
+  appVariant: resolvedAppVariant,
+  runtimeTenants: availableRuntimeTenants = runtimeTenants,
+}: RuntimeTenantAccessInput = {}): NormalizedRuntimeTenant[] {
+  if (!resolvedAppVariant) {
+    fail('Cannot resolve selectable Runtime Tenants without an App Variant');
+  }
+
+  if (resolvedAppVariant.role === 'standalone') {
+    return [
+      resolveDefaultRuntimeTenant({
+        appVariant: resolvedAppVariant,
+        runtimeTenants: availableRuntimeTenants,
+      }),
+    ];
+  }
+
+  validateRuntimeTenantAccess({
+    appVariant: resolvedAppVariant,
+    runtimeTenants: availableRuntimeTenants,
+  });
+
+  const runtimeTenantById = mapRuntimeTenantsById(availableRuntimeTenants);
+
+  return resolvedAppVariant.runtimeTenantAccess.allowedRuntimeTenantIds.map((runtimeTenantId) => {
+    const runtimeTenant = runtimeTenantById.get(runtimeTenantId);
+
+    if (!runtimeTenant) {
+      fail(`Allowed Runtime Tenant ID "${runtimeTenantId}" does not exist`);
+    }
+
+    return normalizeRuntimeTenant(runtimeTenant);
+  });
+}

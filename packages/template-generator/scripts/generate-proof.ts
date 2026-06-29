@@ -117,7 +117,11 @@ function getReadyMessage(setupType: GeneratedSetupType): string {
     return 'Your Tenkit White Label app is ready!';
   }
 
-  return 'Your Tenkit Single App Runtime Tenants app is ready!';
+  if (setupType === 'single-app-runtime-tenants') {
+    return 'Your Tenkit Single App Runtime Tenants app is ready!';
+  }
+
+  return 'Your Tenkit Generic With Standalone App Variants app is ready!';
 }
 
 async function main() {

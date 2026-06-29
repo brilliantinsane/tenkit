@@ -1,0 +1,239 @@
+import { EXPO_OWNER } from '../src/constants/project-config';
+import { appVariants, defaultAppVariantId } from '../src/constants/app-variants';
+import { type AppVariant, type AppVariantEasProject } from '../src/types/app-variant';
+
+export const EAS_CLI_MISSING_MESSAGE =
+  'EAS CLI not found. Install it globally using the official EAS CLI installation instructions.';
+
+export const APP_VARIANT_ENVIRONMENTS = ['development', 'preview', 'production'] as const;
+
+export type AppVariantEnvironment = (typeof APP_VARIANT_ENVIRONMENTS)[number];
+
+export type BuildPlatform = 'ios' | 'android' | 'both';
+
+export type CommandPlan = {
+  bin: string;
+  args: string[];
+  env?: Record<string, string>;
+};
+
+export type BuildFlags = {
+  slug?: string;
+  env?: string;
+  platform?: string;
+  ios?: boolean;
+  android?: boolean;
+  both?: boolean;
+};
+
+export type BuildContext = {
+  ci: boolean;
+  expoToken?: string;
+  expoOwner?: string;
+  appVariants?: readonly AppVariant[];
+  defaultAppVariantId?: number;
+};
+
+export type BuildPlan = {
+  appVariant: AppVariant;
+  environment: AppVariantEnvironment;
+  platform: BuildPlatform;
+  commands: CommandPlan[];
+};
+
+const DEFAULT_ENVIRONMENT: AppVariantEnvironment = 'development';
+
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+function selectedPlatformFlags(flags: {
+  platform?: string;
+  ios?: boolean;
+  android?: boolean;
+  both?: boolean;
+}): string[] {
+  return [
+    flags.platform ? `--platform ${flags.platform}` : undefined,
+    flags.ios ? '--ios' : undefined,
+    flags.android ? '--android' : undefined,
+    flags.both ? '--both' : undefined,
+  ].filter((flag): flag is string => Boolean(flag));
+}
+
+function resolveBuildPlatform(flags: BuildFlags): BuildPlatform {
+  const selected = selectedPlatformFlags(flags);
+
+  if (selected.length > 1) {
+    fail('Choose only one platform option.');
+  }
+
+  const platform =
+    flags.platform ??
+    (flags.ios ? 'ios' : flags.android ? 'android' : flags.both ? 'both' : 'both');
+
+  if (platform !== 'ios' && platform !== 'android' && platform !== 'both') {
+    fail('Invalid platform. Expected one of: ios, android, both');
+  }
+
+  return platform;
+}
+
+function resolveAppVariantEnvironment(value: string = DEFAULT_ENVIRONMENT): AppVariantEnvironment {
+  if (!APP_VARIANT_ENVIRONMENTS.includes(value as AppVariantEnvironment)) {
+    fail(
+      `Invalid App Variant Environment ${JSON.stringify(value)}. Expected one of: ${APP_VARIANT_ENVIRONMENTS.join(', ')}`,
+    );
+  }
+
+  return value as AppVariantEnvironment;
+}
+
+function getDefaultAppVariant(
+  variants: readonly AppVariant[],
+  defaultId: number,
+): AppVariant {
+  const appVariant = variants.find((candidate) => candidate.appVariantId === defaultId);
+
+  if (!appVariant) {
+    fail('App Variants have no default App Variant');
+  }
+
+  return appVariant;
+}
+
+function resolveAppVariant({
+  variants,
+  defaultId,
+  slug,
+}: {
+  variants: readonly AppVariant[];
+  defaultId: number;
+  slug?: string;
+}): AppVariant {
+  const selectedSlug =
+    slug === undefined ? getDefaultAppVariant(variants, defaultId).slug : slug;
+  const appVariant = variants.find((candidate) => candidate.slug === selectedSlug);
+
+  if (!appVariant) {
+    fail(
+      `Invalid Slug ${JSON.stringify(selectedSlug)}. Expected one of: ${variants
+        .map((candidate) => candidate.slug)
+        .join(', ')}`,
+    );
+  }
+
+  return appVariant;
+}
+
+function getAppVariantEasProjectId(eas: AppVariantEasProject): string {
+  return typeof eas.projectId === 'string' ? eas.projectId.trim() : '';
+}
+
+function assertAppVariantHasEasProjectId(appVariant: AppVariant) {
+  if (getAppVariantEasProjectId(appVariant.eas)) {
+    return;
+  }
+
+  fail(
+    `App Variant "${appVariant.name}" (${appVariant.appVariantId}) is missing an EAS Project ID. ` +
+      `Create or find this App Variant's EAS Project in your Expo account, copy the EAS Project ID, ` +
+      `and paste it into src/constants/app-variants.ts for this App Variant. ` +
+      `Optional helper: APP_VARIANT_SLUG=${appVariant.slug} eas init can create or discover the ID; ` +
+      `if it prints the projectId and then fails because this app uses dynamic config, copy the printed ID.`,
+  );
+}
+
+function assertExpoOwnerConfigured(expoOwner: string = EXPO_OWNER) {
+  if (expoOwner.trim()) {
+    return;
+  }
+
+  fail(
+    'Missing Expo Owner. Set the global Expo Owner in src/constants/project-config.ts to your Expo account or organization before build preparation.',
+  );
+}
+
+function createEasEnvPullCommand(environment: AppVariantEnvironment, slug: string): CommandPlan {
+  return {
+    bin: 'eas',
+    args: ['env:pull', '--environment', environment, '--path', '.env.local', '--non-interactive'],
+    env: { APP_VARIANT_SLUG: slug },
+  };
+}
+
+function createPrebuildCommand(platform: BuildPlatform, slug: string): CommandPlan {
+  const args = ['expo', 'prebuild', '--clean'];
+
+  if (platform !== 'both') {
+    args.push('--platform', platform);
+  }
+
+  return {
+    bin: 'pnpm',
+    args,
+    env: { APP_VARIANT_SLUG: slug },
+  };
+}
+
+export function planBuild({
+  flags,
+  context,
+}: {
+  flags: BuildFlags;
+  context: BuildContext;
+}): BuildPlan {
+  const variants = context.appVariants ?? appVariants;
+  const defaultId = context.defaultAppVariantId ?? defaultAppVariantId;
+  const needsAppVariantFlag = variants.length > 1;
+
+  if (
+    context.ci &&
+    ((needsAppVariantFlag && !flags.slug) ||
+      !flags.env ||
+      selectedPlatformFlags(flags).length === 0 ||
+      !context.expoToken)
+  ) {
+    fail(
+      'CI build preparation requires --slug when the project has multiple App Variants, --platform or platform shortcut, --env, and EXPO_TOKEN.',
+    );
+  }
+
+  const appVariant = resolveAppVariant({ variants, defaultId, slug: flags.slug });
+  assertAppVariantHasEasProjectId(appVariant);
+  assertExpoOwnerConfigured(context.expoOwner);
+
+  const environment = resolveAppVariantEnvironment(flags.env);
+  const platform = resolveBuildPlatform(flags);
+
+  return {
+    appVariant,
+    environment,
+    platform,
+    commands: [
+      createEasEnvPullCommand(environment, appVariant.slug),
+      createPrebuildCommand(platform, appVariant.slug),
+    ],
+  };
+}
+
+export function planReset(context: Omit<BuildContext, 'ci' | 'expoToken'> = {}): BuildPlan {
+  const variants = context.appVariants ?? appVariants;
+  const defaultId = context.defaultAppVariantId ?? defaultAppVariantId;
+  const appVariant = getDefaultAppVariant(variants, defaultId);
+
+  return planBuild({
+    flags: {
+      slug: appVariant.slug,
+      env: DEFAULT_ENVIRONMENT,
+      platform: 'both',
+    },
+    context: {
+      ci: false,
+      expoToken: undefined,
+      expoOwner: context.expoOwner,
+      appVariants: variants,
+      defaultAppVariantId: defaultId,
+    },
+  });
+}

@@ -1,0 +1,96 @@
+import { useCallback, useEffect, useMemo } from 'react';
+import { useMMKVNumber } from 'react-native-mmkv';
+
+import { appVariants } from '@/constants/app-variants';
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+import {
+  resolveDefaultRuntimeTenant,
+  resolveSelectableRuntimeTenants,
+} from '@/lib/runtime-tenant-access';
+import { ACTIVE_RUNTIME_TENANT_ID_KEY, appPreferencesStorage } from '@/storage/app-preferences';
+import { type RuntimeTenantId } from '@/types/runtime-tenant';
+
+function isAllowedRuntimeTenantId(
+  runtimeTenantId: number | undefined,
+  allowedRuntimeTenantIds: readonly RuntimeTenantId[],
+): runtimeTenantId is RuntimeTenantId {
+  return runtimeTenantId !== undefined && allowedRuntimeTenantIds.includes(runtimeTenantId);
+}
+
+export function useActiveRuntimeTenant() {
+  const { appVariant: appVariantBootstrap } = useAppVariantConfig();
+  const appVariant = useMemo(() => {
+    const resolvedAppVariant = appVariants.find(
+      (candidate) => candidate.slug === appVariantBootstrap.slug,
+    );
+
+    if (!resolvedAppVariant) {
+      throw new Error(
+        `Runtime config references missing App Variant Slug "${appVariantBootstrap.slug}"`,
+      );
+    }
+
+    return resolvedAppVariant;
+  }, [appVariantBootstrap.slug]);
+  const defaultRuntimeTenant = useMemo(
+    () => resolveDefaultRuntimeTenant({ appVariant }),
+    [appVariant],
+  );
+  const selectableRuntimeTenants = useMemo(
+    () => resolveSelectableRuntimeTenants({ appVariant }),
+    [appVariant],
+  );
+  const [storedRuntimeTenantId, setStoredRuntimeTenantId] = useMMKVNumber(
+    ACTIVE_RUNTIME_TENANT_ID_KEY,
+    appPreferencesStorage,
+  );
+
+  const allowedRuntimeTenantIds =
+    appVariant.role === 'generic'
+      ? appVariant.runtimeTenantAccess.allowedRuntimeTenantIds
+      : [appVariant.standaloneRuntimeTenantId];
+  const activeRuntimeTenantId = isAllowedRuntimeTenantId(
+    storedRuntimeTenantId,
+    allowedRuntimeTenantIds,
+  )
+    ? storedRuntimeTenantId
+    : defaultRuntimeTenant.runtimeTenantId;
+  const activeRuntimeTenant =
+    selectableRuntimeTenants.find(
+      (runtimeTenant) => runtimeTenant.runtimeTenantId === activeRuntimeTenantId,
+    ) ?? defaultRuntimeTenant;
+
+  useEffect(() => {
+    if (appVariant.role === 'standalone') {
+      return;
+    }
+
+    if (!isAllowedRuntimeTenantId(storedRuntimeTenantId, allowedRuntimeTenantIds)) {
+      setStoredRuntimeTenantId(appVariant.runtimeTenantAccess.defaultRuntimeTenantId);
+    }
+  }, [
+    allowedRuntimeTenantIds,
+    appVariant,
+    setStoredRuntimeTenantId,
+    storedRuntimeTenantId,
+  ]);
+
+  const setActiveRuntimeTenantId = useCallback(
+    (runtimeTenantId: RuntimeTenantId) => {
+      if (isAllowedRuntimeTenantId(runtimeTenantId, allowedRuntimeTenantIds)) {
+        setStoredRuntimeTenantId(runtimeTenantId);
+      }
+    },
+    [allowedRuntimeTenantIds, setStoredRuntimeTenantId],
+  );
+
+  return {
+    activeRuntimeTenant,
+    activeRuntimeTenantId,
+    allowedRuntimeTenantIds,
+    defaultRuntimeTenantId: defaultRuntimeTenant.runtimeTenantId,
+    hasRuntimeTenantSelection: appVariant.role === 'generic' && allowedRuntimeTenantIds.length > 1,
+    selectableRuntimeTenants,
+    setActiveRuntimeTenantId,
+  };
+}

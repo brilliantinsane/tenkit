@@ -1,0 +1,56 @@
+import { Android, IOS } from '@expo/config-types';
+import { ExpoConfig } from 'expo/config';
+
+import { type RuntimeTenantAccess, type RuntimeTenantId } from './runtime-tenant';
+
+export type AppVariantId = number;
+
+export type AppVariantTheme = {
+  accent: string;
+};
+
+export type AppVariantEasProject = {
+  projectId: string;
+};
+
+export type AppVariantBootstrap = {
+  id: AppVariantId;
+  slug: string;
+};
+
+export type AppVariantConfigExtra = {
+  eas: AppVariantEasProject;
+  appVariant: AppVariantBootstrap;
+  theme: AppVariantTheme;
+  runtimeTenantAccess?: RuntimeTenantAccess;
+  standaloneRuntimeTenantId?: RuntimeTenantId;
+};
+
+export type BaseAppVariant = {
+  appVariantId: AppVariantId;
+  slug: string;
+  name: ExpoConfig['name'];
+  version: ExpoConfig['version'];
+  scheme: string;
+  bundleIdentifier: IOS['bundleIdentifier'];
+  packageName: Android['package'];
+  theme: AppVariantTheme;
+  eas: AppVariantEasProject;
+};
+
+export type GenericAppVariant = BaseAppVariant & {
+  role: 'generic';
+  runtimeTenantAccess: RuntimeTenantAccess;
+};
+
+export type StandaloneAppVariant = BaseAppVariant & {
+  role: 'standalone';
+  standaloneRuntimeTenantId: RuntimeTenantId;
+  runtimeTenantAccess?: never;
+};
+
+export type AppVariant = GenericAppVariant | StandaloneAppVariant;
+
+export type ResolvedAppVariantConfig = AppVariant & {
+  extra: AppVariantConfigExtra;
+};

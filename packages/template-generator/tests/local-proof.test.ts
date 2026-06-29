@@ -278,6 +278,87 @@ test('local proof command boundary generates Single App Runtime Tenants by Setup
   }
 });
 
+test('local proof command boundary generates Generic With Standalone App Variants by Setup Type', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+  const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+  try {
+    const result = await runGenerationProof({
+      setupType: 'generic-with-standalone-app-variants',
+      targetDir,
+      git: 'init',
+      workspaceRoot,
+    });
+    const packageJson = JSON.parse(
+      await fs.readFile(join(targetDir, 'package.json'), 'utf8'),
+    ) as PackageJson;
+    const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
+    const runtimeTenants = await fs.readFile(
+      join(targetDir, 'src/constants/runtime-tenants.ts'),
+      'utf8',
+    );
+    const resolver = await fs.readFile(
+      join(targetDir, 'src/lib/resolve-app-variant-config.ts'),
+      'utf8',
+    );
+    const runtimeTenantAccess = await fs.readFile(
+      join(targetDir, 'src/lib/runtime-tenant-access.ts'),
+      'utf8',
+    );
+    const tenkitCli = await fs.readFile(join(targetDir, 'scripts/tenkit-cli.ts'), 'utf8');
+    const tenkitCliRuntime = await fs.readFile(
+      join(targetDir, 'scripts/tenkit-cli-runtime.ts'),
+      'utf8',
+    );
+
+    assert.ok(result.filesWritten.includes('package.json'));
+    assert.equal(result.gitInitialized, true);
+    assert.equal(result.gitCommitted, false);
+    assert.equal(packageJson.name, 'tenkit-generic-with-standalone-app-variants');
+    assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
+    assert.match(appVariants, /role: 'generic'/);
+    assert.match(appVariants, /slug: 'atlas-network'/);
+    assert.match(appVariants, /role: 'standalone'/);
+    assert.match(appVariants, /slug: 'west-studio'/);
+    assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
+    assert.match(runtimeTenants, /name: 'North Studio'/);
+    assert.match(runtimeTenants, /name: 'West Studio'/);
+    assert.match(resolver, /runtimeTenantAccess: resolvedAppVariant\.runtimeTenantAccess/);
+    assert.match(
+      resolver,
+      /standaloneRuntimeTenantId: resolvedAppVariant\.standaloneRuntimeTenantId/,
+    );
+    assert.doesNotMatch(resolver, /runtimeTenants:/);
+    assert.match(runtimeTenantAccess, /Duplicate Runtime Tenant ID/);
+    assert.match(runtimeTenantAccess, /Duplicate standalone Runtime Tenant assignment/);
+    assert.match(
+      runtimeTenantAccess,
+      /must not appear in Generic App Variant Runtime Tenant Access/,
+    );
+    assert.match(tenkitCli, /command\('build'\)/);
+    assert.match(tenkitCli, /command\('reset'\)/);
+    assert.match(tenkitCli, /command\('doctor'\)/);
+    assert.doesNotMatch(tenkitCli, /command\('setup'\)/);
+    assert.match(tenkitCliRuntime, /Select an App Variant:/);
+    assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
+    assert.ok(result.filesWritten.includes('src/app/settings.tsx'));
+    assert.equal(result.filesWritten.includes('src/app/explore.tsx'), false);
+    assert.ok(result.filesWritten.includes('src/constants/app-variants.ts'));
+    assert.equal(result.filesWritten.includes('src/constants/app-variant.ts'), false);
+    assert.ok(result.filesWritten.includes('src/constants/runtime-tenants.ts'));
+    assert.ok(result.filesWritten.includes('src/hooks/use-active-runtime-tenant.ts'));
+    assert.ok(result.filesWritten.includes('src/storage/app-preferences.ts'));
+    assert.ok(result.filesWritten.includes('assets/atlas-network/icons/icon.png'));
+    assert.ok(result.filesWritten.includes('assets/west-studio/icons/icon.png'));
+    assert.equal(result.filesWritten.includes('assets/north-studio/icons/icon.png'), false);
+    assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
+    assert.equal(await exists(join(workspaceRoot, 'package.json')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
 test('local proof command boundary keeps generated files when Git initialization is unavailable', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
   const targetDir = join(tempRoot, 'generated-app');

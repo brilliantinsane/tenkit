@@ -1,0 +1,130 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { appVariants, defaultAppVariantId } from '@/constants/app-variants';
+import { validateRuntimeTenantAccess } from '@/lib/runtime-tenant-access';
+import { type ResolvedAppVariantConfig } from '@/types/app-variant';
+
+type ResolveAppVariantInput = {
+  slug?: unknown;
+  projectRoot?: string;
+};
+
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+function findDuplicate<TValue>(values: readonly TValue[]): TValue | undefined {
+  const seen = new Set<TValue>();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      return value;
+    }
+
+    seen.add(value);
+  }
+}
+
+function validateAppVariantIdentity() {
+  const duplicateAppVariantId = findDuplicate(
+    appVariants.map((appVariant) => appVariant.appVariantId),
+  );
+
+  if (duplicateAppVariantId !== undefined) {
+    fail(`Duplicate App Variant ID "${duplicateAppVariantId}" in App Variants`);
+  }
+
+  const duplicateSlug = findDuplicate(appVariants.map((appVariant) => appVariant.slug));
+
+  if (duplicateSlug) {
+    fail(`Duplicate Slug "${duplicateSlug}" in App Variants`);
+  }
+}
+
+function getDefaultAppVariant() {
+  const appVariant = appVariants.find(
+    (candidate) => candidate.appVariantId === defaultAppVariantId,
+  );
+
+  if (!appVariant) {
+    fail('App Variants have no default App Variant');
+  }
+
+  return appVariant;
+}
+
+function getRequiredAppVariantAssetPaths(slug: string): string[] {
+  const assetPath = `assets/${slug}`;
+  const icons = `${assetPath}/icons`;
+  const iosIcon = `${assetPath}/app.icon`;
+
+  return [
+    `${icons}/icon.png`,
+    `${icons}/android-icon-foreground.png`,
+    `${icons}/android-icon-background.png`,
+    `${icons}/android-icon-monochrome.png`,
+    `${icons}/splash-icon-light.png`,
+    `${icons}/splash-icon-dark.png`,
+    `${icons}/favicon.png`,
+    `${iosIcon}/icon.json`,
+  ];
+}
+
+function validateAppVariantAssets(slug: string, projectRoot: string) {
+  for (const assetPath of getRequiredAppVariantAssetPaths(slug)) {
+    if (!existsSync(join(projectRoot, assetPath))) {
+      fail(`Missing required App Variant asset "${assetPath}" for Slug "${slug}"`);
+    }
+  }
+}
+
+export function resolveAppVariantConfig({
+  slug,
+  projectRoot = process.cwd(),
+}: ResolveAppVariantInput = {}): ResolvedAppVariantConfig {
+  validateAppVariantIdentity();
+
+  const selectedSlug = slug === undefined ? getDefaultAppVariant().slug : slug;
+
+  if (typeof selectedSlug !== 'string') {
+    fail(
+      `Invalid Slug ${JSON.stringify(selectedSlug)}. Expected one of: ${appVariants
+        .map((appVariant) => appVariant.slug)
+        .join(', ')}`,
+    );
+  }
+
+  const resolvedAppVariant = appVariants.find((candidate) => candidate.slug === selectedSlug);
+
+  if (!resolvedAppVariant) {
+    fail(
+      `Invalid Slug ${JSON.stringify(selectedSlug)}. Expected one of: ${appVariants
+        .map((candidate) => candidate.slug)
+        .join(', ')}`,
+    );
+  }
+
+  validateAppVariantAssets(resolvedAppVariant.slug, projectRoot);
+  validateRuntimeTenantAccess({ appVariant: resolvedAppVariant });
+
+  const { appVariantId, eas, slug: resolvedSlug, theme } = resolvedAppVariant;
+  const extra: ResolvedAppVariantConfig['extra'] = {
+    eas: {
+      projectId: eas.projectId,
+    },
+    appVariant: {
+      id: appVariantId,
+      slug: resolvedSlug,
+    },
+    theme,
+    ...(resolvedAppVariant.role === 'generic'
+      ? { runtimeTenantAccess: resolvedAppVariant.runtimeTenantAccess }
+      : { standaloneRuntimeTenantId: resolvedAppVariant.standaloneRuntimeTenantId }),
+  };
+
+  return {
+    ...resolvedAppVariant,
+    extra,
+  };
+}
