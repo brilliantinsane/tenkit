@@ -3,13 +3,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { generateProject, generateWhiteLabelAppsProject } from '../src/generator';
-import { getVirtualFile, mergeVirtualFileTrees } from '../src/virtual-file-tree';
+import {
+  generateProject,
+  generateSingleAppRuntimeTenantsProject,
+  generateWhiteLabelAppsProject,
+} from '../src/generator';
+import {
+  getVirtualFile,
+  mergeVirtualFileTrees,
+  type VirtualFileTree,
+} from '../src/virtual-file-tree';
 
-function readVirtualFile(
-  tree: ReturnType<typeof generateWhiteLabelAppsProject>,
-  path: string,
-): string {
+function readVirtualFile(tree: VirtualFileTree, path: string): string {
   const file = getVirtualFile(tree, path);
   assert.ok(file, `Expected virtual file ${path}`);
   if (typeof file.contents !== 'string') {
@@ -19,10 +24,7 @@ function readVirtualFile(
   return file.contents;
 }
 
-function readVirtualBinary(
-  tree: ReturnType<typeof generateWhiteLabelAppsProject>,
-  path: string,
-): Uint8Array {
+function readVirtualBinary(tree: VirtualFileTree, path: string): Uint8Array {
   const file = getVirtualFile(tree, path);
   assert.ok(file, `Expected virtual file ${path}`);
   assert.ok(file.contents instanceof Uint8Array, `Expected virtual file ${path} to be binary`);
@@ -55,6 +57,36 @@ test('Template layer merge rejects duplicate output paths', () => {
   );
 });
 
+test('generic Template generation dispatches by Setup Type', () => {
+  assert.deepEqual(
+    generateProject({ setupType: 'white-label-apps', projectName: 'Example App' }),
+    generateWhiteLabelAppsProject({
+      setupType: 'white-label-apps',
+      projectName: 'Example App',
+    }),
+  );
+  assert.deepEqual(
+    generateProject({
+      setupType: 'single-app-runtime-tenants',
+      projectName: 'Example App',
+    }),
+    generateSingleAppRuntimeTenantsProject({
+      setupType: 'single-app-runtime-tenants',
+      projectName: 'Example App',
+    }),
+  );
+});
+
+test('generic Template generation rejects unsupported Setup Types', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'unsupported-setup',
+      } as unknown as Parameters<typeof generateProject>[0]),
+    /Unsupported generated Setup Type "unsupported-setup".*white-label-apps, single-app-runtime-tenants/,
+  );
+});
+
 test('White Label Apps Template combines shared, setup-owned, and App Variant asset output', () => {
   const tree = generateWhiteLabelAppsProject({
     setupType: 'white-label-apps',
@@ -84,6 +116,8 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.ok(paths.includes('src/components/app-tabs.tsx'));
   assert.ok(paths.includes('src/components/app-tabs.web.tsx'));
   assert.ok(paths.includes('src/theme/ThemeContext.tsx'));
+  assert.ok(paths.includes('src/constants/design-tokens.ts'));
+  assert.ok(paths.includes('src/constants/globals.ts'));
   assert.ok(paths.includes('src/constants/project-config.ts'));
   assert.ok(paths.includes('src/types/app-variant.ts'));
   assert.ok(paths.includes('src/constants/app-variants.ts'));
@@ -199,6 +233,16 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.match(readVirtualFile(tree, 'src/constants/app-variants.ts'), /bundleIdentifier/);
   assert.match(readVirtualFile(tree, 'src/constants/app-variants.ts'), /slug: 'first-tenant'/);
   assert.match(readVirtualFile(tree, 'src/constants/project-config.ts'), /EXPO_OWNER = ''/);
+  assert.match(readVirtualFile(tree, 'src/constants/design-tokens.ts'), /export const Typography/);
+  assert.match(
+    readVirtualFile(tree, 'src/components/themed-text.tsx'),
+    /@\/constants\/design-tokens/,
+  );
+  assert.match(readVirtualFile(tree, 'src/components/themed-text.tsx'), /linkPrimary/);
+  assert.match(readVirtualFile(tree, 'src/components/themed-view.tsx'), /type\?: ThemeColor/);
+  assert.match(readVirtualFile(tree, 'src/constants/globals.ts'), /globalStyles/);
+  assert.match(readVirtualFile(tree, 'src/app/index.tsx'), /globalStyles\.centeredContainer/);
+  assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /globalStyles\.container/);
   assert.doesNotMatch(readVirtualFile(tree, 'src/constants/project-config.ts'), /brilliant-insane/);
   assert.match(
     readVirtualFile(tree, 'src/lib/resolve-app-variant-config.ts'),
@@ -262,5 +306,130 @@ test('White Label Apps generated tree is standalone and does not import from the
   assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
   assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.doesNotMatch(generatedSource, /single-app-runtime-tenants/);
+  assert.doesNotMatch(generatedSource, /generic-with-standalone-app-variants/);
+});
+
+test('Single App Runtime Tenants Template generates one App Variant with bundled Runtime Tenants', () => {
+  const tree = generateProject({
+    setupType: 'single-app-runtime-tenants',
+    projectName: 'Custom Runtime Tenants',
+    packageName: 'custom-runtime-tenants',
+  });
+  const paths = tree.map((file) => file.path);
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    name: string;
+    dependencies: Record<string, string>;
+    scripts: Record<string, string>;
+  };
+  const appVariant = readVirtualFile(tree, 'src/constants/app-variant.ts');
+  const runtimeTenants = readVirtualFile(tree, 'src/constants/runtime-tenants.ts');
+  const runtimeTenantAccess = readVirtualFile(tree, 'src/lib/runtime-tenant-access.ts');
+  const appVariantTypes = readVirtualFile(tree, 'src/types/app-variant.ts');
+  const runtimeTenantTypes = readVirtualFile(tree, 'src/types/runtime-tenant.ts');
+  const resolver = readVirtualFile(tree, 'src/lib/resolve-app-variant-config.ts');
+  const appConfig = readVirtualFile(tree, 'app.config.ts');
+  const appVariantHook = readVirtualFile(tree, 'src/hooks/use-app-variant-config.ts');
+  const activeRuntimeTenantHook = readVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts');
+  const themedText = readVirtualFile(tree, 'src/components/themed-text.tsx');
+  const themedView = readVirtualFile(tree, 'src/components/themed-view.tsx');
+  const app = readVirtualFile(tree, 'src/app/index.tsx');
+  const settings = readVirtualFile(tree, 'src/app/settings.tsx');
+  const readme = readVirtualFile(tree, 'README.md');
+
+  assert.equal(packageJson.name, 'custom-runtime-tenants');
+  assert.equal(packageJson.dependencies['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies['react-native-mmkv'], '^4.3.1');
+  assert.equal(packageJson.dependencies['react-native-nitro-modules'], '^0.35.9');
+  assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
+  assert.ok(paths.includes('src/app/settings.tsx'));
+  assert.equal(paths.includes('src/app/explore.tsx'), false);
+  assert.ok(paths.includes('src/constants/design-tokens.ts'));
+  assert.ok(paths.includes('src/constants/runtime-tenants.ts'));
+  assert.ok(paths.includes('src/constants/globals.ts'));
+  assert.ok(paths.includes('src/hooks/use-active-runtime-tenant.ts'));
+  assert.ok(paths.includes('src/lib/runtime-tenant-access.ts'));
+  assert.ok(paths.includes('src/storage/app-preferences.ts'));
+  assert.ok(paths.includes('src/types/runtime-tenant.ts'));
+  assert.ok(paths.includes('assets/acme-app/icons/icon.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/favicon.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/android-icon-background.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/android-icon-foreground.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/android-icon-monochrome.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/splash-icon-light.png'));
+  assert.ok(paths.includes('assets/acme-app/icons/splash-icon-dark.png'));
+  assert.ok(paths.includes('assets/acme-app/app.icon/icon.json'));
+  assert.equal(
+    paths.some((path) => path.startsWith('assets/first-tenant/')),
+    false,
+  );
+  assert.equal(
+    paths.some((path) => path.startsWith('assets/second-tenant/')),
+    false,
+  );
+  assert.equal(readVirtualBinary(tree, 'assets/acme-app/icons/icon.png').byteLength > 0, true);
+  assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=acme-app/);
+  assert.match(readVirtualFile(tree, 'src/constants/design-tokens.ts'), /export const Typography/);
+  assert.match(readVirtualFile(tree, 'src/constants/globals.ts'), /globalStyles/);
+  assert.ok(paths.includes('src/constants/app-variant.ts'));
+  assert.equal(paths.includes('src/constants/app-variants.ts'), false);
+  assert.match(appVariant, /export const appVariant =/);
+  assert.match(appVariant, /slug: 'acme-app'/);
+  assert.match(appVariant, /name: 'Acme App'/);
+  assert.match(appVariant, /runtimeTenantAccess/);
+  assert.match(appVariant, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
+  assert.doesNotMatch(appVariant, /appVariants|defaultAppVariantId/);
+  assert.match(runtimeTenants, /runtimeTenantId: 100/);
+  assert.match(runtimeTenants, /name: 'North Branch'/);
+  assert.match(runtimeTenants, /satisfies readonly RuntimeTenant\[\]/);
+  assert.match(runtimeTenantTypes, /export type RuntimeTenant =/);
+  assert.match(runtimeTenantAccess, /resolveDefaultRuntimeTenant/);
+  assert.match(runtimeTenantAccess, /resolveSelectableRuntimeTenants/);
+  assert.match(runtimeTenantAccess, /normalizeCapabilityProfile/);
+  assert.match(runtimeTenantAccess, /Duplicate Runtime Tenant ID/);
+  assert.match(appVariantTypes, /runtimeTenantAccess: RuntimeTenantAccess/);
+  assert.match(resolver, /validateRuntimeTenantAccess/);
+  assert.match(resolver, /const extra: ResolvedAppVariantConfig\['extra'\]/);
+  assert.match(resolver, /runtimeTenantAccess,/);
+  assert.doesNotMatch(resolver, /runtimeTenants:/);
+  assert.match(appConfig, /APP_VARIANT_SLUG/);
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.doesNotMatch(appVariantHook, /isAppVariantConfigExtra/);
+  assert.match(appVariantHook, /Constants\.expoConfig\?\.extra as AppVariantConfigExtra/);
+  assert.match(appVariantHook, /runtimeTenantAccess/);
+  assert.match(themedText, /@\/constants\/design-tokens/);
+  assert.match(themedText, /linkPrimary/);
+  assert.match(themedView, /type\?: ThemeColor/);
+  assert.match(activeRuntimeTenantHook, /useActiveRuntimeTenant/);
+  assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+  assert.match(activeRuntimeTenantHook, /ACTIVE_RUNTIME_TENANT_ID_KEY/);
+  assert.match(activeRuntimeTenantHook, /resolveSelectableRuntimeTenants/);
+  assert.match(readVirtualFile(tree, 'src/storage/app-preferences.ts'), /createMMKV/);
+  assert.match(app, /Active Runtime Tenant/);
+  assert.match(app, /Active Runtime Tenant ID/);
+  assert.match(app, /globalStyles\.centeredContainer/);
+  assert.doesNotMatch(app, /Runtime Tenant IDs/);
+  assert.doesNotMatch(app, /resolveSelectableRuntimeTenants/);
+  assert.match(settings, /Picker/);
+  assert.match(settings, /Active Runtime Tenant/);
+  assert.match(settings, /globalStyles\.container/);
+  assert.doesNotMatch(settings, /swift-ui\/modifiers|scrollContentBackground/);
+  assert.match(readme, /Single App Runtime Tenants project/);
+  assert.match(readme, /Runtime Tenant records live in generated source data/);
+});
+
+test('Single App Runtime Tenants generated tree is standalone selected output', () => {
+  const tree = generateProject({ setupType: 'single-app-runtime-tenants' });
+  const generatedSource = tree
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+
+  assert.doesNotMatch(generatedSource, /apps\/playground/);
+  assert.doesNotMatch(generatedSource, /from ['"].*playground/);
+  assert.doesNotMatch(generatedSource, /defineSingleAppRuntimeTenantsSetup/);
+  assert.doesNotMatch(generatedSource, /activeSetup|Active Setup/);
+  assert.doesNotMatch(generatedSource, /setupType|Setup Type/);
+  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
+  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.doesNotMatch(generatedSource, /generic-with-standalone-app-variants/);
 });

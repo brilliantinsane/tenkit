@@ -1,0 +1,26 @@
+import { type RuntimeTenant } from '@/types/runtime-tenant';
+
+export const runtimeTenants = [
+  {
+    runtimeTenantId: 100,
+    name: 'North Branch',
+    capabilities: {
+      featureA: true,
+    },
+  },
+  {
+    runtimeTenantId: 101,
+    name: 'South Branch',
+    capabilities: {
+      featureA: true,
+      featureB: true,
+    },
+  },
+  {
+    runtimeTenantId: 102,
+    name: 'East Branch',
+    capabilities: {
+      featureB: true,
+    },
+  },
+] as const satisfies readonly RuntimeTenant[];

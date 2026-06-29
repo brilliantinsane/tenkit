@@ -1,42 +1,35 @@
-import { ThemedView } from '@/components/ui/themed-view';
+import { ThemedView } from '@/components/themed-view';
 import { globalStyles } from '@/constants/globals';
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useTheme } from '@/theme/ThemeContext';
 import { FieldGroup, Host, Picker, Row, Spacer, Text } from '@expo/ui';
 
-const SettingsScreen = () => {
+export default function SettingsScreen() {
   const { colors, dark } = useTheme();
   const colorScheme = dark ? 'dark' : 'light';
   const {
     activeRuntimeTenantId,
-    allowedRuntimeTenantIds,
     hasRuntimeTenantSelection,
+    selectableRuntimeTenants,
     setActiveRuntimeTenantId,
   } = useActiveRuntimeTenant();
 
   return (
     <ThemedView style={globalStyles.container}>
-      <Host style={{ flex: 1 }} colorScheme={colorScheme}>
-        <FieldGroup
-          style={{
-            backgroundColor: colors.background,
-          }}
-        >
-          {hasRuntimeTenantSelection && activeRuntimeTenantId ? (
+      <Host style={globalStyles.container} colorScheme={colorScheme}>
+        <FieldGroup style=\{{ backgroundColor: colors.background }}>
+          {hasRuntimeTenantSelection ? (
             <Row alignment="center">
-              <Text>Active tenant</Text>
+              <Text>Active Runtime Tenant</Text>
 
               <Spacer flexible />
 
-              <Picker
-                selectedValue={activeRuntimeTenantId}
-                onValueChange={setActiveRuntimeTenantId}
-              >
-                {allowedRuntimeTenantIds.map((runtimeTenantId) => (
+              <Picker selectedValue={activeRuntimeTenantId} onValueChange={setActiveRuntimeTenantId}>
+                {selectableRuntimeTenants.map((runtimeTenant) => (
                   <Picker.Item
-                    key={runtimeTenantId}
-                    label={runtimeTenantId.toString()}
-                    value={runtimeTenantId}
+                    key={runtimeTenant.runtimeTenantId}
+                    label={runtimeTenant.name}
+                    value={runtimeTenant.runtimeTenantId}
                   />
                 ))}
               </Picker>
@@ -46,6 +39,4 @@ const SettingsScreen = () => {
       </Host>
     </ThemedView>
   );
-};
-
-export default SettingsScreen;
+}

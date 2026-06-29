@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { appVariants, defaultAppVariantId } from '@/constants/app-variants';
-import { type AppVariant, type ResolvedAppVariantConfig } from '@/types/app-variant';
+import { appVariant } from '@/constants/app-variant';
+import { runtimeTenants } from '@/constants/runtime-tenants';
+import { validateRuntimeTenantAccess } from '@/lib/runtime-tenant-access';
+import { type ResolvedAppVariantConfig } from '@/types/app-variant';
 
 type ResolveAppVariantInput = {
   slug?: unknown;
@@ -11,18 +13,6 @@ type ResolveAppVariantInput = {
 
 function fail(message: string): never {
   throw new Error(message);
-}
-
-function getDefaultAppVariant(): AppVariant {
-  const appVariant = appVariants.find(
-    (candidate) => candidate.appVariantId === defaultAppVariantId,
-  );
-
-  if (!appVariant) {
-    fail('App Variants have no default App Variant');
-  }
-
-  return appVariant;
 }
 
 function getRequiredAppVariantAssetPaths(slug: string): string[] {
@@ -54,29 +44,20 @@ export function resolveAppVariantConfig({
   slug,
   projectRoot = process.cwd(),
 }: ResolveAppVariantInput = {}): ResolvedAppVariantConfig {
-  const selectedSlug = slug === undefined ? getDefaultAppVariant().slug : slug;
+  const selectedSlug = slug === undefined ? appVariant.slug : slug;
 
   if (typeof selectedSlug !== 'string') {
-    fail(
-      `Invalid Slug ${JSON.stringify(selectedSlug)}. Expected one of: ${appVariants
-        .map((appVariant) => appVariant.slug)
-        .join(', ')}`,
-    );
+    fail(`Invalid Slug ${JSON.stringify(selectedSlug)}. Expected: ${appVariant.slug}`);
   }
 
-  const resolvedAppVariant = appVariants.find((candidate) => candidate.slug === selectedSlug);
-
-  if (!resolvedAppVariant) {
-    fail(
-      `Invalid Slug ${JSON.stringify(selectedSlug)}. Expected one of: ${appVariants
-        .map((candidate) => candidate.slug)
-        .join(', ')}`,
-    );
+  if (selectedSlug !== appVariant.slug) {
+    fail(`Invalid Slug ${JSON.stringify(selectedSlug)}. Expected: ${appVariant.slug}`);
   }
 
-  validateAppVariantAssets(resolvedAppVariant.slug, projectRoot);
+  validateAppVariantAssets(appVariant.slug, projectRoot);
+  validateRuntimeTenantAccess({ appVariant, runtimeTenants });
 
-  const { appVariantId, eas, slug: resolvedSlug, theme } = resolvedAppVariant;
+  const { appVariantId, eas, runtimeTenantAccess, slug: resolvedSlug, theme } = appVariant;
   const extra: ResolvedAppVariantConfig['extra'] = {
     eas: {
       projectId: eas.projectId,
@@ -86,10 +67,11 @@ export function resolveAppVariantConfig({
       slug: resolvedSlug,
     },
     theme,
+    runtimeTenantAccess,
   };
 
   return {
-    ...resolvedAppVariant,
+    ...appVariant,
     extra,
   };
 }

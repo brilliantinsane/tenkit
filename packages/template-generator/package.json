@@ -12,7 +12,11 @@
   "scripts": {
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit --pretty false",
+    "generate:proof": "tsx scripts/generate-proof.ts",
     "generate:white-label-proof": "tsx scripts/generate-white-label-proof.ts",
+    "generate:single-app-runtime-tenants-proof": "tsx scripts/generate-proof.ts --setup-type single-app-runtime-tenants",
+    "verify:generated-app": "tsx scripts/verify-generated-app.ts",
+    "verify:generated-single-app-runtime-tenants": "tsx scripts/verify-generated-app.ts --setup-type single-app-runtime-tenants",
     "verify:generated-white-label": "tsx scripts/verify-generated-white-label-app.ts"
   },
   "devDependencies": {

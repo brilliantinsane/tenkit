@@ -1,78 +1,36 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Text, type TextProps } from 'react-native';
 
-import { useBrand, useColors, type ThemeColor } from '@/theme/ThemeContext';
+import { Typography } from '@/constants/design-tokens';
+import { type ThemeColor, useTheme } from '@/theme/ThemeContext';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'code';
+  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
   themeColor?: ThemeColor;
 };
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
-  const colors = useColors();
-  const brand = useBrand();
-  const resolvedColor =
-    themeColor === 'primary' ||
-    themeColor === 'accent' ||
-    themeColor === 'onPrimary' ||
-    themeColor === 'onAccent'
-      ? brand[themeColor]
-      : colors[themeColor ?? 'text'];
+  const { brand, colors } = useTheme();
+  const color = themeColor
+    ? themeColor in colors
+      ? colors[themeColor as keyof typeof colors]
+      : brand[themeColor as keyof typeof brand]
+    : colors.text;
 
   return (
     <Text
       style={[
-        { color: resolvedColor },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'code' && styles.code,
+        { color },
+        type === 'default' && Typography.default,
+        type === 'title' && Typography.title,
+        type === 'small' && Typography.small,
+        type === 'smallBold' && Typography.smallBold,
+        type === 'subtitle' && Typography.subtitle,
+        type === 'link' && Typography.link,
+        type === 'linkPrimary' && [Typography.link, { color: brand.accent }],
+        type === 'code' && Typography.code,
         style,
       ]}
       {...rest}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    fontWeight: '500',
-    lineHeight: 24,
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: '600',
-    lineHeight: 52,
-  },
-  subtitle: {
-    fontSize: 32,
-    fontWeight: '600',
-    lineHeight: 44,
-  },
-  small: {
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  smallBold: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  link: {
-    fontSize: 14,
-    lineHeight: 30,
-  },
-  code: {
-    fontFamily: Platform.select({
-      ios: 'ui-monospace',
-      web: 'monospace',
-      default: 'monospace',
-    }),
-    fontSize: 12,
-    fontWeight: Platform.select({ android: '700', default: '500' }),
-  },
-});

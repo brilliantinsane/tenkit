@@ -89,10 +89,14 @@ async function main() {
     const appConfig = await readText(join(targetDir, 'app.config.ts'));
     const appVariantTypes = await readText(join(targetDir, 'src/types/app-variant.ts'));
     const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+    const designTokens = await readText(join(targetDir, 'src/constants/design-tokens.ts'));
+    const globals = await readText(join(targetDir, 'src/constants/globals.ts'));
     const projectConfig = await readText(join(targetDir, 'src/constants/project-config.ts'));
     const appVariantHook = await readText(join(targetDir, 'src/hooks/use-app-variant-config.ts'));
     const resolver = await readText(join(targetDir, 'src/lib/resolve-app-variant-config.ts'));
     const themeColors = await readText(join(targetDir, 'src/theme/colors.ts'));
+    const themedText = await readText(join(targetDir, 'src/components/themed-text.tsx'));
+    const themedView = await readText(join(targetDir, 'src/components/themed-view.tsx'));
     const tenkitCli = await readText(join(targetDir, 'scripts/tenkit-cli.ts'));
     const tenkitCliCore = await readText(join(targetDir, 'scripts/tenkit-cli-core.ts'));
     const tenkitCliRuntime = await readText(join(targetDir, 'scripts/tenkit-cli-runtime.ts'));
@@ -150,6 +154,12 @@ async function main() {
     assert.match(appVariantHook, /AppVariantConfigExtra/);
     assert.doesNotMatch(appVariantHook, /'id' in/);
     assert.match(projectConfig, /EXPO_OWNER = ''/);
+    assert.match(designTokens, /export const Typography/);
+    assert.match(themedText, /@\/constants\/design-tokens/);
+    assert.match(themedText, /linkPrimary/);
+    assert.match(themedView, /type\?: ThemeColor/);
+    assert.match(globals, /globalStyles/);
+    assert.match(app, /globalStyles\.centeredContainer/);
     assert.doesNotMatch(projectConfig, /brilliant-insane/);
     assert.match(appVariants, /satisfies readonly AppVariant\[\]/);
     assert.match(appVariants, /bundleIdentifier/);
@@ -173,6 +183,8 @@ async function main() {
     assert.doesNotMatch(pnpmWorkspace, /unrs-resolver/);
     assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
     assert.equal(await exists(join(targetDir, 'AGENTS.md')), true);
+    assert.equal(await exists(join(targetDir, 'src/constants/design-tokens.ts')), true);
+    assert.equal(await exists(join(targetDir, 'src/constants/globals.ts')), true);
     assert.equal(await exists(join(targetDir, '.env.example')), true);
     assert.equal(await exists(join(targetDir, 'CLAUDE.md')), true);
     assert.equal(await exists(join(targetDir, '.claude/settings.json')), true);
@@ -230,6 +242,10 @@ async function main() {
     const combinedGeneratedSource = [
       appConfig,
       appVariants,
+      designTokens,
+      globals,
+      themedText,
+      themedView,
       resolver,
       tenkitCli,
       tenkitCliCore,

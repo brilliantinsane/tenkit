@@ -3,11 +3,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { globalStyles } from '@/constants/globals';
 
 export default function ExploreScreen() {
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[globalStyles.container, styles.safeArea]}>
         <ThemedText type="subtitle">Explore</ThemedText>
         <View style={styles.section}>
           <ThemedText type="smallBold">Project shape</ThemedText>
@@ -21,11 +22,8 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: globalStyles.container,
   safeArea: {
-    flex: 1,
     gap: 20,
     padding: 24,
   },

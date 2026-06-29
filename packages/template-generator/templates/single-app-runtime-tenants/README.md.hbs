@@ -1,0 +1,170 @@
+# {{projectName}}
+
+A Tenkit Single App Runtime Tenants project for Expo SDK 56.
+
+This app has exactly one native App Variant and can open multiple Runtime Tenants inside that app at runtime. The App Variant owns the Slug, app name, URL scheme, bundle identifier, Android package, theme accent, EAS Project ID, icon set, splash assets, and web favicon. Runtime Tenant records live in generated source data.
+
+## Highlights
+
+- Built with Expo Router, TypeScript, and Expo SDK 56.
+- Uses one App Variant for native app identity at config and build time.
+- Bundles Runtime Tenant records under `src/constants/runtime-tenants.ts`.
+- Exposes Runtime Tenant Access bootstrap data through Expo `extra` without dumping full Runtime Tenant records there.
+- Includes per-App Variant assets under `assets/<app-variant-slug>/`.
+- Ships with a local Tenkit CLI for build preparation: `build`, `reset`, and `doctor`.
+- Includes `expo-dev-client` for native development builds and `expo-system-ui` for native UI style handling.
+
+## Get Started
+
+1. Install dependencies.
+
+   ```bash
+   pnpm install
+   ```
+
+2. Review the generated App Variant and Runtime Tenants.
+
+   ```text
+   src/constants/app-variant.ts
+   src/constants/runtime-tenants.ts
+   ```
+
+The app code lives in `src/app`. This project uses Expo Router file-based routing.
+
+## Build Preparation
+
+Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
+
+```bash
+pnpm tenkit build
+pnpm tenkit reset
+pnpm tenkit doctor
+```
+
+`pnpm tenkit build` derives the single App Variant, asks for App Variant Environment and platform, pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the App Variant, and then runs `expo prebuild --clean` for that native identity. Runtime Tenant selection remains runtime behavior and is not part of Build Preparation.
+
+Before using build preparation:
+
+1. Set `EXPO_OWNER` in `src/constants/project-config.ts` to your Expo account or organization. It starts blank on purpose, so build preparation fails clearly instead of using Tenkit's Expo account.
+2. Create or link an EAS Project for the App Variant.
+3. Paste the EAS Project ID into `src/constants/app-variant.ts`.
+4. Add `APP_VARIANT_SLUG=acme-app` to the App Variant's EAS environment.
+
+For non-interactive CI usage, pass the selected values explicitly:
+
+```bash
+pnpm tenkit build --env production --platform ios
+```
+
+`pnpm tenkit reset` prepares the App Variant for the development environment on both native platforms.
+
+## Run the Prepared App
+
+After build preparation has created native projects for the selected App Variant, start Metro:
+
+```bash
+pnpm start
+```
+
+Then run the prepared native project:
+
+```bash
+pnpm ios
+pnpm android
+```
+
+## App Variant Config
+
+The generated app has one App Variant defined in:
+
+```text
+src/constants/app-variant.ts
+```
+
+Inspect the resolved public Expo config for the default App Variant:
+
+```bash
+pnpm expo:config
+```
+
+Inspect the App Variant explicitly:
+
+```bash
+APP_VARIANT_SLUG=acme-app pnpm expo:config
+```
+
+For repeated local work, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG=acme-app` there. `.env.local` is ignored by git and may also be rewritten by `pnpm tenkit build` after it pulls values from EAS.
+
+## Runtime Tenants
+
+Runtime Tenant records are bundled as source data:
+
+```text
+src/constants/runtime-tenants.ts
+```
+
+Runtime Tenant Access lives on the App Variant in:
+
+```text
+src/constants/app-variant.ts
+```
+
+Runtime code can use `src/lib/runtime-tenant-access.ts` to validate Runtime Tenant Access, resolve the default Runtime Tenant, and resolve selectable Runtime Tenants in allowed Runtime Tenant ID order.
+
+The generated app includes a Settings tab with a Runtime Tenant picker when Runtime Tenant Access is selectable.
+The selected Runtime Tenant is persisted in local app preferences with MMKV so it survives navigation and app restarts.
+
+## App Variant Assets
+
+Each App Variant has its own asset folder:
+
+```text
+assets/<app-variant-slug>/
+```
+
+Required App Variant assets:
+
+- `icons/icon.png`
+- `icons/android-icon-foreground.png`
+- `icons/android-icon-background.png`
+- `icons/android-icon-monochrome.png`
+- `icons/splash-icon-light.png`
+- `icons/splash-icon-dark.png`
+- `icons/favicon.png`
+- `app.icon/icon.json`
+
+Shared product assets that are not part of native app identity belong in `assets/_global/`.
+
+## Useful Commands
+
+```bash
+pnpm tenkit build  # prepare native projects for the App Variant
+pnpm tenkit reset  # reset native projects to the App Variant
+pnpm start         # start Metro
+pnpm ios           # run the prepared iOS native project
+pnpm android       # run the prepared Android native project
+pnpm web           # run the web app
+pnpm typecheck     # run TypeScript
+pnpm expo:config   # print the resolved public Expo config
+```
+
+## Useful Files
+
+- `app.config.ts` resolves the selected App Variant into Expo native config.
+- `.env.example` documents the local App Variant selection variable.
+- `eas.json` defines tenant-neutral EAS build profiles.
+- `src/constants/app-variant.ts` owns the generated App Variant definition.
+- `src/constants/runtime-tenants.ts` owns bundled Runtime Tenant records.
+- `src/constants/project-config.ts` owns the Expo Owner.
+- `src/hooks/use-app-variant-config.ts` reads the resolved App Variant bootstrap data at runtime.
+- `src/hooks/use-active-runtime-tenant.ts` owns persisted in-app Runtime Tenant selection state.
+- `src/lib/runtime-tenant-access.ts` validates Runtime Tenant Access and resolves Runtime Tenants.
+- `src/storage/app-preferences.ts` owns local app preference storage.
+- `assets/_global/README.md` explains shared asset placement.
+
+## Learn More
+
+- [Expo documentation](https://docs.expo.dev/)
+- [Expo Router](https://docs.expo.dev/router/introduction/)
+- [Development builds](https://docs.expo.dev/develop/development-builds/introduction/)
+- [EAS Build](https://docs.expo.dev/build/introduction/)

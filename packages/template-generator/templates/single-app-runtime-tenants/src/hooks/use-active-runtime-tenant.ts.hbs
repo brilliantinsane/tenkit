@@ -1,0 +1,70 @@
+import { useCallback, useEffect, useMemo } from 'react';
+import { useMMKVNumber } from 'react-native-mmkv';
+
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+import {
+  resolveDefaultRuntimeTenant,
+  resolveSelectableRuntimeTenants,
+} from '@/lib/runtime-tenant-access';
+import { ACTIVE_RUNTIME_TENANT_ID_KEY, appPreferencesStorage } from '@/storage/app-preferences';
+import { type RuntimeTenantId } from '@/types/runtime-tenant';
+
+function isAllowedRuntimeTenantId(
+  runtimeTenantId: number | undefined,
+  allowedRuntimeTenantIds: readonly RuntimeTenantId[],
+): runtimeTenantId is RuntimeTenantId {
+  return runtimeTenantId !== undefined && allowedRuntimeTenantIds.includes(runtimeTenantId);
+}
+
+export function useActiveRuntimeTenant() {
+  const { runtimeTenantAccess } = useAppVariantConfig();
+  const defaultRuntimeTenant = useMemo(() => resolveDefaultRuntimeTenant(), []);
+  const selectableRuntimeTenants = useMemo(() => resolveSelectableRuntimeTenants(), []);
+  const [storedRuntimeTenantId, setStoredRuntimeTenantId] = useMMKVNumber(
+    ACTIVE_RUNTIME_TENANT_ID_KEY,
+    appPreferencesStorage,
+  );
+
+  const allowedRuntimeTenantIds = runtimeTenantAccess.allowedRuntimeTenantIds;
+  const activeRuntimeTenantId = isAllowedRuntimeTenantId(
+    storedRuntimeTenantId,
+    allowedRuntimeTenantIds,
+  )
+    ? storedRuntimeTenantId
+    : runtimeTenantAccess.defaultRuntimeTenantId;
+  const activeRuntimeTenant =
+    selectableRuntimeTenants.find(
+      (runtimeTenant) => runtimeTenant.runtimeTenantId === activeRuntimeTenantId,
+    ) ?? defaultRuntimeTenant;
+
+  useEffect(() => {
+    if (!isAllowedRuntimeTenantId(storedRuntimeTenantId, allowedRuntimeTenantIds)) {
+      setStoredRuntimeTenantId(runtimeTenantAccess.defaultRuntimeTenantId);
+    }
+  }, [
+    allowedRuntimeTenantIds,
+    runtimeTenantAccess.defaultRuntimeTenantId,
+    setStoredRuntimeTenantId,
+    storedRuntimeTenantId,
+  ]);
+
+  const setActiveRuntimeTenantId = useCallback(
+    (runtimeTenantId: RuntimeTenantId) => {
+      if (isAllowedRuntimeTenantId(runtimeTenantId, allowedRuntimeTenantIds)) {
+        setStoredRuntimeTenantId(runtimeTenantId);
+      }
+    },
+    [allowedRuntimeTenantIds, setStoredRuntimeTenantId],
+  );
+
+  return {
+    activeRuntimeTenant,
+    activeRuntimeTenantId,
+    allowedRuntimeTenantIds,
+    defaultRuntimeTenantId: runtimeTenantAccess.defaultRuntimeTenantId,
+    hasRuntimeTenantSelection:
+      runtimeTenantAccess.selectionMode === 'selectable' && allowedRuntimeTenantIds.length > 1,
+    selectableRuntimeTenants,
+    setActiveRuntimeTenantId,
+  };
+}

@@ -9,7 +9,11 @@ import { promisify } from 'node:util';
 import fs from 'fs-extra';
 import { join } from 'pathe';
 
-import { commitInitialGitSnapshot, runWhiteLabelGenerationProof } from '../src/local-proof';
+import {
+  commitInitialGitSnapshot,
+  runGenerationProof,
+  runWhiteLabelGenerationProof,
+} from '../src/local-proof';
 
 const execFileAsync = promisify(execFile);
 
@@ -53,6 +57,11 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     const envExample = await fs.readFile(join(targetDir, '.env.example'), 'utf8');
     const easJson = await fs.readFile(join(targetDir, 'eas.json'), 'utf8');
     const appConfig = await fs.readFile(join(targetDir, 'app.config.ts'), 'utf8');
+    const designTokens = await fs.readFile(
+      join(targetDir, 'src/constants/design-tokens.ts'),
+      'utf8',
+    );
+    const globals = await fs.readFile(join(targetDir, 'src/constants/globals.ts'), 'utf8');
     const appVariantTypes = await fs.readFile(join(targetDir, 'src/types/app-variant.ts'), 'utf8');
     const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
     const projectConfig = await fs.readFile(
@@ -116,6 +125,8 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     assert.match(appVariantHook, /AppVariantConfigExtra/);
     assert.doesNotMatch(appVariantHook, /'id' in/);
     assert.match(projectConfig, /EXPO_OWNER = ''/);
+    assert.match(designTokens, /export const Typography/);
+    assert.match(globals, /globalStyles/);
     assert.doesNotMatch(projectConfig, /brilliant-insane/);
     assert.match(appVariants, /satisfies readonly AppVariant\[\]/);
     assert.match(appVariants, /slug: 'first-tenant'/);
@@ -134,6 +145,8 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     assert.doesNotMatch(pnpmWorkspace, /unrs-resolver/);
     assert.ok(result.filesWritten.includes('src/app/_layout.tsx'));
     assert.ok(result.filesWritten.includes('src/app/explore.tsx'));
+    assert.ok(result.filesWritten.includes('src/constants/design-tokens.ts'));
+    assert.ok(result.filesWritten.includes('src/constants/globals.ts'));
     assert.ok(result.filesWritten.includes('src/types/app-variant.ts'));
     assert.ok(result.filesWritten.includes('src/constants/app-variants.ts'));
     assert.ok(result.filesWritten.includes('src/constants/project-config.ts'));
@@ -190,6 +203,75 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     );
     assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
     assert.equal(await readGitStatus(targetDir), '');
+    assert.equal(await exists(join(workspaceRoot, 'package.json')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
+test('local proof command boundary generates Single App Runtime Tenants by Setup Type', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+  const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+  try {
+    const result = await runGenerationProof({
+      setupType: 'single-app-runtime-tenants',
+      targetDir,
+      git: 'init',
+      workspaceRoot,
+    });
+    const packageJson = JSON.parse(
+      await fs.readFile(join(targetDir, 'package.json'), 'utf8'),
+    ) as PackageJson;
+    const appVariant = await fs.readFile(join(targetDir, 'src/constants/app-variant.ts'), 'utf8');
+    const runtimeTenants = await fs.readFile(
+      join(targetDir, 'src/constants/runtime-tenants.ts'),
+      'utf8',
+    );
+    const resolver = await fs.readFile(
+      join(targetDir, 'src/lib/resolve-app-variant-config.ts'),
+      'utf8',
+    );
+    const tenkitCli = await fs.readFile(join(targetDir, 'scripts/tenkit-cli.ts'), 'utf8');
+    const tenkitCliRuntime = await fs.readFile(
+      join(targetDir, 'scripts/tenkit-cli-runtime.ts'),
+      'utf8',
+    );
+
+    assert.ok(result.filesWritten.includes('package.json'));
+    assert.equal(result.gitInitialized, true);
+    assert.equal(result.gitCommitted, false);
+    assert.equal(packageJson.name, 'tenkit-single-app-runtime-tenants');
+    assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
+    assert.match(appVariant, /export const appVariant =/);
+    assert.match(appVariant, /slug: 'acme-app'/);
+    assert.match(appVariant, /runtimeTenantAccess/);
+    assert.doesNotMatch(appVariant, /appVariants|defaultAppVariantId/);
+    assert.match(runtimeTenants, /runtimeTenantId: 100/);
+    assert.match(resolver, /validateRuntimeTenantAccess/);
+    assert.match(resolver, /const extra: ResolvedAppVariantConfig\['extra'\]/);
+    assert.match(resolver, /runtimeTenantAccess,/);
+    assert.doesNotMatch(resolver, /runtimeTenants:/);
+    assert.match(tenkitCli, /command\('build'\)/);
+    assert.match(tenkitCli, /command\('reset'\)/);
+    assert.match(tenkitCli, /command\('doctor'\)/);
+    assert.doesNotMatch(tenkitCli, /command\('setup'\)/);
+    assert.doesNotMatch(tenkitCliRuntime, /variants\.length|appVariants|defaultAppVariantId/);
+    assert.doesNotMatch(tenkitCliRuntime, /Select an App Variant:/);
+    assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
+    assert.ok(result.filesWritten.includes('src/app/settings.tsx'));
+    assert.equal(result.filesWritten.includes('src/app/explore.tsx'), false);
+    assert.ok(result.filesWritten.includes('src/constants/design-tokens.ts'));
+    assert.ok(result.filesWritten.includes('src/constants/globals.ts'));
+    assert.ok(result.filesWritten.includes('src/constants/app-variant.ts'));
+    assert.equal(result.filesWritten.includes('src/constants/app-variants.ts'), false);
+    assert.ok(result.filesWritten.includes('src/hooks/use-active-runtime-tenant.ts'));
+    assert.ok(result.filesWritten.includes('src/storage/app-preferences.ts'));
+    assert.ok(result.filesWritten.includes('assets/acme-app/icons/icon.png'));
+    assert.equal(result.filesWritten.includes('assets/first-tenant/icons/icon.png'), false);
+    assert.equal(result.filesWritten.includes('assets/second-tenant/icons/icon.png'), false);
+    assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
     assert.equal(await exists(join(workspaceRoot, 'package.json')), false);
   } finally {
     await fs.remove(tempRoot);

@@ -3,25 +3,27 @@ import { spawn } from 'node:child_process';
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
 
-import { generateWhiteLabelAppsProject } from './generator';
+import { generateProject, type GenerateProjectConfig } from './generator';
 import { writeProject, type WriteProjectOverwriteMode, type WriteProjectResult } from './writer';
 
 export type GeneratedProjectGitMode = false | 'init' | 'commit';
 
-export type RunWhiteLabelGenerationProofOptions = {
+export type RunGenerationProofOptions = GenerateProjectConfig & {
   targetDir: string;
   force?: boolean;
   git?: boolean | GeneratedProjectGitMode;
-  projectName?: string;
-  packageName?: string;
   workspaceRoot?: string;
 };
 
-export type RunWhiteLabelGenerationProofResult = WriteProjectResult & {
+export type RunWhiteLabelGenerationProofOptions = Omit<RunGenerationProofOptions, 'setupType'>;
+
+export type RunGenerationProofResult = WriteProjectResult & {
   gitInitialized: boolean;
   gitCommitted: boolean;
   gitSkippedBecauseTargetWasNotEmpty: boolean;
 };
+
+export type RunWhiteLabelGenerationProofResult = RunGenerationProofResult;
 
 function runGitInit(cwd: string): Promise<void> {
   return runGit(cwd, ['init']);
@@ -46,9 +48,7 @@ function runGit(cwd: string, args: string[]): Promise<void> {
   });
 }
 
-function normalizeGitMode(
-  git: RunWhiteLabelGenerationProofOptions['git'],
-): GeneratedProjectGitMode {
+function normalizeGitMode(git: RunGenerationProofOptions['git']): GeneratedProjectGitMode {
   if (git === false) {
     return false;
   }
@@ -101,11 +101,11 @@ export async function tryCommitInitialGitSnapshot(targetDir: string): Promise<bo
   }
 }
 
-export async function runWhiteLabelGenerationProof(
-  options: RunWhiteLabelGenerationProofOptions,
-): Promise<RunWhiteLabelGenerationProofResult> {
-  const tree = generateWhiteLabelAppsProject({
-    setupType: 'white-label-apps',
+export async function runGenerationProof(
+  options: RunGenerationProofOptions,
+): Promise<RunGenerationProofResult> {
+  const tree = generateProject({
+    setupType: options.setupType,
     projectName: options.projectName,
     packageName: options.packageName,
   });
@@ -137,4 +137,13 @@ export async function runWhiteLabelGenerationProof(
     gitCommitted,
     gitSkippedBecauseTargetWasNotEmpty,
   };
+}
+
+export async function runWhiteLabelGenerationProof(
+  options: RunWhiteLabelGenerationProofOptions,
+): Promise<RunWhiteLabelGenerationProofResult> {
+  return runGenerationProof({
+    ...options,
+    setupType: 'white-label-apps',
+  });
 }

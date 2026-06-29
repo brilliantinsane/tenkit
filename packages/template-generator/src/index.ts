@@ -1,9 +1,11 @@
 export {
   generateProject,
+  generateSingleAppRuntimeTenantsProject,
   generateWhiteLabelAppsProject,
   SUPPORTED_GENERATED_SETUP_TYPES,
   type GenerateProjectConfig,
   type GeneratedSetupType,
+  type SingleAppRuntimeTenantsProjectConfig,
   type WhiteLabelAppsProjectConfig,
 } from './generator';
 export { readTemplateTree, type TemplateContext } from './template-reader';

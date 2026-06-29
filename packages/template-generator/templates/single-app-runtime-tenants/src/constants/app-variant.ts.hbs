@@ -1,0 +1,22 @@
+import { type AppVariant } from '@/types/app-variant';
+
+export const appVariant = {
+  appVariantId: 1,
+  slug: 'acme-app',
+  name: 'Acme App',
+  version: '1.0.0',
+  scheme: 'acmeapp',
+  bundleIdentifier: 'com.example.acmeapp',
+  packageName: 'com.example.acmeapp',
+  theme: {
+    accent: '#eb2556',
+  },
+  eas: {
+    projectId: '',
+  },
+  runtimeTenantAccess: {
+    selectionMode: 'selectable',
+    defaultRuntimeTenantId: 100,
+    allowedRuntimeTenantIds: [100, 101, 102],
+  },
+} as const satisfies AppVariant;
