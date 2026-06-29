@@ -14,8 +14,10 @@
     "typecheck": "tsc --noEmit --pretty false",
     "generate:proof": "tsx scripts/generate-proof.ts",
     "generate:white-label-proof": "tsx scripts/generate-white-label-proof.ts",
+    "generate:generic-with-standalone-app-variants-proof": "tsx scripts/generate-proof.ts --setup-type generic-with-standalone-app-variants",
     "generate:single-app-runtime-tenants-proof": "tsx scripts/generate-proof.ts --setup-type single-app-runtime-tenants",
     "verify:generated-app": "tsx scripts/verify-generated-app.ts",
+    "verify:generated-generic-with-standalone-app-variants": "tsx scripts/verify-generated-app.ts --setup-type generic-with-standalone-app-variants",
     "verify:generated-single-app-runtime-tenants": "tsx scripts/verify-generated-app.ts --setup-type single-app-runtime-tenants",
     "verify:generated-white-label": "tsx scripts/verify-generated-white-label-app.ts"
   },

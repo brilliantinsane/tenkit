@@ -57,12 +57,23 @@ async function configureTestGitIdentity(cwd: string): Promise<void> {
   await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd });
 }
 
-async function runGeneratedCommand(cwd: string, command: string, args: string[]) {
-  const commandText = [command, ...args].join(' ');
+async function runGeneratedCommand(
+  cwd: string,
+  command: string,
+  args: string[],
+  env?: Record<string, string>,
+) {
+  const envText = env
+    ? `${Object.entries(env)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ')} `
+    : '';
+  const commandText = `${envText}${[command, ...args].join(' ')}`;
 
   try {
     await execFileAsync(command, args, {
       cwd,
+      env: env ? { ...process.env, ...env } : process.env,
       maxBuffer: 10 * 1024 * 1024,
     });
   } catch (error) {
@@ -281,6 +292,132 @@ async function verifySingleAppRuntimeTenants(targetDir: string) {
   );
 }
 
+async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
+  const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
+  const readme = await readText(join(targetDir, 'README.md'));
+  const envExample = await readText(join(targetDir, '.env.example'));
+  const appConfig = await readText(join(targetDir, 'app.config.ts'));
+  const appVariantTypes = await readText(join(targetDir, 'src/types/app-variant.ts'));
+  const runtimeTenantTypes = await readText(join(targetDir, 'src/types/runtime-tenant.ts'));
+  const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+  const runtimeTenants = await readText(join(targetDir, 'src/constants/runtime-tenants.ts'));
+  const appVariantHook = await readText(join(targetDir, 'src/hooks/use-app-variant-config.ts'));
+  const activeRuntimeTenantHook = await readText(
+    join(targetDir, 'src/hooks/use-active-runtime-tenant.ts'),
+  );
+  const appPreferences = await readText(join(targetDir, 'src/storage/app-preferences.ts'));
+  const resolver = await readText(join(targetDir, 'src/lib/resolve-app-variant-config.ts'));
+  const runtimeTenantAccess = await readText(join(targetDir, 'src/lib/runtime-tenant-access.ts'));
+  const themedText = await readText(join(targetDir, 'src/components/themed-text.tsx'));
+  const themedView = await readText(join(targetDir, 'src/components/themed-view.tsx'));
+  const tenkitCli = await readText(join(targetDir, 'scripts/tenkit-cli.ts'));
+  const tenkitCliCore = await readText(join(targetDir, 'scripts/tenkit-cli-core.ts'));
+  const tenkitCliRuntime = await readText(join(targetDir, 'scripts/tenkit-cli-runtime.ts'));
+  const app = await readText(join(targetDir, 'src/app/index.tsx'));
+  const settings = await readText(join(targetDir, 'src/app/settings.tsx'));
+
+  assert.equal(packageJson.name, 'tenkit-generic-with-standalone-app-variants');
+  assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
+  assert.equal(packageJson.scripts?.typecheck, 'tsc --noEmit --pretty false');
+  assert.equal(packageJson.dependencies?.['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies?.['react-native-mmkv'], '^4.3.1');
+  assert.equal(packageJson.dependencies?.expo, '~56.0.12');
+  assert.match(readme, /Generic With Standalone App Variants project/);
+  assert.match(readme, /third proof Template/);
+  assert.match(readme, /Generated App Local CLI/);
+  assert.match(envExample, /APP_VARIANT_SLUG=atlas-network/);
+  assert.match(appConfig, /APP_VARIANT_SLUG/);
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.match(appVariantTypes, /export type GenericAppVariant/);
+  assert.match(appVariantTypes, /export type StandaloneAppVariant/);
+  assert.match(runtimeTenantTypes, /export type RuntimeTenant =/);
+  assert.match(appVariants, /role: 'generic'/);
+  assert.match(appVariants, /slug: 'atlas-network'/);
+  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
+  assert.match(appVariants, /role: 'standalone'/);
+  assert.match(appVariants, /slug: 'west-studio'/);
+  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
+  assert.match(runtimeTenants, /name: 'North Studio'/);
+  assert.match(runtimeTenants, /name: 'South Studio'/);
+  assert.match(runtimeTenants, /name: 'East Studio'/);
+  assert.match(runtimeTenants, /name: 'West Studio'/);
+  assert.match(runtimeTenants, /satisfies readonly RuntimeTenant\[\]/);
+  assert.match(appVariantHook, /Constants\.expoConfig\?\.extra as AppVariantConfigExtra/);
+  assert.match(appVariantHook, /standaloneRuntimeTenantId/);
+  assert.match(resolver, /validateRuntimeTenantAccess/);
+  assert.match(resolver, /const extra: ResolvedAppVariantConfig\['extra'\]/);
+  assert.match(resolver, /runtimeTenantAccess: resolvedAppVariant\.runtimeTenantAccess/);
+  assert.match(
+    resolver,
+    /standaloneRuntimeTenantId: resolvedAppVariant\.standaloneRuntimeTenantId/,
+  );
+  assert.doesNotMatch(resolver, /runtimeTenants:/);
+  assert.match(runtimeTenantAccess, /resolveDefaultRuntimeTenant/);
+  assert.match(runtimeTenantAccess, /resolveSelectableRuntimeTenants/);
+  assert.match(runtimeTenantAccess, /normalizeCapabilityProfile/);
+  assert.match(runtimeTenantAccess, /Duplicate Runtime Tenant ID/);
+  assert.match(runtimeTenantAccess, /Duplicate standalone Runtime Tenant assignment/);
+  assert.match(runtimeTenantAccess, /must not appear in Generic App Variant Runtime Tenant Access/);
+  assert.match(activeRuntimeTenantHook, /useActiveRuntimeTenant/);
+  assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+  assert.match(
+    activeRuntimeTenantHook,
+    /hasRuntimeTenantSelection: appVariant\.role === 'generic'/,
+  );
+  assert.match(appPreferences, /createMMKV/);
+  assert.match(themedText, /@\/constants\/design-tokens/);
+  assert.match(themedText, /linkPrimary/);
+  assert.match(themedView, /type\?: ThemeColor/);
+  assert.match(tenkitCli, /command\('build'\)/);
+  assert.match(tenkitCli, /command\('reset'\)/);
+  assert.match(tenkitCli, /command\('doctor'\)/);
+  assert.doesNotMatch(tenkitCli, /command\('setup'\)/);
+  assert.match(tenkitCliCore, /APP_VARIANT_ENVIRONMENTS/);
+  assert.match(tenkitCliRuntime, /Select an App Variant:/);
+  assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
+  assert.match(app, /Active Runtime Tenant/);
+  assert.match(app, /Active Runtime Tenant ID/);
+  assert.match(app, /Atlas Network can select North, South, and East Studio/);
+  assert.match(settings, /Picker/);
+  assert.match(settings, /hasRuntimeTenantSelection/);
+  assert.equal(await exists(join(targetDir, 'src/app/settings.tsx')), true);
+  assert.equal(await exists(join(targetDir, 'src/app/explore.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/app-variants.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/constants/app-variant.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/runtime-tenants.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/storage/app-preferences.ts')), true);
+  assert.equal(await exists(join(targetDir, 'assets/atlas-network/icons/icon.png')), true);
+  assert.equal(await exists(join(targetDir, 'assets/west-studio/icons/icon.png')), true);
+  assert.equal(await exists(join(targetDir, 'assets/atlas-network/app.icon/icon.json')), true);
+  assert.equal(await exists(join(targetDir, 'assets/west-studio/app.icon/icon.json')), true);
+  assert.equal(await exists(join(targetDir, 'assets/north-studio/icons/icon.png')), false);
+  assert.equal(await exists(join(targetDir, 'assets/south-studio/icons/icon.png')), false);
+  assert.equal(await exists(join(targetDir, 'assets/east-studio/icons/icon.png')), false);
+  assertNoStandaloneGeneratedSourceLeaks(
+    [
+      appConfig,
+      appVariantTypes,
+      runtimeTenantTypes,
+      appVariants,
+      runtimeTenants,
+      activeRuntimeTenantHook,
+      appPreferences,
+      appVariantHook,
+      resolver,
+      runtimeTenantAccess,
+      themedText,
+      themedView,
+      tenkitCli,
+      tenkitCliCore,
+      tenkitCliRuntime,
+      app,
+      settings,
+    ].join('\n'),
+  );
+}
+
 async function main() {
   const setupType = parseSetupType(process.argv.slice(2));
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
@@ -300,13 +437,21 @@ async function main() {
 
     if (setupType === 'white-label-apps') {
       await verifyWhiteLabelApps(targetDir);
-    } else {
+    } else if (setupType === 'single-app-runtime-tenants') {
       await verifySingleAppRuntimeTenants(targetDir);
+    } else {
+      await verifyGenericWithStandaloneAppVariants(targetDir);
     }
 
     await runGeneratedCommand(targetDir, 'pnpm', ['install']);
     await runGeneratedCommand(targetDir, 'pnpm', ['run', 'typecheck']);
     await runGeneratedCommand(targetDir, 'pnpm', ['expo:config']);
+
+    if (setupType === 'generic-with-standalone-app-variants') {
+      await runGeneratedCommand(targetDir, 'pnpm', ['expo:config'], {
+        APP_VARIANT_SLUG: 'west-studio',
+      });
+    }
 
     console.log(`Verified generated ${setupType} Expo app.`);
   } finally {

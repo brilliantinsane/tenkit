@@ -23,7 +23,7 @@ Instead of copying the same Expo project every time a new customer, venue, brand
 - Switch app variants locally with `APP_VARIANT_SLUG`.
 - Prepare clean native projects with one Playground CLI command: `pnpm tenkit build`.
 - Support white-label apps, single-app runtime tenants, and hybrid generic-plus-standalone setups.
-- Generate and verify a private White Label Apps Template proof from owned source material.
+- Generate and verify private proof Templates from owned source material.
 - Expose public runtime bootstrap data through `extra.activeSetup`.
 - Validate setup behavior with focused tests around app variants, runtime tenants, CLI planning, Expo config, and example conformance.
 
@@ -57,11 +57,11 @@ Tenkit is not a backend multi-tenancy system, billing/auth framework, customer a
 
 Tenkit calls the installed model the **Active Setup**. A cloned project has exactly one Active Setup at a time.
 
-| Setup Model                              | Use When                                                                                 | Status               |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------- |
-| **White Label Apps**                     | Every brand, customer, or venue ships as its own native app.                             | Default Active Setup |
-| **Single App Runtime Tenants**           | One native app opens multiple runtime business contexts.                                 | Local Scaffold       |
-| **Generic With Standalone App Variants** | One generic app opens selected tenants, while some tenants also ship as standalone apps. | Local Scaffold       |
+| Setup Model                              | Use When                                                                                 | Status                               |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------ |
+| **White Label Apps**                     | Every brand, customer, or venue ships as its own native app.                             | Default Active Setup, proof Template |
+| **Single App Runtime Tenants**           | One native app opens multiple runtime business contexts.                                 | Local Scaffold, proof Template       |
+| **Generic With Standalone App Variants** | One generic app opens selected tenants, while some tenants also ship as standalone apps. | Local Scaffold, final proof Template |
 
 ## How It Works
 
@@ -185,18 +185,22 @@ pnpm tenkit doctor
 
 The `tenkit` command is Playground-only local tooling for Scaffold, Build Preparation, reset, and diagnostics. It is not a public CLI package and does not provide a public `create` or `init` flow.
 
-### Generate the Template proof
+### Generate Template proofs
 
-The private Template generator can render a fresh White Label Apps Expo project into a separate folder. This is proof tooling for the future public create flow, not the public CLI surface. Future Templates should use this local proof harness until the real npm-published CLI exists; after that, local verification should exercise the actual CLI from the workspace or a packed package. The real CLI should own the fuller create-flow behavior, including prompts, target-folder conflict handling, dependency installation, and initial Git snapshot policy.
+The private Template generator can render fresh Expo projects into separate folders for the three current proof Templates. This is proof tooling for the future public create flow, not the public CLI surface. The Generic With Standalone App Variants Template is the final proof Template before the real public CLI phase. Repeated Generated App Local CLI behavior may be centralized later if these proof Templates reveal a stable shared contract. The real CLI should own the fuller create-flow behavior, including prompts, target-folder conflict handling, dependency installation, and initial Git snapshot policy.
 
 ```bash
 pnpm generate:white-label-proof -- --target ../tenkit-white-label-proof
+pnpm generate:single-app-runtime-tenants-proof -- --target ../tenkit-single-app-runtime-tenants-proof
+pnpm generate:generic-with-standalone-app-variants-proof -- --target ../tenkit-generic-with-standalone-proof
 ```
 
 To run the full generated-output proof, including generated project shape checks, dependency installation, TypeScript, and Expo config evaluation:
 
 ```bash
 pnpm verify:generated-white-label
+pnpm verify:generated-single-app-runtime-tenants
+pnpm verify:generated-generic-with-standalone-app-variants
 ```
 
 ## Current Default Setup

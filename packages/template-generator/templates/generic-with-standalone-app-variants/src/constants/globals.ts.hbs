@@ -1,0 +1,26 @@
+import { Platform, StyleSheet } from 'react-native';
+
+export const isWeb = Platform.OS === 'web';
+export const isAndroid = Platform.OS === 'android';
+export const isIos = Platform.OS === 'ios';
+
+export const globalStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centeredContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  textCenter: {
+    textAlign: 'center',
+  },
+});

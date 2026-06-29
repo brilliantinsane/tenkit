@@ -1,0 +1,69 @@
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { Command } from 'commander';
+
+import { EAS_CLI_MISSING_MESSAGE } from './tenkit-cli-core';
+import { runBuild, runReset } from './tenkit-cli-runtime';
+
+export function createProgram() {
+  const program = new Command();
+
+  program
+    .name('tenkit')
+    .description('Tenkit App Variant build workflow commands')
+    .showHelpAfterError()
+    .showSuggestionAfterError();
+
+  program
+    .command('build')
+    .description('Prepare native projects for a selected App Variant and App Variant Environment')
+    .option('--slug <slug>', 'App Variant Slug')
+    .option(
+      '--env <app-variant-environment>',
+      'App Variant Environment: development, preview, or production',
+    )
+    .option('--platform <platform>', 'Platform: ios, android, or both')
+    .option('--ios', 'Prepare iOS')
+    .option('--android', 'Prepare Android')
+    .option('--both', 'Prepare both platforms')
+    .action(async (options) => {
+      await runBuild(options);
+    });
+
+  program
+    .command('reset')
+    .description('Reset native projects to the default App Variant')
+    .action(async () => {
+      await runReset();
+    });
+
+  program
+    .command('doctor')
+    .description('Show Tenkit CLI diagnostic messages')
+    .action(() => {
+      console.log(EAS_CLI_MISSING_MESSAGE);
+    });
+
+  return program;
+}
+
+function isEntrypoint() {
+  return process.argv[1] ? resolve(process.argv[1]) === fileURLToPath(import.meta.url) : false;
+}
+
+if (isEntrypoint()) {
+  createProgram()
+    .parseAsync()
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (message.includes('User force closed the prompt') || message.includes('Cancelled')) {
+        console.error('Cancelled.');
+        process.exit(130);
+      }
+
+      console.error(message);
+      process.exit(1);
+    });
+}

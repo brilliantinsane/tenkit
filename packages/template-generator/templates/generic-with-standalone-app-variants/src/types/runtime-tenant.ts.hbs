@@ -1,0 +1,29 @@
+export type RuntimeTenantId = number;
+
+export type RuntimeTenantAccess = {
+  selectionMode: 'selectable';
+  defaultRuntimeTenantId: RuntimeTenantId;
+  allowedRuntimeTenantIds: readonly RuntimeTenantId[];
+};
+
+export type CapabilityKey = 'featureA' | 'featureB' | 'featureC';
+
+export type RawCapabilityProfile = Partial<Record<CapabilityKey, boolean>>;
+
+export type NormalizedCapabilityProfile = {
+  featureA: boolean;
+  featureB: boolean;
+  featureC: boolean;
+};
+
+export type RuntimeTenant = {
+  runtimeTenantId: RuntimeTenantId;
+  name: string;
+  capabilities?: RawCapabilityProfile;
+};
+
+export type NormalizedRuntimeTenant = {
+  runtimeTenantId: RuntimeTenantId;
+  name: string;
+  capabilities: NormalizedCapabilityProfile;
+};

@@ -1,0 +1,93 @@
+# {{projectName}}
+
+A Tenkit Generic With Standalone App Variants project generated for Expo SDK 56.
+
+## Highlights
+
+- Atlas Network is the Generic App Variant.
+- West Studio is a Standalone App Variant.
+- Runtime Tenant records live in generated source data.
+- Atlas Network can select North Studio, South Studio, and East Studio at runtime.
+- West Studio opens West Studio directly and does not show Runtime Tenant selection.
+- `APP_VARIANT_SLUG` selects the App Variant for Expo config and Build Preparation.
+- The Generated App Local CLI is for this project only. It is separate from Tenkit's future public project-creation CLI.
+
+## Get Started
+
+```bash
+pnpm install
+pnpm start
+```
+
+Inspect the public Expo runtime config:
+
+```bash
+pnpm expo:config
+APP_VARIANT_SLUG=west-studio pnpm expo:config
+```
+
+Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/constants/runtime-tenants.ts`.
+
+## Select an App Variant
+
+App Variant native identity is selected with `APP_VARIANT_SLUG`:
+
+```bash
+APP_VARIANT_SLUG=atlas-network pnpm expo:config
+APP_VARIANT_SLUG=west-studio pnpm expo:config
+```
+
+The generated App Variant data lives in `src/constants/app-variants.ts`.
+
+Native assets live per App Variant:
+
+```text
+assets/atlas-network/
+assets/west-studio/
+```
+
+Runtime Tenants do not own native asset folders.
+
+## Build Preparation
+
+Set `EXPO_OWNER` in `src/constants/project-config.ts`, set each App Variant's EAS Project ID in `src/constants/app-variants.ts`, then run:
+
+```bash
+pnpm tenkit build
+```
+
+For CI or non-interactive use:
+
+```bash
+pnpm tenkit build --slug atlas-network --env development --platform ios
+pnpm tenkit build --slug west-studio --env production --android
+```
+
+Build Preparation prompts for App Variant, App Variant Environment, and platform. It never prompts for Runtime Tenant selection.
+
+Reset native build state to the default Generic App Variant:
+
+```bash
+pnpm tenkit reset
+```
+
+Show local diagnostics:
+
+```bash
+pnpm tenkit doctor
+```
+
+## Runtime Tenant Data
+
+Runtime Tenant selection is runtime behavior.
+
+- Atlas Network exposes Runtime Tenant Access for North Studio, South Studio, and East Studio.
+- West Studio has a direct Runtime Tenant bootstrap for West Studio.
+- West Studio remains a Runtime Tenant record as well as an App Variant name.
+- The Standalone Runtime Tenant is excluded from Atlas Network selection.
+
+The validation logic lives in `src/lib/runtime-tenant-access.ts` and rejects broken local-source relationships such as duplicate Runtime Tenant IDs, missing references, duplicate standalone assignments, and Standalone Runtime Tenants appearing in the Generic App Variant access list.
+
+## Proof Template Status
+
+This generated project is the third proof Template. It completes the current proof Template phase before Tenkit's future public CLI work. Repeated Generated App Local CLI behavior may be centralized later if the proof Templates reveal a stable shared contract.

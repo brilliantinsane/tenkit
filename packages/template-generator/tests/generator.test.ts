@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  generateGenericWithStandaloneAppVariantsProject,
   generateProject,
   generateSingleAppRuntimeTenantsProject,
   generateWhiteLabelAppsProject,
@@ -75,6 +76,16 @@ test('generic Template generation dispatches by Setup Type', () => {
       projectName: 'Example App',
     }),
   );
+  assert.deepEqual(
+    generateProject({
+      setupType: 'generic-with-standalone-app-variants',
+      projectName: 'Example App',
+    }),
+    generateGenericWithStandaloneAppVariantsProject({
+      setupType: 'generic-with-standalone-app-variants',
+      projectName: 'Example App',
+    }),
+  );
 });
 
 test('generic Template generation rejects unsupported Setup Types', () => {
@@ -83,7 +94,7 @@ test('generic Template generation rejects unsupported Setup Types', () => {
       generateProject({
         setupType: 'unsupported-setup',
       } as unknown as Parameters<typeof generateProject>[0]),
-    /Unsupported generated Setup Type "unsupported-setup".*white-label-apps, single-app-runtime-tenants/,
+    /Unsupported generated Setup Type "unsupported-setup".*white-label-apps, single-app-runtime-tenants, generic-with-standalone-app-variants/,
   );
 });
 
@@ -432,4 +443,116 @@ test('Single App Runtime Tenants generated tree is standalone selected output', 
   assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
   assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.doesNotMatch(generatedSource, /generic-with-standalone-app-variants/);
+});
+
+test('Generic With Standalone App Variants Template generates App Variant assets and Runtime Tenant access', () => {
+  const tree = generateProject({
+    setupType: 'generic-with-standalone-app-variants',
+    projectName: 'Custom Generic App',
+    packageName: 'custom-generic-app',
+  });
+  const paths = tree.map((file) => file.path);
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    name: string;
+    dependencies: Record<string, string>;
+    scripts: Record<string, string>;
+  };
+  const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');
+  const runtimeTenants = readVirtualFile(tree, 'src/constants/runtime-tenants.ts');
+  const runtimeTenantAccess = readVirtualFile(tree, 'src/lib/runtime-tenant-access.ts');
+  const appVariantTypes = readVirtualFile(tree, 'src/types/app-variant.ts');
+  const resolver = readVirtualFile(tree, 'src/lib/resolve-app-variant-config.ts');
+  const appConfig = readVirtualFile(tree, 'app.config.ts');
+  const activeRuntimeTenantHook = readVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts');
+  const tenkitCli = readVirtualFile(tree, 'scripts/tenkit-cli.ts');
+  const tenkitCliCore = readVirtualFile(tree, 'scripts/tenkit-cli-core.ts');
+  const tenkitCliRuntime = readVirtualFile(tree, 'scripts/tenkit-cli-runtime.ts');
+  const readme = readVirtualFile(tree, 'README.md');
+
+  assert.equal(packageJson.name, 'custom-generic-app');
+  assert.equal(packageJson.dependencies['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies['react-native-mmkv'], '^4.3.1');
+  assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
+  assert.ok(paths.includes('src/app/settings.tsx'));
+  assert.ok(paths.includes('src/constants/app-variants.ts'));
+  assert.equal(paths.includes('src/constants/app-variant.ts'), false);
+  assert.ok(paths.includes('src/constants/runtime-tenants.ts'));
+  assert.ok(paths.includes('src/lib/runtime-tenant-access.ts'));
+  assert.ok(paths.includes('assets/atlas-network/icons/icon.png'));
+  assert.ok(paths.includes('assets/west-studio/icons/icon.png'));
+  assert.ok(paths.includes('assets/atlas-network/app.icon/icon.json'));
+  assert.ok(paths.includes('assets/west-studio/app.icon/icon.json'));
+  assert.equal(
+    paths.some((path) => path.startsWith('assets/north-studio/')),
+    false,
+  );
+  assert.equal(
+    paths.some((path) => path.startsWith('assets/south-studio/')),
+    false,
+  );
+  assert.equal(
+    paths.some((path) => path.startsWith('assets/east-studio/')),
+    false,
+  );
+  assert.equal(readVirtualBinary(tree, 'assets/atlas-network/icons/icon.png').byteLength > 0, true);
+  assert.deepEqual(
+    readVirtualBinary(tree, 'assets/atlas-network/icons/icon.png'),
+    readVirtualBinary(tree, 'assets/west-studio/icons/icon.png'),
+  );
+  assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=atlas-network/);
+  assert.match(appVariants, /role: 'generic'/);
+  assert.match(appVariants, /slug: 'atlas-network'/);
+  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /role: 'standalone'/);
+  assert.match(appVariants, /slug: 'west-studio'/);
+  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
+  assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
+  assert.match(runtimeTenants, /name: 'North Studio'/);
+  assert.match(runtimeTenants, /name: 'South Studio'/);
+  assert.match(runtimeTenants, /name: 'East Studio'/);
+  assert.match(runtimeTenants, /name: 'West Studio'/);
+  assert.match(appVariantTypes, /export type GenericAppVariant/);
+  assert.match(appVariantTypes, /export type StandaloneAppVariant/);
+  assert.match(resolver, /runtimeTenantAccess: resolvedAppVariant\.runtimeTenantAccess/);
+  assert.match(
+    resolver,
+    /standaloneRuntimeTenantId: resolvedAppVariant\.standaloneRuntimeTenantId/,
+  );
+  assert.doesNotMatch(resolver, /runtimeTenants:/);
+  assert.match(appConfig, /APP_VARIANT_SLUG/);
+  assert.match(runtimeTenantAccess, /Duplicate Runtime Tenant ID/);
+  assert.match(runtimeTenantAccess, /Duplicate standalone Runtime Tenant assignment/);
+  assert.match(runtimeTenantAccess, /must not appear in Generic App Variant Runtime Tenant Access/);
+  assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+  assert.match(
+    activeRuntimeTenantHook,
+    /hasRuntimeTenantSelection: appVariant\.role === 'generic'/,
+  );
+  assert.match(tenkitCli, /command\('build'\)/);
+  assert.match(tenkitCli, /command\('reset'\)/);
+  assert.match(tenkitCli, /command\('doctor'\)/);
+  assert.doesNotMatch(tenkitCli, /command\('setup'\)/);
+  assert.match(tenkitCliCore, /APP_VARIANT_ENVIRONMENTS/);
+  assert.match(tenkitCliRuntime, /Select an App Variant:/);
+  assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
+  assert.match(readme, /third proof Template/);
+  assert.match(readme, /future public project-creation CLI/);
+  assert.doesNotMatch(readme, /public create entrypoint|web builder|publishing/);
+});
+
+test('Generic With Standalone App Variants generated tree is standalone selected output', () => {
+  const tree = generateProject({ setupType: 'generic-with-standalone-app-variants' });
+  const generatedSource = tree
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+
+  assert.doesNotMatch(generatedSource, /apps\/playground/);
+  assert.doesNotMatch(generatedSource, /from ['"].*playground/);
+  assert.doesNotMatch(generatedSource, /defineGenericAppSetup/);
+  assert.doesNotMatch(generatedSource, /activeSetup|Active Setup/);
+  assert.doesNotMatch(generatedSource, /setupType|Setup Type/);
+  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
+  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
 });

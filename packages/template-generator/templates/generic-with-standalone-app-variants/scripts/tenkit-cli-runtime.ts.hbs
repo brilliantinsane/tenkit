@@ -1,0 +1,267 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { select } from '@inquirer/prompts';
+
+import { appVariants, defaultAppVariantId } from '../src/constants/app-variants';
+import { EXPO_OWNER } from '../src/constants/project-config';
+import { type AppVariant } from '../src/types/app-variant';
+import {
+  APP_VARIANT_ENVIRONMENTS,
+  EAS_CLI_MISSING_MESSAGE,
+  type BuildFlags,
+  type CommandPlan,
+  planBuild,
+  planReset,
+} from './tenkit-cli-core';
+
+export type RuntimeDeps = {
+  ci: boolean;
+  expoToken?: string;
+  expoOwner?: string;
+  projectRoot?: string;
+  isEasInstalled: () => boolean;
+  isEasLoggedIn: () => boolean;
+  promptSelect: (input: PromptSelectInput) => Promise<string>;
+  runCommand: (command: CommandPlan) => void;
+  log: (message: string) => void;
+};
+
+type PromptSelectInput = {
+  message: string;
+  choices: { name: string; value: string }[];
+  defaultValue?: string;
+};
+
+export function createRuntimeDeps(): RuntimeDeps {
+  return {
+    ci: process.env.CI === 'true',
+    expoToken: process.env.EXPO_TOKEN,
+    projectRoot: process.cwd(),
+    isEasInstalled: () => spawnSync('eas', ['--version'], { stdio: 'ignore' }).status === 0,
+    isEasLoggedIn: () => spawnSync('eas', ['whoami'], { stdio: 'ignore' }).status === 0,
+    promptSelect: ({ message, choices, defaultValue }) =>
+      select({ message, choices, default: defaultValue, pageSize: 20 }),
+    runCommand: runCommandPlan,
+    log: console.log,
+  };
+}
+
+export function formatCommand(command: CommandPlan): string {
+  const env = command.env?.APP_VARIANT_SLUG
+    ? `APP_VARIANT_SLUG=${command.env.APP_VARIANT_SLUG} `
+    : '';
+
+  return `${env}${command.bin} ${command.args.join(' ')}`;
+}
+
+export function runCommandPlan(command: CommandPlan) {
+  const result = spawnSync(command.bin, command.args, {
+    stdio: 'inherit',
+    env: { ...process.env, ...command.env },
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Command failed: ${command.bin} ${command.args.join(' ')}`);
+  }
+}
+
+function assertEasAvailable(deps: RuntimeDeps) {
+  if (!deps.isEasInstalled()) {
+    throw new Error(EAS_CLI_MISSING_MESSAGE);
+  }
+}
+
+function ensureEasAuth(deps: RuntimeDeps) {
+  assertEasAvailable(deps);
+
+  if (deps.ci) {
+    if (!deps.expoToken) {
+      throw new Error('CI EAS commands require EXPO_TOKEN.');
+    }
+
+    return;
+  }
+
+  if (!deps.isEasLoggedIn()) {
+    deps.log('Before pulling env vars from EAS you need to log in.');
+    deps.runCommand({ bin: 'eas', args: ['login'] });
+  }
+}
+
+function isEasEnvPullCommand(command: CommandPlan) {
+  return command.bin === 'eas' && command.args[0] === 'env:pull';
+}
+
+function parseEnvFileValue(contents: string, key: string): string | undefined {
+  for (const line of contents.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const normalized = trimmed.startsWith('export ')
+      ? trimmed.slice('export '.length).trim()
+      : trimmed;
+    const separatorIndex = normalized.indexOf('=');
+
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const name = normalized.slice(0, separatorIndex).trim();
+
+    if (name !== key) {
+      continue;
+    }
+
+    const value = normalized.slice(separatorIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      return value.slice(1, -1);
+    }
+
+    return value;
+  }
+
+  return undefined;
+}
+
+function validatePulledEnvLocal(deps: RuntimeDeps, slug: string) {
+  const envPath = join(deps.projectRoot ?? process.cwd(), '.env.local');
+
+  if (!existsSync(envPath)) {
+    throw new Error(
+      '.env.local was not created after eas env:pull. This is an EAS CLI workflow error because build preparation passes --path .env.local explicitly.',
+    );
+  }
+
+  const slugValue = parseEnvFileValue(readFileSync(envPath, 'utf8'), 'APP_VARIANT_SLUG');
+
+  if (!slugValue) {
+    throw new Error(
+      `.env.local is missing APP_VARIANT_SLUG. Add APP_VARIANT_SLUG=${slug} to this App Variant's EAS environment variables before running build preparation.`,
+    );
+  }
+
+  if (slugValue !== slug) {
+    throw new Error(
+      `.env.local APP_VARIANT_SLUG "${slugValue}" does not match selected Slug "${slug}". Fix this App Variant's EAS environment variables before running build preparation.`,
+    );
+  }
+}
+
+function hasPlatformSelection(flags: BuildFlags) {
+  return Boolean(flags.platform || flags.ios || flags.android || flags.both);
+}
+
+async function promptForBuildFlags(flags: BuildFlags, deps: RuntimeDeps) {
+  if (deps.ci) {
+    return flags;
+  }
+
+  const variants: readonly AppVariant[] = appVariants;
+  const slug =
+    flags.slug ??
+    (variants.length === 1
+      ? variants[0].slug
+      : await deps.promptSelect({
+          message: 'Select an App Variant:',
+          choices: variants.map((variant) => ({
+            name: `${variant.name} (${variant.slug})`,
+            value: variant.slug,
+          })),
+          defaultValue: variants.find(
+            (variant) => variant.appVariantId === defaultAppVariantId,
+          )?.slug,
+        }));
+
+  const platform = hasPlatformSelection(flags)
+    ? flags.platform
+    : await deps.promptSelect({
+        message: 'Select a platform:',
+        choices: [
+          { name: 'both', value: 'both' },
+          { name: 'ios', value: 'ios' },
+          { name: 'android', value: 'android' },
+        ],
+        defaultValue: 'both',
+      });
+
+  const environment =
+    flags.env ??
+    (await deps.promptSelect({
+      message: 'Select an App Variant Environment:',
+      choices: APP_VARIANT_ENVIRONMENTS.map((environment) => ({
+        name: environment,
+        value: environment,
+      })),
+      defaultValue: 'development',
+    }));
+
+  return {
+    ...flags,
+    slug,
+    env: environment,
+    platform,
+  };
+}
+
+export async function runBuild(flags: BuildFlags, deps = createRuntimeDeps()) {
+  const resolvedFlags = await promptForBuildFlags(flags, deps);
+  const plan = planBuild({
+    flags: resolvedFlags,
+    context: {
+      ci: deps.ci,
+      expoToken: deps.expoToken,
+      expoOwner: deps.expoOwner ?? EXPO_OWNER,
+    },
+  });
+
+  deps.log('Preparing build');
+  deps.log(`App Variant: ${plan.appVariant.name} (${plan.appVariant.slug})`);
+  deps.log(`Environment: ${plan.environment}`);
+  deps.log(`Platform: ${plan.platform}`);
+
+  ensureEasAuth(deps);
+
+  for (const command of plan.commands) {
+    deps.log(`Running: ${formatCommand(command)}`);
+    deps.runCommand(command);
+
+    if (isEasEnvPullCommand(command)) {
+      validatePulledEnvLocal(deps, plan.appVariant.slug);
+    }
+  }
+}
+
+export async function runReset(deps = createRuntimeDeps()) {
+  const plan = planReset({
+    expoOwner: deps.expoOwner ?? EXPO_OWNER,
+  });
+
+  deps.log('Resetting build');
+  deps.log(`App Variant: ${plan.appVariant.name} (${plan.appVariant.slug})`);
+  deps.log(`Environment: ${plan.environment}`);
+  deps.log(`Platform: ${plan.platform}`);
+
+  ensureEasAuth(deps);
+
+  for (const command of plan.commands) {
+    deps.log(`Running: ${formatCommand(command)}`);
+    deps.runCommand(command);
+
+    if (isEasEnvPullCommand(command)) {
+      validatePulledEnvLocal(deps, plan.appVariant.slug);
+    }
+  }
+}
