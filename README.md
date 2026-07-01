@@ -3,6 +3,7 @@
 ![Tenkit banner](apps/playground/assets/hero.png)
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/create-tenkit"><img alt="version" src="https://shieldcn.dev/npm/create-tenkit.svg?variant=branded" /></a>
   <a href="https://github.com/brilliantinsane/tenkit"><img alt="badge" src="https://shieldcn.dev/github/brilliantinsane/tenkit/stars.svg?variant=branded&amp;font=geist-mono&amp;logo=github" /></a>
   <a href="https://x.com/brill_insane"><img alt="follow" src="https://shieldcn.dev/x/follow/brill_insane.svg?variant=branded&amp;font=geist" /></a>
 </p>

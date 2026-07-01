@@ -1,6 +1,6 @@
 {
   "name": "@tenkit/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Public Tenkit CLI implementation package.",
   "license": "MIT",
   "homepage": "https://github.com/brilliantinsane/tenkit#readme",

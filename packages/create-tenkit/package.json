@@ -1,6 +1,6 @@
 {
   "name": "create-tenkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Thin package-manager create entrypoint for Tenkit.",
   "license": "MIT",
   "homepage": "https://github.com/brilliantinsane/tenkit#readme",

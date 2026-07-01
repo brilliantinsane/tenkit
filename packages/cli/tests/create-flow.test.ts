@@ -559,7 +559,7 @@ describe('Commander contract', () => {
     await expect(program.parseAsync(['--version'], { from: 'user' })).rejects.toMatchObject({
       code: 'commander.version',
     });
-    expect(lines.join('\n')).toContain('0.1.0');
+    expect(lines.join('\n')).toContain('0.1.1');
   });
 
   test('rejects explicitly empty git mode from Commander options', async () => {
