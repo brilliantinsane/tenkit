@@ -35,7 +35,7 @@ The local tarball smoke installs the packed packages into a temporary runner and
 4. Smoke test the real npm package locally as a final operator check:
 
    ```bash
-   pnpm create tenkit@next -- --name smoke --setup runtime-tenants --yes --no-install --no-git
+   pnpm create tenkit@next --name smoke --setup runtime-tenants --yes --no-install --no-git
    ```
 
 5. Promote to `latest` only after the `next` package-runner path works.

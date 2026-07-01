@@ -36,7 +36,8 @@ async function readProjectName(
 
   const answer = await env.prompts.text({
     message: 'Project name',
-    initialValue: DEFAULT_PROJECT_NAME,
+    placeholder: DEFAULT_PROJECT_NAME,
+    defaultValue: DEFAULT_PROJECT_NAME,
     validate(value) {
       try {
         validateProjectName(value ?? '');

@@ -13,11 +13,16 @@
     "directory": "packages/create-tenkit"
   },
   "keywords": [
+    "app-variants",
     "cli",
     "create",
     "expo",
+    "expo-template",
+    "multi-tenant",
     "react-native",
-    "tenkit"
+    "runtime-tenants",
+    "tenkit",
+    "white-label"
   ],
   "type": "module",
   "bin": {

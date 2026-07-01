@@ -466,8 +466,9 @@ describe('interactive prompts', () => {
     expect(textPrompt).toHaveBeenCalledTimes(1);
     expect(textPrompt).toHaveBeenCalledWith(
       expect.objectContaining({
-        initialValue: DEFAULT_PROJECT_NAME,
+        defaultValue: DEFAULT_PROJECT_NAME,
         message: 'Project name',
+        placeholder: DEFAULT_PROJECT_NAME,
       }),
     );
     expect(setupPrompt).toHaveBeenCalledTimes(1);

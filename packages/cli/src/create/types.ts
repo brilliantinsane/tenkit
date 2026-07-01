@@ -23,7 +23,8 @@ export type CreateCommandOptions = {
 export type PromptAdapter = {
   text(options: {
     message: string;
-    initialValue: string;
+    placeholder: string;
+    defaultValue: string;
     validate(value: string | undefined): string | undefined;
   }): Promise<string | typeof PROMPT_CANCELLED>;
   select(options: {

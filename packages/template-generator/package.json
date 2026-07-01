@@ -13,11 +13,16 @@
     "directory": "packages/template-generator"
   },
   "keywords": [
+    "app-variants",
     "expo",
+    "expo-template",
+    "multi-tenant",
     "react-native",
+    "runtime-tenants",
     "tenkit",
     "template-generator",
-    "typescript"
+    "typescript",
+    "white-label"
   ],
   "type": "module",
   "exports": {
