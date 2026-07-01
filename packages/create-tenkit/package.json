@@ -1,6 +1,24 @@
 {
   "name": "create-tenkit",
   "version": "0.1.0",
+  "description": "Thin package-manager create entrypoint for Tenkit.",
+  "license": "MIT",
+  "homepage": "https://github.com/brilliantinsane/tenkit#readme",
+  "bugs": {
+    "url": "https://github.com/brilliantinsane/tenkit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brilliantinsane/tenkit.git",
+    "directory": "packages/create-tenkit"
+  },
+  "keywords": [
+    "cli",
+    "create",
+    "expo",
+    "react-native",
+    "tenkit"
+  ],
   "type": "module",
   "bin": {
     "create-tenkit": "./dist/index.mjs"
@@ -19,6 +37,13 @@
   },
   "dependencies": {
     "@tenkit/cli": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=22.14.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
