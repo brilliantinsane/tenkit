@@ -1,29 +1,22 @@
+import {
+  formatSupportedGeneratedSetupTypes,
+  type GeneratedSetupTypeDefinition,
+  getGeneratedSetupTypeDefinition,
+  normalizeGeneratedSetupType,
+} from './generated-setup-types';
 import { readTemplateTree, type TemplateContext } from './template-reader';
 import { mergeVirtualFileTrees, type VirtualFileTree } from './virtual-file-tree';
 
-export const SUPPORTED_PUBLIC_SETUP_SLUGS = [
-  'white-label',
-  'runtime-tenants',
-  'generic-standalone',
-] as const;
-
-export const SUPPORTED_GENERATED_SETUP_TYPE_IDS = [
-  'white-label-apps',
-  'single-app-runtime-tenants',
-  'generic-with-standalone-app-variants',
-] as const;
-
-export const SUPPORTED_GENERATED_SETUP_TYPES = SUPPORTED_GENERATED_SETUP_TYPE_IDS;
-
-export type PublicSetupSlug = (typeof SUPPORTED_PUBLIC_SETUP_SLUGS)[number];
-export type GeneratedSetupType = (typeof SUPPORTED_GENERATED_SETUP_TYPE_IDS)[number];
-export type GeneratedSetupTypeInput = PublicSetupSlug | GeneratedSetupType;
-
-const PUBLIC_SETUP_SLUG_TO_SETUP_TYPE = {
-  'white-label': 'white-label-apps',
-  'runtime-tenants': 'single-app-runtime-tenants',
-  'generic-standalone': 'generic-with-standalone-app-variants',
-} as const satisfies Record<PublicSetupSlug, GeneratedSetupType>;
+export {
+  formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedSetupType,
+  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
+  SUPPORTED_GENERATED_SETUP_TYPES,
+  SUPPORTED_PUBLIC_SETUP_SLUGS,
+  type GeneratedSetupType,
+  type GeneratedSetupTypeInput,
+  type PublicSetupSlug,
+} from './generated-setup-types';
 
 export type WhiteLabelAppsProjectConfig = {
   setupType: 'white-label' | 'white-label-apps';
@@ -48,34 +41,6 @@ export type GenerateProjectConfig =
   | SingleAppRuntimeTenantsProjectConfig
   | GenericWithStandaloneAppVariantsProjectConfig;
 
-const DEFAULT_WHITE_LABEL_PROJECT_NAME = 'Tenkit White Label App';
-const DEFAULT_WHITE_LABEL_PACKAGE_NAME = 'tenkit-white-label-app';
-const DEFAULT_RUNTIME_TENANTS_PROJECT_NAME = 'Tenkit Runtime Tenant App';
-const DEFAULT_RUNTIME_TENANTS_PACKAGE_NAME = 'tenkit-runtime-tenants';
-const DEFAULT_GENERIC_STANDALONE_PROJECT_NAME = 'Tenkit Generic + Standalone Apps';
-const DEFAULT_GENERIC_STANDALONE_PACKAGE_NAME = 'tenkit-generic-standalone';
-const WHITE_LABEL_APP_VARIANT_SLUGS = ['first-tenant', 'second-tenant'] as const;
-const SINGLE_APP_RUNTIME_TENANTS_APP_VARIANT_SLUGS = ['acme-app'] as const;
-const GENERIC_WITH_STANDALONE_APP_VARIANT_SLUGS = ['atlas-network', 'west-studio'] as const;
-
-export function formatSupportedGeneratedSetupTypes(): string {
-  return `public Setup slugs: ${SUPPORTED_PUBLIC_SETUP_SLUGS.join(', ')}; canonical Setup Type IDs: ${SUPPORTED_GENERATED_SETUP_TYPE_IDS.join(', ')}`;
-}
-
-export function normalizeGeneratedSetupType(setupType: string): GeneratedSetupType {
-  if (SUPPORTED_PUBLIC_SETUP_SLUGS.includes(setupType as PublicSetupSlug)) {
-    return PUBLIC_SETUP_SLUG_TO_SETUP_TYPE[setupType as PublicSetupSlug];
-  }
-
-  if (SUPPORTED_GENERATED_SETUP_TYPE_IDS.includes(setupType as GeneratedSetupType)) {
-    return setupType as GeneratedSetupType;
-  }
-
-  throw new Error(
-    `Unsupported generated Setup Type ${JSON.stringify(setupType)}. Expected ${formatSupportedGeneratedSetupTypes()}.`,
-  );
-}
-
 function normalizeName(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : fallback;
@@ -96,20 +61,19 @@ function normalizePackageName(value: string | undefined, fallback: string): stri
 function normalizeTemplateContext({
   projectName: rawProjectName,
   packageName: rawPackageName,
-  defaultProjectName,
-  defaultPackageName,
+  setupTypeDefinition,
 }: {
   projectName?: string;
   packageName?: string;
-  defaultProjectName: string;
-  defaultPackageName: string;
+  setupTypeDefinition: GeneratedSetupTypeDefinition;
 }): TemplateContext {
-  const projectName = normalizeName(rawProjectName, defaultProjectName);
+  const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
 
   return {
+    isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     projectName,
     projectNameStringLiteral: JSON.stringify(projectName),
-    packageName: normalizePackageName(rawPackageName, defaultPackageName),
+    packageName: normalizePackageName(rawPackageName, setupTypeDefinition.defaultPackageName),
   };
 }
 
@@ -142,17 +106,17 @@ export function generateWhiteLabelAppsProject(
     throw new Error('The Template generator currently supports only White Label Apps output.');
   }
 
+  const setupTypeDefinition = getGeneratedSetupTypeDefinition('white-label-apps');
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
-    defaultProjectName: DEFAULT_WHITE_LABEL_PROJECT_NAME,
-    defaultPackageName: DEFAULT_WHITE_LABEL_PACKAGE_NAME,
+    setupTypeDefinition,
   });
 
   return readProjectTemplateTree({
-    templatePath: 'white-label',
+    templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: WHITE_LABEL_APP_VARIANT_SLUGS,
+    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 
@@ -163,17 +127,17 @@ export function generateSingleAppRuntimeTenantsProject(
     throw new Error('The Template generator expected Single App Runtime Tenants output.');
   }
 
+  const setupTypeDefinition = getGeneratedSetupTypeDefinition('single-app-runtime-tenants');
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
-    defaultProjectName: DEFAULT_RUNTIME_TENANTS_PROJECT_NAME,
-    defaultPackageName: DEFAULT_RUNTIME_TENANTS_PACKAGE_NAME,
+    setupTypeDefinition,
   });
 
   return readProjectTemplateTree({
-    templatePath: 'runtime-tenants',
+    templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: SINGLE_APP_RUNTIME_TENANTS_APP_VARIANT_SLUGS,
+    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 
@@ -186,17 +150,19 @@ export function generateGenericWithStandaloneAppVariantsProject(
     throw new Error('The Template generator expected Generic With Standalone App Variants output.');
   }
 
+  const setupTypeDefinition = getGeneratedSetupTypeDefinition(
+    'generic-with-standalone-app-variants',
+  );
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
-    defaultProjectName: DEFAULT_GENERIC_STANDALONE_PROJECT_NAME,
-    defaultPackageName: DEFAULT_GENERIC_STANDALONE_PACKAGE_NAME,
+    setupTypeDefinition,
   });
 
   return readProjectTemplateTree({
-    templatePath: 'generic-standalone',
+    templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: GENERIC_WITH_STANDALONE_APP_VARIANT_SLUGS,
+    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 

@@ -1,10 +1,9 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
+import { assert, expect, test } from 'vitest';
 
 import {
   applySetupPlan,
@@ -153,21 +152,19 @@ test('non-interactive setup requires explicit setup type and confirmation', asyn
   const projectRoot = createProjectRoot();
 
   try {
-    await assert.rejects(
-      () =>
-        runSetup(
-          { setupType: 'single-app-runtime-tenants' },
-          {
-            ci: true,
-            projectRoot,
-            promptSelect: async () => 'single-app-runtime-tenants',
-            promptConfirm: async () => true,
-            log: () => {},
-            formatFiles: () => {},
-          },
-        ),
-      /Non-interactive setup requires --setup-type and --yes/,
-    );
+    await expect(
+      runSetup(
+        { setupType: 'single-app-runtime-tenants' },
+        {
+          ci: true,
+          projectRoot,
+          promptSelect: async () => 'single-app-runtime-tenants',
+          promptConfirm: async () => true,
+          log: () => {},
+          formatFiles: () => {},
+        },
+      ),
+    ).rejects.toThrow(/Non-interactive setup requires --setup-type and --yes/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -222,25 +219,23 @@ test('local --yes does not replace existing setup-owned targets without force', 
     mkdirSync(join(projectRoot, 'src/active-setup'), { recursive: true });
     writeFileSync(join(projectRoot, 'src/active-setup/manifest.ts'), 'existing setup');
 
-    await assert.rejects(
-      () =>
-        runSetup(
-          { setupType: 'single-app-runtime-tenants', yes: true },
-          {
-            ci: false,
-            projectRoot,
-            promptSelect: async () => {
-              throw new Error('explicit setup type should not prompt for setup selection');
-            },
-            promptConfirm: async () => {
-              throw new Error('--yes should not prompt for confirmation');
-            },
-            log: () => {},
-            formatFiles: () => {},
+    await expect(
+      runSetup(
+        { setupType: 'single-app-runtime-tenants', yes: true },
+        {
+          ci: false,
+          projectRoot,
+          promptSelect: async () => {
+            throw new Error('explicit setup type should not prompt for setup selection');
           },
-        ),
-      /Re-run interactively or use --force/,
-    );
+          promptConfirm: async () => {
+            throw new Error('--yes should not prompt for confirmation');
+          },
+          log: () => {},
+          formatFiles: () => {},
+        },
+      ),
+    ).rejects.toThrow(/Re-run interactively or use --force/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

@@ -4,8 +4,15 @@ import { join } from 'node:path';
 
 import { select } from '@inquirer/prompts';
 
+{{#if isSingleAppRuntimeTenants}}
 import { appVariant } from '../src/constants/app-variant';
+{{else}}
+import { appVariants, defaultAppVariantId } from '../src/constants/app-variants';
+{{/if}}
 import { EXPO_OWNER } from '../src/constants/project-config';
+{{#unless isSingleAppRuntimeTenants}}
+import { type AppVariant } from '../src/types/app-variant';
+{{/unless}}
 import {
   APP_VARIANT_ENVIRONMENTS,
   EAS_CLI_MISSING_MESSAGE,
@@ -168,7 +175,25 @@ async function promptForBuildFlags(flags: BuildFlags, deps: RuntimeDeps) {
     return flags;
   }
 
+{{#if isSingleAppRuntimeTenants}}
   const slug = flags.slug ?? appVariant.slug;
+{{else}}
+  const variants: readonly AppVariant[] = appVariants;
+  const slug =
+    flags.slug ??
+    (variants.length === 1
+      ? variants[0].slug
+      : await deps.promptSelect({
+          message: 'Select an App Variant:',
+          choices: variants.map((variant) => ({
+            name: `${variant.name} (${variant.slug})`,
+            value: variant.slug,
+          })),
+          defaultValue: variants.find(
+            (variant) => variant.appVariantId === defaultAppVariantId,
+          )?.slug,
+        }));
+{{/if}}
 
   const platform = hasPlatformSelection(flags)
     ? flags.platform

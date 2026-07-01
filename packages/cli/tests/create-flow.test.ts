@@ -5,19 +5,17 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { isDirectCliRun } from '../src/adapters/workspace';
+import { createProgram } from '../src/commands/create';
+import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
+import { runCreateFlow } from '../src/create/run-create';
+import type { CreateFlowEnvironment, PromptAdapter } from '../src/create/types';
 import {
-  DEFAULT_PROJECT_NAME,
-  PROMPT_CANCELLED,
-  createProgram,
   derivePackageName,
   normalizeSetupInput,
-  runCreateFlow,
   validatePackageName,
   validateProjectName,
-  type CreateFlowEnvironment,
-  type PromptAdapter,
-} from '../src/index';
-import { isDirectCliRun } from '../src/create-flow';
+} from '../src/create/validation';
 
 const tempRoots: string[] = [];
 
@@ -170,7 +168,7 @@ describe('non-interactive create', () => {
     expect(await fs.pathExists(join(tempRoot, 'empty-setup-type-demo'))).toBe(false);
   });
 
-  test('generates Runtime Tenant App output through the Template generator', async () => {
+  test('generates Single App Runtime Tenants output through the Template generator', async () => {
     const tempRoot = await createTempRoot();
     const result = await runCreateFlow(
       {

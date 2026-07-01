@@ -1,10 +1,9 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import { assert, expect, test } from 'vitest';
 
 import { type CommandPlan } from '../scripts/tenkit-cli-core';
 import { runBuild, runReset } from '../scripts/tenkit-cli-runtime';
@@ -111,33 +110,31 @@ function recordCommandAndWritePulledEnv(
 test('build preparation with missing App Variant EAS Project ID fails before auth or commands', async () => {
   const events: string[] = [];
 
-  await assert.rejects(
-    () =>
-      runBuild(
-        { slug: 'first-tenant', env: 'development', platform: 'ios' },
-        {
-          ci: false,
-          expoToken: undefined,
-          activeSetup: withoutFirstProjectId(),
-          isEasInstalled: () => {
-            events.push('checked EAS install');
-            return true;
-          },
-          isEasLoggedIn: () => {
-            events.push('checked EAS login');
-            return true;
-          },
-          promptSelect: async () => {
-            throw new Error('complete flags should not prompt');
-          },
-          runCommand: (command) => {
-            events.push(command.bin);
-          },
-          log: (message) => events.push(message),
+  await expect(
+    runBuild(
+      { slug: 'first-tenant', env: 'development', platform: 'ios' },
+      {
+        ci: false,
+        expoToken: undefined,
+        activeSetup: withoutFirstProjectId(),
+        isEasInstalled: () => {
+          events.push('checked EAS install');
+          return true;
         },
-      ),
-    /App Variant "First Tenant" \(1\) is missing an EAS Project ID/,
-  );
+        isEasLoggedIn: () => {
+          events.push('checked EAS login');
+          return true;
+        },
+        promptSelect: async () => {
+          throw new Error('complete flags should not prompt');
+        },
+        runCommand: (command) => {
+          events.push(command.bin);
+        },
+        log: (message) => events.push(message),
+      },
+    ),
+  ).rejects.toThrow(/App Variant "First Tenant" \(1\) is missing an EAS Project ID/);
 
   assert.deepEqual(events, []);
 });
@@ -145,34 +142,32 @@ test('build preparation with missing App Variant EAS Project ID fails before aut
 test('build preparation with missing global Expo Owner fails before auth or commands', async () => {
   const events: string[] = [];
 
-  await assert.rejects(
-    () =>
-      runBuild(
-        { slug: 'first-tenant', env: 'development', platform: 'ios' },
-        {
-          ci: false,
-          expoToken: undefined,
-          expoOwner: '',
-          activeSetup: withProjectIds(),
-          isEasInstalled: () => {
-            events.push('checked EAS install');
-            return true;
-          },
-          isEasLoggedIn: () => {
-            events.push('checked EAS login');
-            return true;
-          },
-          promptSelect: async () => {
-            throw new Error('complete flags should not prompt');
-          },
-          runCommand: (command) => {
-            events.push(command.bin);
-          },
-          log: (message) => events.push(message),
+  await expect(
+    runBuild(
+      { slug: 'first-tenant', env: 'development', platform: 'ios' },
+      {
+        ci: false,
+        expoToken: undefined,
+        expoOwner: '',
+        activeSetup: withProjectIds(),
+        isEasInstalled: () => {
+          events.push('checked EAS install');
+          return true;
         },
-      ),
-    /Missing Expo Owner/,
-  );
+        isEasLoggedIn: () => {
+          events.push('checked EAS login');
+          return true;
+        },
+        promptSelect: async () => {
+          throw new Error('complete flags should not prompt');
+        },
+        runCommand: (command) => {
+          events.push(command.bin);
+        },
+        log: (message) => events.push(message),
+      },
+    ),
+  ).rejects.toThrow(/Missing Expo Owner/);
 
   assert.deepEqual(events, []);
 });
@@ -224,28 +219,26 @@ test('build preparation fails before prebuild when EAS env pull does not create 
   const events: string[] = [];
 
   try {
-    await assert.rejects(
-      () =>
-        runBuild(
-          { slug: 'first-tenant', env: 'development', platform: 'ios' },
-          {
-            ci: false,
-            expoToken: undefined,
-            activeSetup: withProjectIds(),
-            projectRoot,
-            isEasInstalled: () => true,
-            isEasLoggedIn: () => true,
-            promptSelect: async () => {
-              throw new Error('complete flags should not prompt');
-            },
-            runCommand: (command) => {
-              events.push(command.bin);
-            },
-            log: (message) => events.push(message),
+    await expect(
+      runBuild(
+        { slug: 'first-tenant', env: 'development', platform: 'ios' },
+        {
+          ci: false,
+          expoToken: undefined,
+          activeSetup: withProjectIds(),
+          projectRoot,
+          isEasInstalled: () => true,
+          isEasLoggedIn: () => true,
+          promptSelect: async () => {
+            throw new Error('complete flags should not prompt');
           },
-        ),
-      /\.env\.local was not created after eas env:pull/,
-    );
+          runCommand: (command) => {
+            events.push(command.bin);
+          },
+          log: (message) => events.push(message),
+        },
+      ),
+    ).rejects.toThrow(/\.env\.local was not created after eas env:pull/);
 
     assert.deepEqual(events, [
       'Preparing build',
@@ -266,35 +259,33 @@ test('build preparation fails before prebuild when pulled .env.local omits APP_V
   const events: string[] = [];
 
   try {
-    await assert.rejects(
-      () =>
-        runBuild(
-          { slug: 'first-tenant', env: 'development', platform: 'ios' },
-          {
-            ci: false,
-            expoToken: undefined,
-            activeSetup: withProjectIds(),
-            projectRoot,
-            isEasInstalled: () => true,
-            isEasLoggedIn: () => true,
-            promptSelect: async () => {
-              throw new Error('complete flags should not prompt');
-            },
-            runCommand: (command) => {
-              events.push(command.bin);
-
-              if (command.bin === 'eas') {
-                writeFileSync(
-                  join(projectRoot, '.env.local'),
-                  'EXPO_PUBLIC_API_URL=https://example.com\n',
-                );
-              }
-            },
-            log: (message) => events.push(message),
+    await expect(
+      runBuild(
+        { slug: 'first-tenant', env: 'development', platform: 'ios' },
+        {
+          ci: false,
+          expoToken: undefined,
+          activeSetup: withProjectIds(),
+          projectRoot,
+          isEasInstalled: () => true,
+          isEasLoggedIn: () => true,
+          promptSelect: async () => {
+            throw new Error('complete flags should not prompt');
           },
-        ),
-      /\.env\.local is missing APP_VARIANT_SLUG/,
-    );
+          runCommand: (command) => {
+            events.push(command.bin);
+
+            if (command.bin === 'eas') {
+              writeFileSync(
+                join(projectRoot, '.env.local'),
+                'EXPO_PUBLIC_API_URL=https://example.com\n',
+              );
+            }
+          },
+          log: (message) => events.push(message),
+        },
+      ),
+    ).rejects.toThrow(/\.env\.local is missing APP_VARIANT_SLUG/);
 
     assert.equal(events.includes('pnpm'), false);
   } finally {
@@ -307,30 +298,30 @@ test('build preparation fails before prebuild when pulled APP_VARIANT_SLUG does 
   const events: string[] = [];
 
   try {
-    await assert.rejects(
-      () =>
-        runBuild(
-          { slug: 'first-tenant', env: 'development', platform: 'ios' },
-          {
-            ci: false,
-            expoToken: undefined,
-            activeSetup: withProjectIds(),
-            projectRoot,
-            isEasInstalled: () => true,
-            isEasLoggedIn: () => true,
-            promptSelect: async () => {
-              throw new Error('complete flags should not prompt');
-            },
-            runCommand: (command) => {
-              events.push(command.bin);
-
-              if (command.bin === 'eas') {
-                writeFileSync(join(projectRoot, '.env.local'), 'APP_VARIANT_SLUG=second-tenant\n');
-              }
-            },
-            log: (message) => events.push(message),
+    await expect(
+      runBuild(
+        { slug: 'first-tenant', env: 'development', platform: 'ios' },
+        {
+          ci: false,
+          expoToken: undefined,
+          activeSetup: withProjectIds(),
+          projectRoot,
+          isEasInstalled: () => true,
+          isEasLoggedIn: () => true,
+          promptSelect: async () => {
+            throw new Error('complete flags should not prompt');
           },
-        ),
+          runCommand: (command) => {
+            events.push(command.bin);
+
+            if (command.bin === 'eas') {
+              writeFileSync(join(projectRoot, '.env.local'), 'APP_VARIANT_SLUG=second-tenant\n');
+            }
+          },
+          log: (message) => events.push(message),
+        },
+      ),
+    ).rejects.toThrow(
       /\.env\.local APP_VARIANT_SLUG "second-tenant" does not match selected Slug "first-tenant"/,
     );
 

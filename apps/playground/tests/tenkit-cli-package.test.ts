@@ -1,8 +1,7 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import { assert, test } from 'vitest';
 
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8')) as {
   scripts: Record<string, string>;
@@ -17,7 +16,7 @@ test('Tenkit CLI package script is wired without changing normal Expo start', ()
   assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
   assert.equal('build:prepare' in packageJson.scripts, false);
   assert.equal('build:reset' in packageJson.scripts, false);
-  assert.equal(packageJson.scripts.test, 'tsx --test tests/*.test.ts');
+  assert.equal(packageJson.scripts.test, 'vitest run');
   assert.equal(packageJson.scripts.typecheck, 'tsc --noEmit --pretty false');
   assert.equal(packageJson.scripts.lint, 'expo lint');
 });

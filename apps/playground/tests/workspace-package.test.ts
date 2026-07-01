@@ -1,9 +1,8 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
 import { resolve } from 'node:path';
+import { assert, test } from 'vitest';
 
 type PackageJson = {
   name?: string;
@@ -23,8 +22,16 @@ test('workspace root is a private command router rather than an Expo app package
   assert.equal(workspacePackageJson.main, undefined);
   assert.equal(workspacePackageJson.scripts?.start, 'pnpm -F playground start');
   assert.equal(workspacePackageJson.scripts?.tenkit, 'pnpm -F playground tenkit');
-  assert.equal(workspacePackageJson.scripts?.test, 'pnpm -F playground test');
-  assert.equal(workspacePackageJson.scripts?.typecheck, 'pnpm -F playground typecheck');
+  assert.equal(
+    workspacePackageJson.scripts?.test,
+    'pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test',
+  );
+  assert.equal(
+    workspacePackageJson.scripts?.typecheck,
+    'pnpm -F playground typecheck && pnpm -F @tenkit/template-generator typecheck && pnpm -F @tenkit/cli typecheck && pnpm -F create-tenkit typecheck',
+  );
+  assert.equal(workspacePackageJson.scripts?.proof, 'pnpm -F @tenkit/template-generator proof');
+  assert.equal(workspacePackageJson.scripts?.verify, 'pnpm -F @tenkit/template-generator verify');
   assert.equal(workspacePackageJson.scripts?.lint, 'pnpm -F playground lint');
 });
 

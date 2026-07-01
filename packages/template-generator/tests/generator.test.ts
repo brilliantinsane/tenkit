@@ -1,7 +1,6 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { assert, test } from 'vitest';
 
 import {
   generateGenericWithStandaloneAppVariantsProject,
@@ -234,14 +233,14 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.match(readVirtualFile(tree, 'eas.json'), /"developmentClient": true/);
   assert.match(readVirtualFile(tree, 'assets/_global/README.md'), /Global Assets/);
   assert.match(readVirtualFile(tree, 'pnpm-workspace.yaml'), /allowBuilds:\n  esbuild: true/);
-  assert.doesNotMatch(readVirtualFile(tree, 'pnpm-workspace.yaml'), /unrs-resolver/);
+  assert.notMatch(readVirtualFile(tree, 'pnpm-workspace.yaml'), /unrs-resolver/);
   assert.match(readVirtualFile(tree, 'app.config.ts'), /APP_VARIANT_SLUG/);
   assert.match(readVirtualFile(tree, 'app.config.ts'), /resolveAppVariantConfig/);
-  assert.doesNotMatch(readVirtualFile(tree, 'app.config.ts'), /sharedExpoConfig/);
+  assert.notMatch(readVirtualFile(tree, 'app.config.ts'), /sharedExpoConfig/);
   assert.match(readVirtualFile(tree, 'app.config.ts'), /favicon: `\$\{icons\}\/favicon\.png`/);
   assert.match(readVirtualFile(tree, 'app.config.ts'), /'expo-system-ui'/);
   assert.match(readVirtualFile(tree, 'app.config.ts'), /\.\/src\/constants\/project-config/);
-  assert.doesNotMatch(readVirtualFile(tree, 'app.config.ts'), /appVariants: \[/);
+  assert.notMatch(readVirtualFile(tree, 'app.config.ts'), /appVariants: \[/);
   assert.match(
     readVirtualFile(tree, 'app.config.ts'),
     /const assetPath = `\.\/assets\/\$\{slug\}`/,
@@ -256,7 +255,7 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
     readVirtualFile(tree, 'src/hooks/use-app-variant-config.ts'),
     /AppVariantConfigExtra/,
   );
-  assert.doesNotMatch(readVirtualFile(tree, 'src/hooks/use-app-variant-config.ts'), /'id' in/);
+  assert.notMatch(readVirtualFile(tree, 'src/hooks/use-app-variant-config.ts'), /'id' in/);
   assert.match(
     readVirtualFile(tree, 'src/constants/app-variants.ts'),
     /satisfies readonly AppVariant\[\]/,
@@ -274,7 +273,7 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.match(readVirtualFile(tree, 'src/constants/globals.ts'), /globalStyles/);
   assert.match(readVirtualFile(tree, 'src/app/index.tsx'), /globalStyles\.centeredContainer/);
   assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /globalStyles\.container/);
-  assert.doesNotMatch(readVirtualFile(tree, 'src/constants/project-config.ts'), /brilliant-insane/);
+  assert.notMatch(readVirtualFile(tree, 'src/constants/project-config.ts'), /brilliant-insane/);
   assert.match(
     readVirtualFile(tree, 'src/lib/resolve-app-variant-config.ts'),
     /Missing required App Variant asset/,
@@ -295,15 +294,20 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.match(readVirtualFile(tree, 'scripts/tenkit-cli.ts'), /command\('build'\)/);
   assert.match(readVirtualFile(tree, 'scripts/tenkit-cli.ts'), /command\('reset'\)/);
   assert.match(readVirtualFile(tree, 'scripts/tenkit-cli.ts'), /command\('doctor'\)/);
-  assert.doesNotMatch(readVirtualFile(tree, 'scripts/tenkit-cli.ts'), /command\('setup'\)/);
+  assert.notMatch(readVirtualFile(tree, 'scripts/tenkit-cli.ts'), /command\('setup'\)/);
   assert.match(readVirtualFile(tree, 'scripts/tenkit-cli-core.ts'), /APP_VARIANT_ENVIRONMENTS/);
+  assert.match(
+    readVirtualFile(tree, 'scripts/tenkit-cli-core.ts'),
+    /from '\.\.\/src\/constants\/app-variants'/,
+  );
   assert.match(readVirtualFile(tree, 'scripts/tenkit-cli-runtime.ts'), /\.env\.local/);
+  assert.notMatch(paths.join('\n'), /app-variant-targets/);
   assert.match(readVirtualFile(tree, 'src/app/index.tsx'), /App Variant/);
-  assert.doesNotMatch(
+  assert.notMatch(
     paths.join('\n'),
     /active-setup|setup-types|^tenkit\/|^types\/|^constants\/|\.hbs$/,
   );
-  assert.doesNotMatch(paths.join('\n'), /base-expo|templates\/assets/);
+  assert.notMatch(paths.join('\n'), /base-expo|templates\/assets/);
 });
 
 test('White Label Apps Template serializes project names used inside TSX', () => {
@@ -319,7 +323,7 @@ test('White Label Apps Template serializes project names used inside TSX', () =>
     appTabs,
     /<ThemedText type="smallBold" style=\{styles\.brandText\}>\n\s+\{projectName\}/,
   );
-  assert.doesNotMatch(appTabs, />\s*ACME <Pilot> \{One\}\s*</);
+  assert.notMatch(appTabs, />\s*ACME <Pilot> \{One\}\s*</);
 });
 
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {
@@ -329,15 +333,15 @@ test('White Label Apps generated tree is standalone and does not import from the
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.doesNotMatch(generatedSource, /apps\/playground/);
-  assert.doesNotMatch(generatedSource, /from ['"].*playground/);
-  assert.doesNotMatch(generatedSource, /defineWhiteLabelAppsSetup/);
-  assert.doesNotMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.doesNotMatch(generatedSource, /setupType|Setup Type/);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
-  assert.doesNotMatch(generatedSource, /single-app-runtime-tenants/);
-  assert.doesNotMatch(generatedSource, /generic-with-standalone-app-variants/);
+  assert.notMatch(generatedSource, /apps\/playground/);
+  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assert.notMatch(generatedSource, /defineWhiteLabelAppsSetup/);
+  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
+  assert.notMatch(generatedSource, /setupType|Setup Type/);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
+  assert.notMatch(generatedSource, /single-app-runtime-tenants/);
+  assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
 });
 
 test('Single App Runtime Tenants Template generates one App Variant with bundled Runtime Tenants', () => {
@@ -366,6 +370,8 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   const app = readVirtualFile(tree, 'src/app/index.tsx');
   const settings = readVirtualFile(tree, 'src/app/settings.tsx');
   const readme = readVirtualFile(tree, 'README.md');
+  const tenkitCliCore = readVirtualFile(tree, 'scripts/tenkit-cli-core.ts');
+  const tenkitCliRuntime = readVirtualFile(tree, 'scripts/tenkit-cli-runtime.ts');
 
   assert.equal(packageJson.name, 'custom-runtime-tenants');
   assert.equal(packageJson.dependencies['@expo/ui'], '~56.0.16');
@@ -408,7 +414,12 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   assert.match(appVariant, /name: 'Acme App'/);
   assert.match(appVariant, /runtimeTenantAccess/);
   assert.match(appVariant, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
-  assert.doesNotMatch(appVariant, /appVariants|defaultAppVariantId/);
+  assert.notMatch(appVariant, /appVariants|defaultAppVariantId|selectionMode/);
+  assert.match(tenkitCliCore, /from '\.\.\/src\/constants\/app-variant'/);
+  assert.match(tenkitCliCore, /Expected: \$\{appVariant\.slug\}/);
+  assert.notMatch(tenkitCliCore, /defaultAppVariantId|appVariants\?: readonly AppVariant\[\]/);
+  assert.match(tenkitCliRuntime, /from '\.\.\/src\/constants\/app-variant'/);
+  assert.notMatch(tenkitCliRuntime, /Select an App Variant:|appVariants/);
   assert.match(runtimeTenants, /runtimeTenantId: 100/);
   assert.match(runtimeTenants, /name: 'North Branch'/);
   assert.match(runtimeTenants, /satisfies readonly RuntimeTenant\[\]/);
@@ -421,10 +432,10 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   assert.match(resolver, /validateRuntimeTenantAccess/);
   assert.match(resolver, /const extra: ResolvedAppVariantConfig\['extra'\]/);
   assert.match(resolver, /runtimeTenantAccess,/);
-  assert.doesNotMatch(resolver, /runtimeTenants:/);
+  assert.notMatch(resolver, /runtimeTenants:/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
   assert.match(appConfig, /resolveAppVariantConfig/);
-  assert.doesNotMatch(appVariantHook, /isAppVariantConfigExtra/);
+  assert.notMatch(appVariantHook, /isAppVariantConfigExtra/);
   assert.match(appVariantHook, /Constants\.expoConfig\?\.extra as AppVariantConfigExtra/);
   assert.match(appVariantHook, /runtimeTenantAccess/);
   assert.match(themedText, /@\/constants\/design-tokens/);
@@ -434,16 +445,21 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
   assert.match(activeRuntimeTenantHook, /ACTIVE_RUNTIME_TENANT_ID_KEY/);
   assert.match(activeRuntimeTenantHook, /resolveSelectableRuntimeTenants/);
+  assert.match(
+    activeRuntimeTenantHook,
+    /hasRuntimeTenantSelection: allowedRuntimeTenantIds\.length > 1/,
+  );
+  assert.notMatch(activeRuntimeTenantHook, /selectionMode/);
   assert.match(readVirtualFile(tree, 'src/storage/app-preferences.ts'), /createMMKV/);
   assert.match(app, /Active Runtime Tenant/);
   assert.match(app, /Active Runtime Tenant ID/);
   assert.match(app, /globalStyles\.centeredContainer/);
-  assert.doesNotMatch(app, /Runtime Tenant IDs/);
-  assert.doesNotMatch(app, /resolveSelectableRuntimeTenants/);
+  assert.notMatch(app, /Runtime Tenant IDs/);
+  assert.notMatch(app, /resolveSelectableRuntimeTenants/);
   assert.match(settings, /Picker/);
   assert.match(settings, /Active Runtime Tenant/);
   assert.match(settings, /globalStyles\.container/);
-  assert.doesNotMatch(settings, /swift-ui\/modifiers|scrollContentBackground/);
+  assert.notMatch(settings, /swift-ui\/modifiers|scrollContentBackground/);
   assert.match(readme, /Single App Runtime Tenants project/);
   assert.match(readme, /Runtime Tenant records live in generated source data/);
 });
@@ -455,14 +471,14 @@ test('Single App Runtime Tenants generated tree is standalone selected output', 
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.doesNotMatch(generatedSource, /apps\/playground/);
-  assert.doesNotMatch(generatedSource, /from ['"].*playground/);
-  assert.doesNotMatch(generatedSource, /defineSingleAppRuntimeTenantsSetup/);
-  assert.doesNotMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.doesNotMatch(generatedSource, /setupType|Setup Type/);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
-  assert.doesNotMatch(generatedSource, /generic-with-standalone-app-variants/);
+  assert.notMatch(generatedSource, /apps\/playground/);
+  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assert.notMatch(generatedSource, /defineSingleAppRuntimeTenantsSetup/);
+  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
+  assert.notMatch(generatedSource, /setupType|Setup Type/);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
+  assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
 });
 
 test('Generic With Standalone App Variants Template generates App Variant assets and Runtime Tenant access', () => {
@@ -539,7 +555,7 @@ test('Generic With Standalone App Variants Template generates App Variant assets
     resolver,
     /standaloneRuntimeTenantId: resolvedAppVariant\.standaloneRuntimeTenantId/,
   );
-  assert.doesNotMatch(resolver, /runtimeTenants:/);
+  assert.notMatch(resolver, /runtimeTenants:/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
   assert.match(runtimeTenantAccess, /Duplicate Runtime Tenant ID/);
   assert.match(runtimeTenantAccess, /validateGenericAppVariantCount/);
@@ -556,17 +572,19 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.match(tenkitCli, /command\('build'\)/);
   assert.match(tenkitCli, /command\('reset'\)/);
   assert.match(tenkitCli, /command\('doctor'\)/);
-  assert.doesNotMatch(tenkitCli, /command\('setup'\)/);
+  assert.notMatch(tenkitCli, /command\('setup'\)/);
   assert.match(tenkitCliCore, /APP_VARIANT_ENVIRONMENTS/);
+  assert.match(tenkitCliCore, /from '\.\.\/src\/constants\/app-variants'/);
   assert.match(tenkitCliRuntime, /Select an App Variant:/);
-  assert.doesNotMatch(tenkitCliRuntime, /Runtime Tenant/);
+  assert.notMatch(tenkitCliRuntime, /Runtime Tenant/);
+  assert.notMatch(paths.join('\n'), /app-variant-targets/);
   assert.match(readme, /third proof Template/);
-  assert.match(readme, /future public project-creation CLI/);
+  assert.match(readme, /Public CLI create flow/);
   assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
   assert.match(readme, /Atlas Network App Variant's EAS environment/);
   assert.match(readme, /West Studio App Variant's EAS environment/);
-  assert.doesNotMatch(readme, /public create entrypoint|web builder|publishing/);
+  assert.notMatch(readme, /public create entrypoint|web builder|publishing/);
 });
 
 test('Generic With Standalone App Variants generated tree is standalone selected output', () => {
@@ -576,11 +594,11 @@ test('Generic With Standalone App Variants generated tree is standalone selected
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.doesNotMatch(generatedSource, /apps\/playground/);
-  assert.doesNotMatch(generatedSource, /from ['"].*playground/);
-  assert.doesNotMatch(generatedSource, /defineGenericAppSetup/);
-  assert.doesNotMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.doesNotMatch(generatedSource, /setupType|Setup Type/);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.doesNotMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
+  assert.notMatch(generatedSource, /apps\/playground/);
+  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assert.notMatch(generatedSource, /defineGenericAppSetup/);
+  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
+  assert.notMatch(generatedSource, /setupType|Setup Type/);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
+  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
 });

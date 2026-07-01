@@ -9,6 +9,7 @@ import { globSync } from 'tinyglobby';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
+  isSingleAppRuntimeTenants: boolean;
   packageName: string;
   projectName: string;
   projectNameStringLiteral: string;

@@ -42,7 +42,7 @@ The Scaffold writes setup-owned Playground files for an editable starter App Var
 Default clone checks do not run example-specific tests. Verify this example explicitly with:
 
 ```bash
-pnpm -F playground exec tsx --test examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
+pnpm -F playground test:examples examples/single-app-runtime-tenants/runtime-tenant-access.test.ts
 ```
 
 ## Out Of Scope

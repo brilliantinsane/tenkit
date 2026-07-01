@@ -1,8 +1,7 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
-import test from 'node:test';
+import { assert, expect, test } from 'vitest';
 
 import fs from 'fs-extra';
 import { join } from 'pathe';
@@ -44,7 +43,9 @@ test('writer rejects generated paths that can escape the target folder', async (
 
   try {
     for (const tree of unsafeTrees) {
-      await assert.rejects(() => writeProject({ targetDir, tree }), /relative|escapes|backslashes/);
+      await expect(writeProject({ targetDir, tree })).rejects.toThrow(
+        /relative|escapes|backslashes/,
+      );
     }
   } finally {
     await fs.remove(targetDir);
@@ -57,8 +58,7 @@ test('writer has explicit overwrite behavior for generated files', async () => {
 
   try {
     await writeProject({ targetDir, tree });
-    await assert.rejects(
-      () => writeProject({ targetDir, tree, overwrite: 'never' }),
+    await expect(writeProject({ targetDir, tree, overwrite: 'never' })).rejects.toThrow(
       /Refusing to overwrite/,
     );
 
@@ -66,8 +66,7 @@ test('writer has explicit overwrite behavior for generated files', async () => {
     assert.deepEqual(skipped.filesSkipped, ['README.md']);
 
     await fs.writeFile(join(targetDir, 'README.md'), 'changed\n', 'utf8');
-    await assert.rejects(
-      () => writeProject({ targetDir, tree, overwrite: 'if-identical' }),
+    await expect(writeProject({ targetDir, tree, overwrite: 'if-identical' })).rejects.toThrow(
       /Refusing to overwrite changed/,
     );
 
@@ -85,17 +84,15 @@ test('writer preflights existing file conflicts before writing generated files',
     await fs.ensureDir(join(targetDir, '.vscode'));
     await fs.writeFile(join(targetDir, 'package.json'), 'existing\n', 'utf8');
 
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [
-            { path: '.vscode/settings.json', contents: '{}\n' },
-            { path: 'package.json', contents: '{}\n' },
-          ],
-        }),
-      /Refusing to overwrite/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [
+          { path: '.vscode/settings.json', contents: '{}\n' },
+          { path: 'package.json', contents: '{}\n' },
+        ],
+      }),
+    ).rejects.toThrow(/Refusing to overwrite/);
 
     assert.equal(await fs.pathExists(join(targetDir, '.vscode/settings.json')), false);
     assert.equal(await fs.readFile(join(targetDir, 'package.json'), 'utf8'), 'existing\n');
@@ -129,17 +126,15 @@ test('writer rejects symlinked parent directories that escape the target before 
       throw error;
     }
 
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [
-            { path: 'README.md', contents: 'generated\n' },
-            { path: 'src/index.ts', contents: 'export {};\n' },
-          ],
-        }),
-      /symlinked parent/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [
+          { path: 'README.md', contents: 'generated\n' },
+          { path: 'src/index.ts', contents: 'export {};\n' },
+        ],
+      }),
+    ).rejects.toThrow(/symlinked parent/);
 
     assert.equal(await fs.pathExists(join(targetDir, 'README.md')), false);
     assert.equal(await fs.pathExists(join(outsideDir, 'index.ts')), false);
@@ -154,17 +149,15 @@ test('writer validates duplicate normalized generated paths before writing', asy
   const targetDir = await createTempRoot();
 
   try {
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [
-            { path: 'README.md', contents: 'one\n' },
-            { path: 'src/../README.md', contents: 'two\n' },
-          ],
-        }),
-      /appears more than once/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [
+          { path: 'README.md', contents: 'one\n' },
+          { path: 'src/../README.md', contents: 'two\n' },
+        ],
+      }),
+    ).rejects.toThrow(/appears more than once/);
   } finally {
     await fs.remove(targetDir);
   }
@@ -174,17 +167,15 @@ test('writer rejects generated file and descendant path collisions before writin
   const targetDir = await createTempRoot();
 
   try {
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [
-            { path: 'README.md', contents: 'generated\n' },
-            { path: 'README.md/extra', contents: 'nested\n' },
-          ],
-        }),
-      /conflicts with descendant path/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [
+          { path: 'README.md', contents: 'generated\n' },
+          { path: 'README.md/extra', contents: 'nested\n' },
+        ],
+      }),
+    ).rejects.toThrow(/conflicts with descendant path/);
 
     assert.equal(await fs.pathExists(join(targetDir, 'README.md')), false);
   } finally {
@@ -198,15 +189,13 @@ test('writer rejects targets inside protected project roots', async () => {
   const targetDir = join(playgroundDir, 'generated-app');
 
   try {
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [{ path: 'package.json', contents: '{}\n' }],
-          forbiddenTargetRoots: [playgroundDir],
-        }),
-      /protected project root/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [{ path: 'package.json', contents: '{}\n' }],
+        forbiddenTargetRoots: [playgroundDir],
+      }),
+    ).rejects.toThrow(/protected project root/);
 
     assert.equal(await fs.pathExists(join(targetDir, 'package.json')), false);
   } finally {
@@ -220,15 +209,13 @@ test('writer preflight validates protected project roots without writing', async
   const targetDir = join(playgroundDir, 'generated-app');
 
   try {
-    await assert.rejects(
-      () =>
-        preflightWriteProject({
-          targetDir,
-          tree: [{ path: 'package.json', contents: '{}\n' }],
-          forbiddenTargetRoots: [playgroundDir],
-        }),
-      /protected project root/,
-    );
+    await expect(
+      preflightWriteProject({
+        targetDir,
+        tree: [{ path: 'package.json', contents: '{}\n' }],
+        forbiddenTargetRoots: [playgroundDir],
+      }),
+    ).rejects.toThrow(/protected project root/);
 
     assert.equal(await fs.pathExists(join(targetDir, 'package.json')), false);
   } finally {
@@ -242,14 +229,12 @@ test('writer preflight detects existing file conflicts without writing', async (
   try {
     await fs.writeFile(join(targetDir, 'package.json'), 'existing\n', 'utf8');
 
-    await assert.rejects(
-      () =>
-        preflightWriteProject({
-          targetDir,
-          tree: [{ path: 'package.json', contents: '{}\n' }],
-        }),
-      /Refusing to overwrite/,
-    );
+    await expect(
+      preflightWriteProject({
+        targetDir,
+        tree: [{ path: 'package.json', contents: '{}\n' }],
+      }),
+    ).rejects.toThrow(/Refusing to overwrite/);
 
     assert.equal(await fs.readFile(join(targetDir, 'package.json'), 'utf8'), 'existing\n');
   } finally {
@@ -282,15 +267,13 @@ test('writer rejects targets that resolve into protected project roots through s
       throw error;
     }
 
-    await assert.rejects(
-      () =>
-        writeProject({
-          targetDir,
-          tree: [{ path: 'package.json', contents: '{}\n' }],
-          forbiddenTargetRoots: [playgroundDir],
-        }),
-      /protected project root/,
-    );
+    await expect(
+      writeProject({
+        targetDir,
+        tree: [{ path: 'package.json', contents: '{}\n' }],
+        forbiddenTargetRoots: [playgroundDir],
+      }),
+    ).rejects.toThrow(/protected project root/);
 
     assert.equal(await fs.pathExists(join(playgroundDir, 'generated-app/package.json')), false);
   } finally {

@@ -62,8 +62,7 @@ export function useActiveRuntimeTenant() {
     activeRuntimeTenantId,
     allowedRuntimeTenantIds,
     defaultRuntimeTenantId: runtimeTenantAccess.defaultRuntimeTenantId,
-    hasRuntimeTenantSelection:
-      runtimeTenantAccess.selectionMode === 'selectable' && allowedRuntimeTenantIds.length > 1,
+    hasRuntimeTenantSelection: allowedRuntimeTenantIds.length > 1,
     selectableRuntimeTenants,
     setActiveRuntimeTenantId,
   };

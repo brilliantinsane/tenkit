@@ -20,7 +20,7 @@ Instead of copying an Expo app for every brand, venue, customer, or business uni
 ## Highlights
 
 - Create a generated Expo project with a familiar package-manager create command.
-- Choose between White Label Apps, Single App Runtime Tenants, and Generic With Standalone App Variants.
+- Choose between White Label Apps, Runtime Tenant App, and Generic + Standalone Apps.
 - Keep App Variant identity typed and reviewable: name, slug, scheme, bundle ID, Android package, native assets, theme, and EAS project.
 - Keep Runtime Tenant behavior separate from build-time App Variant identity.
 - Use generated local commands for Build Preparation, reset, and diagnostics.
@@ -55,11 +55,11 @@ pnpm create tenkit@latest --name demo --setup runtime-tenants --yes --no-install
 
 ## Setup Types
 
-| Setup Type                               | Use When                                                                                 |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **White Label Apps**                     | Every brand, customer, or venue ships as its own native app.                             |
-| **Single App Runtime Tenants**           | One native app opens multiple runtime business contexts.                                 |
-| **Generic With Standalone App Variants** | One generic app opens selected tenants, while some tenants also ship as standalone apps. |
+| Setup Type                    | Use When                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **White Label Apps**          | Every brand, customer, or venue ships as its own native app.                                                             |
+| **Runtime Tenant App**        | One native app opens multiple Runtime Tenants.                                                                           |
+| **Generic + Standalone Apps** | One Generic App Variant opens selected Runtime Tenants, while some Runtime Tenants also ship as Standalone App Variants. |
 
 Public create slugs:
 
@@ -160,17 +160,23 @@ pnpm tenkit doctor
 Generate Template output into a separate folder:
 
 ```bash
-pnpm generate:white-label-proof -- --target ../tenkit-white-label-proof
-pnpm generate:runtime-tenants-proof -- --target ../tenkit-runtime-tenants-proof
-pnpm generate:generic-standalone-proof -- --target ../tenkit-generic-standalone-proof
+pnpm proof -- --setup-type white-label --target ../tenkit-white-label-proof
+pnpm proof -- --setup-type runtime-tenants --target ../tenkit-runtime-tenants-proof
+pnpm proof -- --setup-type generic-standalone --target ../tenkit-generic-standalone-proof
 ```
 
-Run generated-output verification:
+Run generated app shape proof tests:
 
 ```bash
-pnpm verify:generated-white-label
-pnpm verify:generated-runtime-tenants
-pnpm verify:generated-generic-standalone
+pnpm test:proof
+```
+
+Run full generated app command verification:
+
+```bash
+pnpm verify -- --setup-type white-label
+pnpm verify -- --setup-type runtime-tenants
+pnpm verify -- --setup-type generic-standalone
 ```
 
 ## EAS Setup
@@ -208,6 +214,7 @@ Use `eas init` only to create or discover an App Variant's EAS Project ID. EAS P
 
 ```bash
 pnpm test
+pnpm check
 pnpm typecheck
 pnpm lint
 ```
@@ -215,18 +222,17 @@ pnpm lint
 Public CLI checks:
 
 ```bash
-pnpm public-cli:build
-pnpm public-cli:test
-pnpm -F @tenkit/cli pack:dry-run
-pnpm -F create-tenkit pack:dry-run
-pnpm -F @tenkit/template-generator pack:dry-run
+pnpm build
+pnpm smoke
+pnpm pack:dry-run
 ```
 
 Template-generator checks:
 
 ```bash
-pnpm template-generator:test
-pnpm template-generator:typecheck
+pnpm -F @tenkit/template-generator test
+pnpm test:proof
+pnpm verify -- --setup-type white-label
 ```
 
 ## Feedback And Contributing

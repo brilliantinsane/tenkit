@@ -44,7 +44,8 @@
     "eslint-plugin-prettier": "^5.5.6",
     "prettier": "^3.8.4",
     "tsx": "^4.22.4",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9"
   },
   "scripts": {
     "start": "expo start",
@@ -52,7 +53,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "vitest run",
+    "test:examples": "vitest run --config vitest.examples.config.ts",
     "typecheck": "tsc --noEmit --pretty false",
     "lint": "expo lint",
     "format": "prettier --write ."

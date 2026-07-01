@@ -16,17 +16,9 @@ export {
   type SingleAppRuntimeTenantsProjectConfig,
   type WhiteLabelAppsProjectConfig,
 } from './generator';
-export { readTemplateTree, type TemplateContext } from './template-reader';
-export {
-  getVirtualFile,
-  mergeVirtualFileTrees,
-  sortVirtualFileTree,
-  type VirtualFile,
-  type VirtualFileTree,
-} from './virtual-file-tree';
+export { type VirtualFile, type VirtualFileTree } from './virtual-file-tree';
 export {
   preflightWriteProject,
-  validateVirtualFilePath,
   writeProject,
   type WriteProjectOptions,
   type WriteProjectOverwriteMode,

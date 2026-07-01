@@ -7,15 +7,16 @@ This file is the operating contract for agentic coding assistants working in thi
 Tenkit is an open source pnpm monorepo for helping people quickly start multi-tenant Expo projects.
 
 - `apps/playground` is the runnable Expo Playground. It proves Setup Types, App Variants, Runtime Tenants, Scaffold, Build Preparation, native assets, and runtime bootstrap behavior in a real app.
-- `packages/template-generator` is the open source Template generation package. It currently exposes local proof commands while Tenkit sorts out and verifies Templates before the public CLI and create entrypoints exist.
-- Public CLI, npm create entrypoints, web builder, publishing, and release automation are future product surfaces unless the current task explicitly scopes them. Local Template proof commands are temporary scaffolding for that future path.
+- `packages/template-generator` is the open source Template generation package. It exposes explicit local proof and generated-app verification commands for generated Templates.
+- `packages/cli` is the Public CLI implementation package. `packages/create-tenkit` is the thin package-manager create entrypoint.
+- Web builder, npm publishing, trusted publishing, release automation, and changelogs are future product surfaces unless the current task explicitly scopes them.
 
 ## Non-Negotiables
 
 - Use `pnpm` for package scripts and dependency management. Do not use npm, Yarn, Bun, or ad-hoc package manager commands.
 - Expo has changed. Before writing Expo code, read the exact versioned docs at `https://docs.expo.dev/versions/v56.0.0/`.
 - Preserve Tenkit domain language. Do not collapse App Variant, Runtime Tenant, Setup Type, Example, Starter Data, Scaffold, Template, Playground, Active Setup, and Build Preparation into generic "tenant/template/app" wording.
-- Do not introduce public CLI, create entrypoint, web builder, npm publishing, trusted publishing, or release automation unless explicitly requested.
+- Do not introduce additional public CLI surfaces, web builder, npm publishing, trusted publishing, release automation, or changelog automation unless explicitly requested.
 - Do not mutate the Playground while proving Template generation, and do not treat the Playground as generated output.
 - Do not add broad fallbacks to hide broken behavior. Prefer fixing the underlying behavior. Use fallbacks only at external/runtime boundaries where malformed input is expected and the fallback is explicit.
 
@@ -40,10 +41,11 @@ pnpm tenkit
 Template generator commands:
 
 ```bash
-pnpm template-generator:test
-pnpm template-generator:typecheck
-pnpm verify:generated-white-label
-pnpm generate:white-label-proof -- --target ../tenkit-white-label-proof
+pnpm -F @tenkit/template-generator test
+pnpm -F @tenkit/template-generator typecheck
+pnpm proof -- --setup-type white-label --target ../tenkit-white-label-proof
+pnpm verify -- --setup-type white-label
+pnpm test:proof
 ```
 
 Expo config smoke checks:
@@ -140,9 +142,10 @@ Tenkit-specific boundaries:
 - Keep writing separate: the writer owns path validation, overwrite behavior, and filesystem persistence.
 - Writer changes need negative tests for unsafe paths, duplicate normalized paths, overwrite behavior, and target-folder safety.
 - Generated-output proof must run against a fresh generated app folder outside the Tenkit workspace, not the Playground or any monorepo package folder.
-- Verification should cover generated project shape, dependency installation where practical, TypeScript, and Expo config evaluation.
+- Generated app shape assertions belong in explicit Vitest proof tests such as `pnpm test:proof`, not in the `pnpm verify` command path.
+- `pnpm verify` remains explicit command verification for dependency installation, generated app TypeScript, and Expo config evaluation.
 - Local Template proof commands may intentionally model future create-CLI behavior by writing files, installing dependencies, and initializing an initial git snapshot where possible. Convenience failures in install or git setup must not hide generation errors or mutate the Playground or Tenkit workspace.
-- The future public CLI should own the full create-flow policy, including prompts, non-empty target handling, dependency installation, and initial Git snapshot behavior. Keep local proof commands minimal and explicit.
+- The Public CLI owns the full create-flow policy, including prompts, non-empty target handling, dependency installation, and initial Git snapshot behavior. Keep local proof commands minimal and explicit.
 - Future generated Setup Type Templates should be siblings of `white-label/`. Do not introduce a durable `base-expo` layer unless a new architecture decision explicitly adopts it.
 
 ## Code Organization
@@ -211,6 +214,7 @@ Code naming:
 - Behavior changes require tests.
 - Bug fixes should include a regression test that would fail without the fix.
 - Template changes must verify generated output, not only Template source text.
+- Use `pnpm test:proof` for generated app shape assertions and `pnpm verify -- --setup-type <slug>` for install/typecheck/Expo config verification.
 - Dynamic Expo config changes should run an Expo config evaluation.
 - Build Preparation and CLI behavior should be tested through planning/runtime boundaries rather than shelling out where possible.
 - Keep tests deterministic. Avoid relying on local EAS login state, network state, or machine-specific paths.

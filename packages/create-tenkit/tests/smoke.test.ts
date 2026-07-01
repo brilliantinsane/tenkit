@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 import fs from 'fs-extra';
+import { join, resolve } from 'pathe';
 import { afterEach, expect, test } from 'vitest';
 
 type SpawnResult = {

@@ -9,6 +9,7 @@ import {
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
 } from '../src/generator';
+import { getGeneratedSetupTypeDefinition } from '../src/generated-setup-types';
 import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-proof';
 
 type ParsedArgs = {
@@ -26,7 +27,7 @@ type ResolvedArgs = ParsedArgs & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator generate:proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -117,18 +118,6 @@ function runPnpmInstall(cwd: string): Promise<boolean> {
   });
 }
 
-function getReadyMessage(setupType: GeneratedSetupType): string {
-  if (setupType === 'white-label-apps') {
-    return 'Your Tenkit White Label app is ready!';
-  }
-
-  if (setupType === 'single-app-runtime-tenants') {
-    return 'Your Tenkit Single App Runtime Tenants app is ready!';
-  }
-
-  return 'Your Tenkit Generic With Standalone App Variants app is ready!';
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
@@ -172,7 +161,7 @@ async function main() {
   }
 
   console.log('');
-  console.log(getReadyMessage(args.setupType));
+  console.log(getGeneratedSetupTypeDefinition(args.setupType).readyMessage);
   console.log('');
   console.log('To run your project:');
   console.log(`- cd ${displayTargetDir}`);

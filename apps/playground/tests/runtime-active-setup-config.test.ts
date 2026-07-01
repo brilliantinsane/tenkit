@@ -1,11 +1,10 @@
 /// <reference types="node" />
 
 import { type ConfigContext } from 'expo/config';
-import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
+import { assert, test } from 'vitest';
 
 import createExpoConfig from '../app.config';
 import { resolveAppVariantConfig } from '../src/setup-types/core';

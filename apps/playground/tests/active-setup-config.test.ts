@@ -1,10 +1,9 @@
 /// <reference types="node" />
 
-import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import { assert, test } from 'vitest';
 
 import { activeSetup } from '../src/active-setup/manifest';
 import { defineActiveSetup, resolveAppVariantConfig } from '../src/setup-types/core';
