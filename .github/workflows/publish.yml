@@ -1,0 +1,130 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: npm dist-tag to publish
+        required: true
+        default: next
+      dry_run:
+        description: Run publish commands with --dry-run
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+      NPM_DIST_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.dist_tag || 'next' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.9.0 --activate
+
+      - name: Setup pnpm cache
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate publish ref
+        run: |
+          if [ "$DRY_RUN" != "true" ] && [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo "Real publishing must run from a v* tag."
+            exit 1
+          fi
+          if [ "$DRY_RUN" != "true" ] && [ "$NPM_DIST_TAG" != "next" ]; then
+            echo "This first-release workflow only publishes the next dist-tag."
+            exit 1
+          fi
+
+      - name: Run release checks
+        run: pnpm release:check
+
+      - name: Pack release artifacts
+        run: |
+          mkdir -p release-artifacts
+          pnpm -F @tenkit/template-generator pack --pack-destination release-artifacts
+          pnpm -F @tenkit/cli pack --pack-destination release-artifacts
+          pnpm -F create-tenkit pack --pack-destination release-artifacts
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenkit-release-artifacts
+          path: release-artifacts/*.tgz
+
+      - name: Generate release notes
+        if: env.DRY_RUN != 'true' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm release:notes -- "$GITHUB_REF_NAME" release-notes.md
+
+      - name: Dry-run npm publish
+        if: env.DRY_RUN == 'true'
+        run: |
+          pnpm -F @tenkit/template-generator publish --dry-run --tag "$NPM_DIST_TAG" --access public --provenance --no-git-checks
+          pnpm -F @tenkit/cli publish --dry-run --tag "$NPM_DIST_TAG" --access public --provenance --no-git-checks
+          pnpm -F create-tenkit publish --dry-run --tag "$NPM_DIST_TAG" --access public --provenance --no-git-checks
+
+      - name: Publish to npm
+        if: env.DRY_RUN != 'true'
+        run: |
+          publish_package() {
+            local filter="$1"
+            local manifest_path="$2"
+            local package_name
+            local package_version
+
+            package_name="$(node -p "require('./${manifest_path}').name")"
+            package_version="$(node -p "require('./${manifest_path}').version")"
+
+            if npm view "${package_name}@${package_version}" version >/dev/null 2>&1; then
+              echo "${package_name}@${package_version} already exists on npm; skipping publish."
+              return 0
+            fi
+
+            pnpm -F "$filter" publish --tag "$NPM_DIST_TAG" --access public --provenance --no-git-checks
+          }
+
+          publish_package @tenkit/template-generator packages/template-generator/package.json
+          publish_package @tenkit/cli packages/cli/package.json
+          publish_package create-tenkit packages/create-tenkit/package.json
+
+      - name: Smoke published create command
+        if: env.DRY_RUN != 'true'
+        run: pnpm release:published-smoke -- "$NPM_DIST_TAG"
+
+      - name: Create GitHub Release
+        if: env.DRY_RUN != 'true' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-artifacts/*.tgz --title "$GITHUB_REF_NAME" --notes-file release-notes.md

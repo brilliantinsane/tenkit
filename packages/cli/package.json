@@ -1,6 +1,24 @@
 {
   "name": "@tenkit/cli",
   "version": "0.1.0",
+  "description": "Public Tenkit CLI implementation package.",
+  "license": "MIT",
+  "homepage": "https://github.com/brilliantinsane/tenkit#readme",
+  "bugs": {
+    "url": "https://github.com/brilliantinsane/tenkit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brilliantinsane/tenkit.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "cli",
+    "expo",
+    "react-native",
+    "tenkit",
+    "typescript"
+  ],
   "type": "module",
   "bin": {
     "tenkit": "./dist/index.mjs"
@@ -35,6 +53,10 @@
     "vitest": "^4.1.9"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=22.14.0"
   }
 }
