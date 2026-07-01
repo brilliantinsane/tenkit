@@ -5,9 +5,15 @@ import { generate } from 'changelogithub';
 
 import config from '../changelogithub.config.mjs';
 
-const tag = process.argv[2] || process.env.GITHUB_REF_NAME;
+const args = process.argv.slice(2);
+
+if (args[0] === '--') {
+  args.shift();
+}
+
+const tag = args[0] || process.env.GITHUB_REF_NAME;
 const workspaceRoot = resolve(import.meta.dirname, '..');
-const outputPath = resolve(workspaceRoot, process.argv[3] || 'release-notes.md');
+const outputPath = resolve(workspaceRoot, args[1] || 'release-notes.md');
 const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 
 if (!tag) {
