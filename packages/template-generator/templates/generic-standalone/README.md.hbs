@@ -15,15 +15,15 @@ A Tenkit Generic With Standalone App Variants project generated for Expo SDK 56.
 ## Get Started
 
 ```bash
-pnpm install
-pnpm start
+{{packageManagerInstallCommand}}
+{{packageManagerRunCommand}} start
 ```
 
 Inspect the public Expo runtime config:
 
 ```bash
-pnpm expo:config
-APP_VARIANT_SLUG=west-studio pnpm expo:config
+{{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG=west-studio {{packageManagerRunCommand}} expo:config
 ```
 
 Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/constants/runtime-tenants.ts`.
@@ -33,8 +33,8 @@ Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/co
 App Variant native identity is selected with `APP_VARIANT_SLUG`:
 
 ```bash
-APP_VARIANT_SLUG=atlas-network pnpm expo:config
-APP_VARIANT_SLUG=west-studio pnpm expo:config
+APP_VARIANT_SLUG=atlas-network {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG=west-studio {{packageManagerRunCommand}} expo:config
 ```
 
 The generated App Variant data lives in `src/constants/app-variants.ts`.
@@ -53,12 +53,12 @@ Runtime Tenants do not own native asset folders.
 Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
 
 ```bash
-pnpm tenkit build
-pnpm tenkit reset
-pnpm tenkit doctor
+{{packageManagerTenkitCommand}} build
+{{packageManagerTenkitCommand}} reset
+{{packageManagerTenkitCommand}} doctor
 ```
 
-`pnpm tenkit build` asks for App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity. Runtime Tenant selection remains runtime behavior and is not part of Build Preparation.
+`{{packageManagerTenkitCommand}} build` asks for App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity. Runtime Tenant selection remains runtime behavior and is not part of Build Preparation.
 
 Before using build preparation:
 
@@ -71,20 +71,20 @@ Before using build preparation:
 For CI or non-interactive use:
 
 ```bash
-pnpm tenkit build --slug atlas-network --env development --platform ios
-pnpm tenkit build --slug west-studio --env production --android
+{{packageManagerTenkitCommand}} build --slug atlas-network --env development --platform ios
+{{packageManagerTenkitCommand}} build --slug west-studio --env production --android
 ```
 
 Reset native build state to the default Generic App Variant:
 
 ```bash
-pnpm tenkit reset
+{{packageManagerTenkitCommand}} reset
 ```
 
 Show local diagnostics:
 
 ```bash
-pnpm tenkit doctor
+{{packageManagerTenkitCommand}} doctor
 ```
 
 ## Runtime Tenant Data

@@ -26,6 +26,7 @@ export async function runCreateFlow(
     setupType: resolvedOptions.setupType,
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
+    packageManager: resolvedOptions.packageManager,
   });
 
   if (resolvedOptions.dryRun) {
@@ -42,6 +43,7 @@ export async function runCreateFlow(
       projectName: resolvedOptions.projectName,
       packageName: resolvedOptions.packageName,
       setupType: resolvedOptions.setupType,
+      packageManager: resolvedOptions.packageManager,
       installed: false,
       installFailed: false,
       gitInitialized: false,
@@ -72,8 +74,13 @@ export async function runCreateFlow(
   let installFailed = false;
 
   if (resolvedOptions.install) {
-    env.output.log('Installing dependencies with pnpm...');
-    const installResult = await runCommand('pnpm', ['install'], writeResult.targetDir);
+    env.output.log(`Installing dependencies with ${resolvedOptions.packageManager}...`);
+    const installResult = await runCommand(
+      resolvedOptions.packageManager,
+      ['install'],
+      writeResult.targetDir,
+      { stdio: 'ignore' },
+    );
     installed = installResult.ok;
     installFailed = !installResult.ok;
   }
@@ -86,6 +93,7 @@ export async function runCreateFlow(
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     setupType: resolvedOptions.setupType,
+    packageManager: resolvedOptions.packageManager,
     installed,
     installFailed,
     gitInitialized: gitResult.gitInitialized,

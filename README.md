@@ -30,7 +30,20 @@ Instead of copying an Expo app for every brand, venue, customer, or business uni
 ## Create A Project
 
 ```bash
+# Using pnpm
 pnpm create tenkit@latest
+
+# Using npm
+npm create tenkit@latest
+
+# Using npx
+npx create-tenkit@latest
+
+# Using Bun
+bun create tenkit@latest
+
+# Using bunx
+bunx create-tenkit@latest
 ```
 
 The create flow asks for:
@@ -38,7 +51,9 @@ The create flow asks for:
 - project name
 - Setup Type
 
-It then creates a child folder, installs dependencies with pnpm, initializes git when safe, and prints next steps.
+It then creates a child folder, installs dependencies with the package manager you used to launch the create command, initializes git when safe, and prints next steps.
+
+Tenkit can be launched through pnpm, npm, npx, Bun, or bunx. The create flow detects that launcher and uses the same package manager for generated project installation, local README commands, and final next steps. You can override detection with `--package-manager pnpm`, `--package-manager npm`, or `--package-manager bun`.
 
 Non-interactive examples:
 

@@ -6,13 +6,18 @@ import type { PromptAdapter } from '../create/types';
 export function createPromptAdapter(): PromptAdapter {
   return {
     async text(options) {
+      const { defaultValue, validate, ...promptOptions } = options;
       const answer = await text({
-        ...options,
+        ...promptOptions,
         validate(value) {
-          return options.validate(value);
+          return validate(value === '' || value === undefined ? defaultValue : value);
         },
       });
-      return isCancel(answer) ? PROMPT_CANCELLED : String(answer);
+      return isCancel(answer)
+        ? PROMPT_CANCELLED
+        : answer === '' || answer === undefined
+          ? defaultValue
+          : String(answer);
     },
     async select(options) {
       const answer = await select({

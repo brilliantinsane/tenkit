@@ -117,6 +117,17 @@ test('generic Template generation rejects unsupported Setup Types', () => {
   );
 });
 
+test('Template generation rejects unsupported package managers', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label',
+        packageManager: 'unsupported',
+      } as unknown as Parameters<typeof generateProject>[0]),
+    /Invalid generated app package manager "unsupported".*Expected one of: pnpm, npm, bun/,
+  );
+});
+
 test('White Label Apps Template combines shared, setup-owned, and App Variant asset output', () => {
   const tree = generateWhiteLabelAppsProject({
     setupType: 'white-label-apps',
@@ -126,6 +137,7 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   const paths = tree.map((file) => file.path);
   const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
     name: string;
+    packageManager?: string;
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
     scripts: Record<string, string>;
@@ -195,6 +207,7 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
     readVirtualBinary(tree, 'assets/second-tenant/icons/favicon.png'),
   );
   assert.equal(packageJson.name, 'custom-white-label');
+  assert.equal(packageJson.packageManager, undefined);
   assert.equal(packageJson.dependencies.expo, '~56.0.12');
   assert.equal(packageJson.dependencies['expo-constants'], '~56.0.18');
   assert.equal(packageJson.dependencies['expo-dev-client'], '~56.0.19');
@@ -220,12 +233,12 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   assert.match(readVirtualFile(tree, 'README.md'), /## Select an App Variant/);
   assert.match(readVirtualFile(tree, 'README.md'), /## Build Preparation/);
   assert.match(readVirtualFile(tree, 'README.md'), /## Run the Prepared App/);
-  assert.match(readVirtualFile(tree, 'README.md'), /pnpm tenkit build/);
+  assert.match(readVirtualFile(tree, 'README.md'), /pnpm run tenkit build/);
   assert.match(readVirtualFile(tree, 'README.md'), /EXPO_OWNER/);
   assert.match(readVirtualFile(tree, 'README.md'), /starts blank on purpose/);
   assert.ok(
-    readVirtualFile(tree, 'README.md').indexOf('pnpm tenkit build') <
-      readVirtualFile(tree, 'README.md').indexOf('pnpm ios'),
+    readVirtualFile(tree, 'README.md').indexOf('pnpm run tenkit build') <
+      readVirtualFile(tree, 'README.md').indexOf('pnpm run ios'),
   );
   assert.match(readVirtualFile(tree, 'README.md'), /\.env\.example/);
   assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=first-tenant/);
@@ -324,6 +337,66 @@ test('White Label Apps Template serializes project names used inside TSX', () =>
     /<ThemedText type="smallBold" style=\{styles\.brandText\}>\n\s+\{projectName\}/,
   );
   assert.notMatch(appTabs, />\s*ACME <Pilot> \{One\}\s*</);
+});
+
+test('Template generation renders selected package manager into generated app output', () => {
+  const bunTree = generateWhiteLabelAppsProject({
+    setupType: 'white-label-apps',
+    projectName: 'Bun App',
+    packageName: 'bun-app',
+    packageManager: 'bun',
+  });
+  const bunPackageJson = JSON.parse(readVirtualFile(bunTree, 'package.json')) as {
+    packageManager?: string;
+  };
+  const bunPaths = bunTree.map((file) => file.path);
+
+  assert.equal(bunPackageJson.packageManager, undefined);
+  assert.equal(bunPaths.includes('pnpm-workspace.yaml'), false);
+  assert.match(readVirtualFile(bunTree, 'README.md'), /bun install/);
+  assert.match(readVirtualFile(bunTree, 'README.md'), /bun run tenkit build/);
+  assert.match(readVirtualFile(bunTree, 'scripts/tenkit-cli-core.ts'), /bin: 'bun'/);
+  assert.match(
+    readVirtualFile(bunTree, 'scripts/tenkit-cli-core.ts'),
+    /args: \['x', 'expo', \.\.\.args\]/,
+  );
+
+  const npmTree = generateGenericWithStandaloneAppVariantsProject({
+    setupType: 'generic-with-standalone-app-variants',
+    projectName: 'Npm App',
+    packageName: 'npm-app',
+    packageManager: 'npm',
+  });
+  const npmPackageJson = JSON.parse(readVirtualFile(npmTree, 'package.json')) as {
+    packageManager?: string;
+  };
+  const npmPaths = npmTree.map((file) => file.path);
+
+  assert.equal(npmPackageJson.packageManager, undefined);
+  assert.equal(npmPaths.includes('pnpm-workspace.yaml'), false);
+  assert.match(readVirtualFile(npmTree, 'README.md'), /npm run tenkit -- build/);
+  assert.match(readVirtualFile(npmTree, 'scripts/tenkit-cli-core.ts'), /bin: 'npm'/);
+  assert.match(
+    readVirtualFile(npmTree, 'scripts/tenkit-cli-core.ts'),
+    /args: \['exec', 'expo', '--', \.\.\.args\]/,
+  );
+
+  const runtimeTenantsTree = generateSingleAppRuntimeTenantsProject({
+    setupType: 'single-app-runtime-tenants',
+    projectName: 'Runtime Tenants App',
+    packageName: 'runtime-tenants-app',
+    packageManager: 'pnpm',
+  });
+  const runtimeTenantsPackageJson = JSON.parse(
+    readVirtualFile(runtimeTenantsTree, 'package.json'),
+  ) as {
+    packageManager?: string;
+  };
+
+  assert.equal(runtimeTenantsPackageJson.packageManager, undefined);
+  assert.match(readVirtualFile(runtimeTenantsTree, 'README.md'), /pnpm install/);
+  assert.match(readVirtualFile(runtimeTenantsTree, 'README.md'), /pnpm run tenkit build/);
+  assert.match(readVirtualFile(runtimeTenantsTree, 'scripts/tenkit-cli-core.ts'), /bin: 'pnpm'/);
 });
 
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {

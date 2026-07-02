@@ -183,15 +183,23 @@ function createEasEnvPullCommand(environment: AppVariantEnvironment, slug: strin
 }
 
 function createPrebuildCommand(platform: BuildPlatform, slug: string): CommandPlan {
-  const args = ['expo', 'prebuild', '--clean'];
+  const args = ['prebuild', '--clean'];
 
   if (platform !== 'both') {
     args.push('--platform', platform);
   }
 
   return {
-    bin: 'pnpm',
-    args,
+{{#if isNpmPackageManager}}
+    bin: 'npm',
+    args: ['exec', 'expo', '--', ...args],
+{{else if isBunPackageManager}}
+    bin: 'bun',
+    args: ['x', 'expo', ...args],
+{{else}}
+    bin: '{{packageManager}}',
+    args: ['expo', ...args],
+{{/if}}
     env: { APP_VARIANT_SLUG: slug },
   };
 }

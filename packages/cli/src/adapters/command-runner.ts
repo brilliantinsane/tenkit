@@ -9,9 +9,10 @@ export function defaultRunCommand(
   options: RunCommandOptions = {},
 ): Promise<CommandResult> {
   return new Promise((resolveCommand) => {
+    const stdio = options.stdio ?? 'inherit';
     const child = spawn(command, [...args], {
       cwd,
-      stdio: options.stdio ?? 'inherit',
+      stdio,
     });
 
     child.on('error', () => {

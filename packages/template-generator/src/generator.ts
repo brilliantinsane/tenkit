@@ -4,7 +4,12 @@ import {
   getGeneratedSetupTypeDefinition,
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
-import { readTemplateTree, type TemplateContext } from './template-reader';
+import {
+  GENERATED_PROJECT_PACKAGE_MANAGERS,
+  readTemplateTree,
+  type GeneratedProjectPackageManager,
+  type TemplateContext,
+} from './template-reader';
 import { mergeVirtualFileTrees, type VirtualFileTree } from './virtual-file-tree';
 
 export {
@@ -17,23 +22,27 @@ export {
   type GeneratedSetupTypeInput,
   type PublicSetupSlug,
 } from './generated-setup-types';
+export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
   setupType: 'white-label' | 'white-label-apps';
   projectName?: string;
   packageName?: string;
+  packageManager?: GeneratedProjectPackageManager;
 };
 
 export type SingleAppRuntimeTenantsProjectConfig = {
   setupType: 'runtime-tenants' | 'single-app-runtime-tenants';
   projectName?: string;
   packageName?: string;
+  packageManager?: GeneratedProjectPackageManager;
 };
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
   setupType: 'generic-standalone' | 'generic-with-standalone-app-variants';
   projectName?: string;
   packageName?: string;
+  packageManager?: GeneratedProjectPackageManager;
 };
 
 export type GenerateProjectConfig =
@@ -58,22 +67,49 @@ function normalizePackageName(value: string | undefined, fallback: string): stri
   return packageName;
 }
 
+function normalizePackageManager(
+  value: GeneratedProjectPackageManager | undefined,
+): GeneratedProjectPackageManager {
+  if (value === undefined) {
+    return 'pnpm';
+  }
+
+  if (GENERATED_PROJECT_PACKAGE_MANAGERS.some((packageManager) => packageManager === value)) {
+    return value;
+  }
+
+  throw new Error(
+    `Invalid generated app package manager ${JSON.stringify(value)}. Expected one of: ${GENERATED_PROJECT_PACKAGE_MANAGERS.join(', ')}.`,
+  );
+}
+
 function normalizeTemplateContext({
   projectName: rawProjectName,
   packageName: rawPackageName,
+  packageManager: rawPackageManager,
   setupTypeDefinition,
 }: {
   projectName?: string;
   packageName?: string;
+  packageManager?: GeneratedProjectPackageManager;
   setupTypeDefinition: GeneratedSetupTypeDefinition;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
+  const packageManager = normalizePackageManager(rawPackageManager);
 
   return {
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
+    isBunPackageManager: packageManager === 'bun',
+    isNpmPackageManager: packageManager === 'npm',
+    isPnpmPackageManager: packageManager === 'pnpm',
     projectName,
     projectNameStringLiteral: JSON.stringify(projectName),
     packageName: normalizePackageName(rawPackageName, setupTypeDefinition.defaultPackageName),
+    packageManager,
+    packageManagerInstallCommand: `${packageManager} install`,
+    packageManagerRunCommand: `${packageManager} run`,
+    packageManagerTenkitCommand:
+      packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
   };
 }
 
@@ -110,6 +146,7 @@ export function generateWhiteLabelAppsProject(
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
+    packageManager: config.packageManager,
     setupTypeDefinition,
   });
 
@@ -131,6 +168,7 @@ export function generateSingleAppRuntimeTenantsProject(
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
+    packageManager: config.packageManager,
     setupTypeDefinition,
   });
 
@@ -156,6 +194,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
   const context = normalizeTemplateContext({
     projectName: config.projectName,
     packageName: config.packageName,
+    packageManager: config.packageManager,
     setupTypeDefinition,
   });
 
@@ -171,6 +210,7 @@ export function generateProject(config: GenerateProjectConfig): VirtualFileTree 
   const baseConfig = {
     projectName: config.projectName,
     packageName: config.packageName,
+    packageManager: config.packageManager,
   };
 
   if (setupType === 'white-label-apps') {

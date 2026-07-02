@@ -101,10 +101,10 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     assert.match(readme, /## Select an App Variant/);
     assert.match(readme, /## Build Preparation/);
     assert.match(readme, /## Run the Prepared App/);
-    assert.match(readme, /pnpm tenkit build/);
+    assert.match(readme, /pnpm run tenkit build/);
     assert.match(readme, /EXPO_OWNER/);
     assert.match(readme, /starts blank on purpose/);
-    assert.ok(readme.indexOf('pnpm tenkit build') < readme.indexOf('pnpm ios'));
+    assert.ok(readme.indexOf('pnpm run tenkit build') < readme.indexOf('pnpm run ios'));
     assert.match(readme, /\.env\.example/);
     assert.match(envExample, /APP_VARIANT_SLUG=first-tenant/);
     assert.match(envExample, /\.env\.local/);
@@ -284,6 +284,29 @@ test('local proof command boundary generates Single App Runtime Tenants by Setup
     assert.equal(result.filesWritten.includes('assets/second-tenant/icons/icon.png'), false);
     assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
     assert.equal(await exists(join(workspaceRoot, 'package.json')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
+test('local proof command boundary forwards the selected package manager to generated output', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+
+  try {
+    await runGenerationProof({
+      setupType: 'white-label-apps',
+      targetDir,
+      packageManager: 'npm',
+      git: false,
+    });
+
+    const readme = await fs.readFile(join(targetDir, 'README.md'), 'utf8');
+
+    assert.match(readme, /npm install/);
+    assert.match(readme, /npm run tenkit -- build/);
+    assert.notMatch(readme, /pnpm run tenkit build/);
+    assert.equal(await exists(join(targetDir, 'pnpm-workspace.yaml')), false);
   } finally {
     await fs.remove(tempRoot);
   }

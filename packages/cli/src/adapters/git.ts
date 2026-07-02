@@ -98,7 +98,7 @@ export async function prepareInitialGitSetup({
         };
       }
 
-      const initResult = await runCommand('git', ['init'], targetDir);
+      const initResult = await runCommand('git', ['init'], targetDir, { stdio: 'ignore' });
       const gitInitialized = initResult.ok;
 
       if (!initResult.ok) {
@@ -117,9 +117,11 @@ export async function prepareInitialGitSetup({
         };
       }
 
-      const addResult = await runCommand('git', ['add', '--all'], targetDir);
+      const addResult = await runCommand('git', ['add', '--all'], targetDir, { stdio: 'ignore' });
       const commitResult = addResult.ok
-        ? await runCommand('git', ['commit', '-m', 'Initial commit'], targetDir)
+        ? await runCommand('git', ['commit', '-m', 'Initial commit'], targetDir, {
+            stdio: 'ignore',
+          })
         : { ok: false, code: 1 };
 
       return {

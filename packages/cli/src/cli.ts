@@ -30,6 +30,7 @@ export async function main(
     workspaceRoot,
     isInteractive: io.stdin.isTTY === true && io.stdout.isTTY === true,
     isCi: process.env.CI === 'true',
+    packageManagerUserAgent: process.env.npm_config_user_agent,
     output,
     prompts: createPromptAdapter(),
   };

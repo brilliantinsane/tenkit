@@ -9,6 +9,7 @@ export {
   SUPPORTED_GENERATED_SETUP_TYPES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GenerateProjectConfig,
+  type GeneratedProjectPackageManager,
   type GenericWithStandaloneAppVariantsProjectConfig,
   type GeneratedSetupType,
   type GeneratedSetupTypeInput,

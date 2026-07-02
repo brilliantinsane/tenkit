@@ -10,6 +10,7 @@ import { createProgram } from '../src/commands/create';
 import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
 import { runCreateFlow } from '../src/create/run-create';
 import type { CreateFlowEnvironment, PromptAdapter } from '../src/create/types';
+import { normalizePackageManagerInput } from '../src/create/package-manager';
 import {
   derivePackageName,
   normalizeSetupInput,
@@ -92,6 +93,13 @@ describe('create-flow validation', () => {
     expect(() => normalizeSetupInput(undefined, '')).toThrow(/Unsupported Setup Type ""/);
     expect(() => normalizeSetupInput('runtime-tenants', '')).toThrow(
       /Use either --setup or --setup-type/,
+    );
+  });
+
+  test('rejects unsupported package manager options', () => {
+    expect(() => normalizePackageManagerInput('')).toThrow(/Package manager must be one of:/);
+    expect(() => normalizePackageManagerInput('yarn')).toThrow(
+      /Unsupported package manager "yarn".*Expected one of: pnpm, npm, bun/,
     );
   });
 
@@ -298,9 +306,13 @@ describe('non-interactive create', () => {
 });
 
 describe('install and git planning', () => {
-  test('runs pnpm install and git commit by default outside an existing worktree', async () => {
+  test('runs detected package manager install and quiet git commit by default outside an existing worktree', async () => {
     const tempRoot = await createTempRoot();
-    const calls: { command: string; args: readonly string[]; stdio?: 'inherit' | 'ignore' }[] = [];
+    const calls: {
+      command: string;
+      args: readonly string[];
+      stdio?: 'inherit' | 'ignore';
+    }[] = [];
 
     await runCreateFlow(
       { name: 'git-demo', setup: 'white-label', yes: true },
@@ -317,20 +329,168 @@ describe('install and git planning', () => {
       }),
     );
 
-    expect(calls).toContainEqual({ command: 'pnpm', args: ['install'], stdio: undefined });
+    expect(calls).toContainEqual({ command: 'pnpm', args: ['install'], stdio: 'ignore' });
     expect(calls).toContainEqual({ command: 'git', args: ['--version'], stdio: 'ignore' });
     expect(calls).toContainEqual({
       command: 'git',
       args: ['rev-parse', '--is-inside-work-tree'],
       stdio: 'ignore',
     });
-    expect(calls).toContainEqual({ command: 'git', args: ['init'], stdio: undefined });
-    expect(calls).toContainEqual({ command: 'git', args: ['add', '--all'], stdio: undefined });
+    expect(calls).toContainEqual({ command: 'git', args: ['init'], stdio: 'ignore' });
+    expect(calls).toContainEqual({ command: 'git', args: ['add', '--all'], stdio: 'ignore' });
     expect(calls).toContainEqual({
       command: 'git',
       args: ['commit', '-m', 'Initial commit'],
-      stdio: undefined,
+      stdio: 'ignore',
     });
+  });
+
+  test('uses Bun from the create launcher for install, generated output, and next steps', async () => {
+    const tempRoot = await createTempRoot();
+    const outputLines: string[] = [];
+    const calls: {
+      command: string;
+      args: readonly string[];
+      stdio?: 'inherit' | 'ignore';
+    }[] = [];
+
+    const result = await runCreateFlow(
+      { name: 'bun-demo', setup: 'white-label', yes: true, git: false },
+      createEnv({
+        cwd: tempRoot,
+        packageManagerUserAgent: 'bun/1.2.0',
+        output: {
+          log(message = '') {
+            outputLines.push(message);
+          },
+          error(message) {
+            outputLines.push(message);
+          },
+        },
+        runCommand: vi.fn(async (command, args, _cwd, options) => {
+          calls.push({ command, args, stdio: options?.stdio });
+          return { ok: true, code: 0 };
+        }),
+      }),
+    );
+
+    const packageJson = await fs.readJson(join(tempRoot, 'bun-demo/package.json'));
+    const readme = await fs.readFile(join(tempRoot, 'bun-demo/README.md'), 'utf8');
+    const localCliCore = await fs.readFile(
+      join(tempRoot, 'bun-demo/scripts/tenkit-cli-core.ts'),
+      'utf8',
+    );
+
+    expect(result.packageManager).toBe('bun');
+    expect(calls).toContainEqual({ command: 'bun', args: ['install'], stdio: 'ignore' });
+    expect(packageJson.packageManager).toBeUndefined();
+    expect(await fs.pathExists(join(tempRoot, 'bun-demo/pnpm-workspace.yaml'))).toBe(false);
+    expect(readme).toContain('bun install');
+    expect(readme).toContain('bun run tenkit build');
+    expect(localCliCore).toContain("bin: 'bun'");
+    expect(localCliCore).toContain("args: ['x', 'expo', ...args]");
+    expect(outputLines).toContain('- bun run android');
+  });
+
+  test('allows explicit package manager override and renders npm-safe Generated App Local CLI commands', async () => {
+    const tempRoot = await createTempRoot();
+
+    const result = await runCreateFlow(
+      {
+        name: 'npm-demo',
+        setup: 'generic-standalone',
+        packageManager: 'npm',
+        install: false,
+        git: false,
+        yes: true,
+      },
+      createEnv({
+        cwd: tempRoot,
+        packageManagerUserAgent: 'bun/1.2.0',
+        runCommand: vi.fn(async () => ({ ok: true, code: 0 })),
+      }),
+    );
+
+    const packageJson = await fs.readJson(join(tempRoot, 'npm-demo/package.json'));
+    const readme = await fs.readFile(join(tempRoot, 'npm-demo/README.md'), 'utf8');
+    const localCliCore = await fs.readFile(
+      join(tempRoot, 'npm-demo/scripts/tenkit-cli-core.ts'),
+      'utf8',
+    );
+
+    expect(result.packageManager).toBe('npm');
+    expect(packageJson.packageManager).toBeUndefined();
+    expect(readme).toContain('npm install');
+    expect(readme).toContain('npm run tenkit -- build');
+    expect(await fs.pathExists(join(tempRoot, 'npm-demo/pnpm-workspace.yaml'))).toBe(false);
+    expect(localCliCore).toContain("bin: 'npm'");
+    expect(localCliCore).toContain("args: ['exec', 'expo', '--', ...args]");
+  });
+
+  test('uses npm from the create launcher for install, generated output, and next steps', async () => {
+    const tempRoot = await createTempRoot();
+    const outputLines: string[] = [];
+    const calls: {
+      command: string;
+      args: readonly string[];
+      stdio?: 'inherit' | 'ignore';
+    }[] = [];
+
+    const result = await runCreateFlow(
+      { name: 'npm-launcher-demo', setup: 'generic-standalone', yes: true, git: false },
+      createEnv({
+        cwd: tempRoot,
+        packageManagerUserAgent: 'npm/11.0.0 node/v25.0.0 darwin arm64 workspaces/false',
+        output: {
+          log(message = '') {
+            outputLines.push(message);
+          },
+          error(message) {
+            outputLines.push(message);
+          },
+        },
+        runCommand: vi.fn(async (command, args, _cwd, options) => {
+          calls.push({ command, args, stdio: options?.stdio });
+          return { ok: true, code: 0 };
+        }),
+      }),
+    );
+
+    const packageJson = await fs.readJson(join(tempRoot, 'npm-launcher-demo/package.json'));
+    const readme = await fs.readFile(join(tempRoot, 'npm-launcher-demo/README.md'), 'utf8');
+
+    expect(result.packageManager).toBe('npm');
+    expect(calls).toContainEqual({ command: 'npm', args: ['install'], stdio: 'ignore' });
+    expect(packageJson.packageManager).toBeUndefined();
+    expect(readme).toContain('npm install');
+    expect(readme).toContain('npm run tenkit -- build');
+    expect(await fs.pathExists(join(tempRoot, 'npm-launcher-demo/pnpm-workspace.yaml'))).toBe(
+      false,
+    );
+    expect(outputLines).toContain('- npm run android');
+  });
+
+  test('does not emit packageManager metadata in generated package.json', async () => {
+    const tempRoot = await createTempRoot();
+
+    await runCreateFlow(
+      {
+        name: 'unknown-version-demo',
+        setup: 'white-label',
+        packageManager: 'pnpm',
+        install: false,
+        git: false,
+        yes: true,
+      },
+      createEnv({
+        cwd: tempRoot,
+        runCommand: vi.fn(async () => ({ ok: true, code: 0 })),
+      }),
+    );
+
+    const packageJson = await fs.readJson(join(tempRoot, 'unknown-version-demo/package.json'));
+
+    expect(packageJson.packageManager).toBeUndefined();
   });
 
   test('reports install and commit convenience failures without failing generation', async () => {
@@ -552,6 +712,7 @@ describe('Commander contract', () => {
 
     expect(help).toContain('--name <name>');
     expect(help).toContain('--setup <setup>');
+    expect(help).toContain('--package-manager <manager>');
     expect(help).not.toContain('--json');
     expect(help).not.toContain('[target');
 

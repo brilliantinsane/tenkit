@@ -1,27 +1,74 @@
 # @tenkit/cli
 
-Public Tenkit CLI implementation package.
+Public CLI implementation for creating Tenkit Expo projects.
 
-Most users should run Tenkit through the package-manager create entrypoint:
+Most users should run Tenkit through the create entrypoint:
 
 ```bash
 pnpm create tenkit@latest
 ```
 
-This package owns the real Public CLI implementation behind `create-tenkit`:
-parsing, prompts, create-flow orchestration, Template generation, dependency
-installation, git convenience policy, and final output.
+`@tenkit/cli` owns the real create flow behind `create-tenkit`: option parsing,
+prompts, Template generation, dependency installation, initial git setup, and
+final next steps.
 
-Tenkit creates Expo and React Native projects for white-label apps,
-multi-tenant products, App Variant builds, and Runtime Tenant experiences.
+## Highlights
 
-## Direct CLI
+- Create a generated Expo project from a selected Tenkit Setup Type.
+- Ask only for project name and Setup Type in the default interactive flow.
+- Support `pnpm`, `npm`, `npx`, Bun, and `bunx` launchers.
+- Use the selected package manager for install commands, generated README
+  commands, and generated app-local commands.
+- Treat install and git failures as follow-up work so successful generation is
+  not hidden by convenience-step failures.
 
-The package exposes a `tenkit` binary for direct usage:
+## Usage
+
+```bash
+# Package-manager create entrypoints
+pnpm create tenkit@latest
+npm create tenkit@latest
+npx create-tenkit@latest
+bun create tenkit@latest
+bunx create-tenkit@latest
+```
+
+Direct binary usage is also available:
 
 ```bash
 tenkit --help
 ```
 
-For public project creation, prefer `pnpm create tenkit@latest` so the package
-manager resolves the create entrypoint correctly.
+## Common Options
+
+```bash
+tenkit --name studio-app --setup white-label --yes
+tenkit --name venue-network --setup runtime-tenants --yes
+tenkit --name franchise-app --setup generic-standalone --yes
+```
+
+```bash
+tenkit --name demo --setup runtime-tenants --yes --no-install --no-git
+```
+
+Supported public Setup Type slugs:
+
+```text
+white-label
+runtime-tenants
+generic-standalone
+```
+
+Override package-manager detection when needed:
+
+```bash
+tenkit --package-manager pnpm
+tenkit --package-manager npm
+tenkit --package-manager bun
+```
+
+## Package Boundary
+
+`@tenkit/cli` is the Public CLI implementation package. The `create-tenkit`
+package is a thin create entrypoint that delegates here. Template source,
+generation, and writer safety live in `@tenkit/template-generator`.

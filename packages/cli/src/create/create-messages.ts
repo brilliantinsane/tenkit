@@ -1,4 +1,5 @@
 import type { CreateFlowOutput, CreateFlowResult } from './types';
+import { formatInstallCommand, formatRunCommand } from './package-manager';
 
 export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutput): void {
   const projectShellArg = formatShellArg(result.projectName);
@@ -12,16 +13,18 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
   output.log(`- cd ${projectShellArg}`);
 
   if (result.installFailed || !result.installed) {
-    output.log('- pnpm install');
+    output.log(`- ${formatInstallCommand(result.packageManager)}`);
   }
 
-  output.log('- pnpm run android');
-  output.log('- pnpm run ios');
-  output.log('- pnpm run web');
+  output.log(`- ${formatRunCommand(result.packageManager, 'android')}`);
+  output.log(`- ${formatRunCommand(result.packageManager, 'ios')}`);
+  output.log(`- ${formatRunCommand(result.packageManager, 'web')}`);
 
   if (result.installFailed) {
     output.log('');
-    output.log('Dependency installation failed. Run pnpm install in the generated project.');
+    output.log(
+      `Dependency installation failed. Run ${formatInstallCommand(result.packageManager)} in the generated project.`,
+    );
   }
 
   if (result.gitSkippedReason === 'git-unavailable') {

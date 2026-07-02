@@ -17,7 +17,7 @@ This app can produce multiple branded native apps from one Expo codebase. Each A
 1. Install dependencies.
 
    ```bash
-   pnpm install
+   {{packageManagerInstallCommand}}
    ```
 
 2. Review the generated App Variants.
@@ -33,12 +33,12 @@ The app code lives in `src/app`. This project uses Expo Router file-based routin
 Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
 
 ```bash
-pnpm tenkit build
-pnpm tenkit reset
-pnpm tenkit doctor
+{{packageManagerTenkitCommand}} build
+{{packageManagerTenkitCommand}} reset
+{{packageManagerTenkitCommand}} doctor
 ```
 
-`pnpm tenkit build` asks for an App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity.
+`{{packageManagerTenkitCommand}} build` asks for an App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity.
 
 Before using build preparation:
 
@@ -50,24 +50,24 @@ Before using build preparation:
 For non-interactive CI usage, pass the selected values explicitly:
 
 ```bash
-pnpm tenkit build --slug first-tenant --env production --platform ios
+{{packageManagerTenkitCommand}} build --slug first-tenant --env production --platform ios
 ```
 
-`pnpm tenkit reset` prepares the default App Variant for the development environment on both native platforms.
+`{{packageManagerTenkitCommand}} reset` prepares the default App Variant for the development environment on both native platforms.
 
 ## Run the Prepared App
 
 After build preparation has created native projects for the selected App Variant, start Metro:
 
 ```bash
-pnpm start
+{{packageManagerRunCommand}} start
 ```
 
 Then run the prepared native project:
 
 ```bash
-pnpm ios
-pnpm android
+{{packageManagerRunCommand}} ios
+{{packageManagerRunCommand}} android
 ```
 
 ## Select an App Variant
@@ -81,16 +81,16 @@ src/constants/app-variants.ts
 Inspect the resolved public Expo config for the default App Variant:
 
 ```bash
-pnpm expo:config
+{{packageManagerRunCommand}} expo:config
 ```
 
 Inspect a specific App Variant:
 
 ```bash
-APP_VARIANT_SLUG=second-tenant pnpm expo:config
+APP_VARIANT_SLUG=second-tenant {{packageManagerRunCommand}} expo:config
 ```
 
-For repeated local work with one App Variant, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG` there. `.env.local` is ignored by git and may also be rewritten by `pnpm tenkit build` after it pulls values from EAS.
+For repeated local work with one App Variant, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG` there. `.env.local` is ignored by git and may also be rewritten by `{{packageManagerTenkitCommand}} build` after it pulls values from EAS.
 
 ## App Variant Assets
 
@@ -116,14 +116,14 @@ Shared product assets that are not part of native app identity belong in `assets
 ## Useful Commands
 
 ```bash
-pnpm tenkit build  # prepare native projects for an App Variant
-pnpm tenkit reset  # reset native projects to the default App Variant
-pnpm start         # start Metro
-pnpm ios           # run the prepared iOS native project
-pnpm android       # run the prepared Android native project
-pnpm web           # run the web app
-pnpm typecheck     # run TypeScript
-pnpm expo:config   # print the resolved public Expo config
+{{packageManagerTenkitCommand}} build  # prepare native projects for an App Variant
+{{packageManagerTenkitCommand}} reset  # reset native projects to the default App Variant
+{{packageManagerRunCommand}} start         # start Metro
+{{packageManagerRunCommand}} ios           # run the prepared iOS native project
+{{packageManagerRunCommand}} android       # run the prepared Android native project
+{{packageManagerRunCommand}} web           # run the web app
+{{packageManagerRunCommand}} typecheck     # run TypeScript
+{{packageManagerRunCommand}} expo:config   # print the resolved public Expo config
 ```
 
 ## Useful Files
