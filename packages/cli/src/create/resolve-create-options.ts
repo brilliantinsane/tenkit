@@ -16,6 +16,7 @@ import {
   validatePackageName,
   validateProjectName,
 } from './validation';
+import { resolvePackageManager } from './package-manager';
 import type { CreateCommandOptions, CreateFlowEnvironment, ResolvedCreateOptions } from './types';
 
 async function readProjectName(
@@ -112,6 +113,10 @@ export async function resolveCreateOptions(
     options.packageName !== undefined
       ? validatePackageName(options.packageName)
       : derivePackageName(projectName);
+  const packageManager = resolvePackageManager({
+    packageManager: options.packageManager,
+    userAgent: env.packageManagerUserAgent,
+  });
   const targetDir = resolve(env.cwd, projectName);
 
   await assertTargetIsSafe(targetDir);
@@ -121,6 +126,7 @@ export async function resolveCreateOptions(
     packageName,
     setupType,
     targetDir,
+    packageManager,
     install: options.install !== false,
     git: parseGitMode(options.git),
     dryRun: options.dryRun === true,

@@ -55,12 +55,14 @@ bunx create-tenkit@latest
 ```
 
 The create flow asks for a project name and Setup Type, then creates a child
-folder, installs dependencies with pnpm, initializes git when safe, and prints
-next steps.
+folder, installs dependencies with the package manager you used to launch the
+create command, initializes git when safe, and prints next steps.
 
-Tenkit can be launched through pnpm, npm, npx, Bun, or bunx. Generated projects
-are currently pnpm-first: dependency installation and printed next steps use
-pnpm.
+Tenkit can be launched through pnpm, npm, npx, Bun, or bunx. The create flow
+detects that launcher and uses the same package manager for generated project
+installation, local README commands, and final next steps. You can override
+detection with `--package-manager pnpm`, `--package-manager npm`, or
+`--package-manager bun`.
 
 Non-interactive examples:
 

@@ -101,10 +101,10 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     assert.match(readme, /## Select an App Variant/);
     assert.match(readme, /## Build Preparation/);
     assert.match(readme, /## Run the Prepared App/);
-    assert.match(readme, /pnpm tenkit build/);
+    assert.match(readme, /pnpm run tenkit build/);
     assert.match(readme, /EXPO_OWNER/);
     assert.match(readme, /starts blank on purpose/);
-    assert.ok(readme.indexOf('pnpm tenkit build') < readme.indexOf('pnpm ios'));
+    assert.ok(readme.indexOf('pnpm run tenkit build') < readme.indexOf('pnpm run ios'));
     assert.match(readme, /\.env\.example/);
     assert.match(envExample, /APP_VARIANT_SLUG=first-tenant/);
     assert.match(envExample, /\.env\.local/);

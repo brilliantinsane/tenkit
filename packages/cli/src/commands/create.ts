@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { CLI_VERSION, DEFAULT_PROJECT_NAME, supportedSetupValues } from '../constants';
 import { runCreateFlow } from '../create/run-create';
 import type { CreateCommandOptions, CreateFlowEnvironment } from '../create/types';
+import { SUPPORTED_PACKAGE_MANAGERS } from '../create/package-manager';
 import { parseGitMode } from '../create/validation';
 
 type CommanderOptions = {
@@ -11,6 +12,7 @@ type CommanderOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  packageManager?: string;
   yes?: boolean;
   install?: boolean;
   git?: string | false;
@@ -23,6 +25,7 @@ function normalizeCommanderOptions(options: CommanderOptions): CreateCommandOpti
     packageName: options.packageName,
     setup: options.setup,
     setupType: options.setupType,
+    packageManager: options.packageManager,
     yes: options.yes,
     install: options.install,
     git: parseGitMode(options.git),
@@ -42,6 +45,10 @@ export function createProgram(env: CreateFlowEnvironment): Command {
     .option('--package-name <name>', 'generated package.json name override')
     .option('-s, --setup <setup>', `public Setup slug: ${supportedSetupValues().join(', ')}`)
     .option('--setup-type <setupType>', 'canonical Setup Type ID or public Setup slug')
+    .option(
+      '--package-manager <manager>',
+      `install and generated command package manager: ${SUPPORTED_PACKAGE_MANAGERS.join(', ')}`,
+    )
     .option('--yes', 'skip prompts and accept defaults')
     .option('--no-install', 'skip dependency installation')
     .option('--git <mode>', 'git behavior: init, commit, none')

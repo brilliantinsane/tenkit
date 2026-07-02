@@ -9,10 +9,16 @@ export function createPromptAdapter(): PromptAdapter {
       const answer = await text({
         ...options,
         validate(value) {
-          return options.validate(value);
+          return options.validate(
+            value === '' || value === undefined ? options.defaultValue : value,
+          );
         },
       });
-      return isCancel(answer) ? PROMPT_CANCELLED : String(answer);
+      return isCancel(answer)
+        ? PROMPT_CANCELLED
+        : answer === ''
+          ? options.defaultValue
+          : String(answer);
     },
     async select(options) {
       const answer = await select({

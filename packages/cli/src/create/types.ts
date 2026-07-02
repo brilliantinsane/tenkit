@@ -6,6 +6,7 @@ import type {
 } from '@tenkit/template-generator';
 
 import { PROMPT_CANCELLED, type PromptChoice } from '../constants';
+import type { PublicCliPackageManager } from './package-manager';
 
 export type PublicCliGitMode = false | 'init' | 'commit' | 'none';
 
@@ -14,6 +15,7 @@ export type CreateCommandOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  packageManager?: string;
   yes?: boolean;
   install?: boolean;
   git?: PublicCliGitMode;
@@ -41,10 +43,11 @@ export type PromptAdapter = {
 export type CommandResult = {
   ok: boolean;
   code: number;
+  stdout?: string;
 };
 
 export type RunCommandOptions = {
-  stdio?: 'inherit' | 'ignore';
+  stdio?: 'inherit' | 'ignore' | 'pipe';
 };
 
 export type RunCommand = (
@@ -65,6 +68,7 @@ export type CreateFlowEnvironment = {
   packageRoot?: string;
   isInteractive: boolean;
   isCi: boolean;
+  packageManagerUserAgent?: string;
   output: CreateFlowOutput;
   prompts: PromptAdapter;
   runCommand?: RunCommand;
@@ -72,6 +76,7 @@ export type CreateFlowEnvironment = {
     setupType: GeneratedSetupType;
     projectName: string;
     packageName: string;
+    packageManager?: PublicCliPackageManager;
   }) => VirtualFileTree;
   write?: (options: {
     targetDir: string;
@@ -86,6 +91,7 @@ export type CreateFlowResult = {
   projectName: string;
   packageName: string;
   setupType: GeneratedSetupType;
+  packageManager: PublicCliPackageManager;
   installed: boolean;
   installFailed: boolean;
   gitInitialized: boolean;
@@ -99,6 +105,7 @@ export type ResolvedCreateOptions = {
   packageName: string;
   setupType: GeneratedSetupType;
   targetDir: string;
+  packageManager: PublicCliPackageManager;
   install: boolean;
   git: PublicCliGitMode | undefined;
   dryRun: boolean;

@@ -37,5 +37,7 @@ tenkit --help
 ```
 
 For public project creation, prefer a package-manager create command so the
-package manager resolves the create entrypoint correctly. Generated projects are
-currently pnpm-first: dependency installation and printed next steps use pnpm.
+package manager resolves the create entrypoint correctly. The create flow uses
+the launching package manager for generated project installation and next steps,
+or accepts `--package-manager pnpm`, `--package-manager npm`, or
+`--package-manager bun` as an explicit override.
