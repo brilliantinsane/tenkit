@@ -289,6 +289,29 @@ test('local proof command boundary generates Single App Runtime Tenants by Setup
   }
 });
 
+test('local proof command boundary forwards the selected package manager to generated output', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+
+  try {
+    await runGenerationProof({
+      setupType: 'white-label-apps',
+      targetDir,
+      packageManager: 'npm',
+      git: false,
+    });
+
+    const readme = await fs.readFile(join(targetDir, 'README.md'), 'utf8');
+
+    assert.match(readme, /npm install/);
+    assert.match(readme, /npm run tenkit -- build/);
+    assert.notMatch(readme, /pnpm run tenkit build/);
+    assert.equal(await exists(join(targetDir, 'pnpm-workspace.yaml')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
 test('local proof command boundary generates Generic With Standalone App Variants by Setup Type', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
   const targetDir = join(tempRoot, 'generated-app');

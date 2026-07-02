@@ -108,6 +108,7 @@ export async function runGenerationProof(
     setupType: options.setupType,
     projectName: options.projectName,
     packageName: options.packageName,
+    packageManager: options.packageManager,
   });
   const overwrite: WriteProjectOverwriteMode = options.force ? 'always' : 'never';
   const targetWasEmpty = await isExistingTargetDirectoryEmpty(options.targetDir);
