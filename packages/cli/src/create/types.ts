@@ -43,11 +43,10 @@ export type PromptAdapter = {
 export type CommandResult = {
   ok: boolean;
   code: number;
-  stdout?: string;
 };
 
 export type RunCommandOptions = {
-  stdio?: 'inherit' | 'ignore' | 'pipe';
+  stdio?: 'inherit' | 'ignore';
 };
 
 export type RunCommand = (

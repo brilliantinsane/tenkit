@@ -117,6 +117,17 @@ test('generic Template generation rejects unsupported Setup Types', () => {
   );
 });
 
+test('Template generation rejects unsupported package managers', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label',
+        packageManager: 'unsupported',
+      } as unknown as Parameters<typeof generateProject>[0]),
+    /Invalid generated app package manager "unsupported".*Expected one of: pnpm, npm, bun/,
+  );
+});
+
 test('White Label Apps Template combines shared, setup-owned, and App Variant asset output', () => {
   const tree = generateWhiteLabelAppsProject({
     setupType: 'white-label-apps',
@@ -347,7 +358,7 @@ test('Template generation renders selected package manager into generated app ou
   assert.match(readVirtualFile(bunTree, 'scripts/tenkit-cli-core.ts'), /bin: 'bun'/);
   assert.match(
     readVirtualFile(bunTree, 'scripts/tenkit-cli-core.ts'),
-    /args: \['expo', \.\.\.args\]/,
+    /args: \['x', 'expo', \.\.\.args\]/,
   );
 
   const npmTree = generateGenericWithStandaloneAppVariantsProject({
@@ -359,10 +370,16 @@ test('Template generation renders selected package manager into generated app ou
   const npmPackageJson = JSON.parse(readVirtualFile(npmTree, 'package.json')) as {
     packageManager?: string;
   };
+  const npmPaths = npmTree.map((file) => file.path);
 
   assert.equal(npmPackageJson.packageManager, undefined);
+  assert.equal(npmPaths.includes('pnpm-workspace.yaml'), false);
   assert.match(readVirtualFile(npmTree, 'README.md'), /npm run tenkit -- build/);
-  assert.match(readVirtualFile(npmTree, 'scripts/tenkit-cli-core.ts'), /bin: 'npx'/);
+  assert.match(readVirtualFile(npmTree, 'scripts/tenkit-cli-core.ts'), /bin: 'npm'/);
+  assert.match(
+    readVirtualFile(npmTree, 'scripts/tenkit-cli-core.ts'),
+    /args: \['exec', 'expo', '--', \.\.\.args\]/,
+  );
 
   const runtimeTenantsTree = generateSingleAppRuntimeTenantsProject({
     setupType: 'single-app-runtime-tenants',

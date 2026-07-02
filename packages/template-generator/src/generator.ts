@@ -5,6 +5,7 @@ import {
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
 import {
+  GENERATED_PROJECT_PACKAGE_MANAGERS,
   readTemplateTree,
   type GeneratedProjectPackageManager,
   type TemplateContext,
@@ -69,7 +70,17 @@ function normalizePackageName(value: string | undefined, fallback: string): stri
 function normalizePackageManager(
   value: GeneratedProjectPackageManager | undefined,
 ): GeneratedProjectPackageManager {
-  return value ?? 'pnpm';
+  if (value === undefined) {
+    return 'pnpm';
+  }
+
+  if (GENERATED_PROJECT_PACKAGE_MANAGERS.some((packageManager) => packageManager === value)) {
+    return value;
+  }
+
+  throw new Error(
+    `Invalid generated app package manager ${JSON.stringify(value)}. Expected one of: ${GENERATED_PROJECT_PACKAGE_MANAGERS.join(', ')}.`,
+  );
 }
 
 function normalizeTemplateContext({
@@ -88,6 +99,7 @@ function normalizeTemplateContext({
 
   return {
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
+    isBunPackageManager: packageManager === 'bun',
     isNpmPackageManager: packageManager === 'npm',
     isPnpmPackageManager: packageManager === 'pnpm',
     projectName,

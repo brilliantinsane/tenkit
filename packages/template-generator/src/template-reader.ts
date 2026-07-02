@@ -10,6 +10,7 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   isSingleAppRuntimeTenants: boolean;
+  isBunPackageManager: boolean;
   isNpmPackageManager: boolean;
   isPnpmPackageManager: boolean;
   packageName: string;
@@ -21,7 +22,9 @@ export type TemplateContext = {
   projectNameStringLiteral: string;
 };
 
-export type GeneratedProjectPackageManager = 'pnpm' | 'npm' | 'bun';
+export const GENERATED_PROJECT_PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun'] as const;
+
+export type GeneratedProjectPackageManager = (typeof GENERATED_PROJECT_PACKAGE_MANAGERS)[number];
 
 const templatesRoot = resolve(fileURLToPath(new URL('../templates', import.meta.url)));
 const handlebars = Handlebars.create();

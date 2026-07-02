@@ -10,6 +10,7 @@ import { createProgram } from '../src/commands/create';
 import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
 import { runCreateFlow } from '../src/create/run-create';
 import type { CreateFlowEnvironment, PromptAdapter } from '../src/create/types';
+import { normalizePackageManagerInput } from '../src/create/package-manager';
 import {
   derivePackageName,
   normalizeSetupInput,
@@ -92,6 +93,13 @@ describe('create-flow validation', () => {
     expect(() => normalizeSetupInput(undefined, '')).toThrow(/Unsupported Setup Type ""/);
     expect(() => normalizeSetupInput('runtime-tenants', '')).toThrow(
       /Use either --setup or --setup-type/,
+    );
+  });
+
+  test('rejects unsupported package manager options', () => {
+    expect(() => normalizePackageManagerInput('')).toThrow(/Package manager must be one of:/);
+    expect(() => normalizePackageManagerInput('yarn')).toThrow(
+      /Unsupported package manager "yarn".*Expected one of: pnpm, npm, bun/,
     );
   });
 
@@ -303,7 +311,7 @@ describe('install and git planning', () => {
     const calls: {
       command: string;
       args: readonly string[];
-      stdio?: 'inherit' | 'ignore' | 'pipe';
+      stdio?: 'inherit' | 'ignore';
     }[] = [];
 
     await runCreateFlow(
@@ -343,7 +351,7 @@ describe('install and git planning', () => {
     const calls: {
       command: string;
       args: readonly string[];
-      stdio?: 'inherit' | 'ignore' | 'pipe';
+      stdio?: 'inherit' | 'ignore';
     }[] = [];
 
     const result = await runCreateFlow(
@@ -368,6 +376,10 @@ describe('install and git planning', () => {
 
     const packageJson = await fs.readJson(join(tempRoot, 'bun-demo/package.json'));
     const readme = await fs.readFile(join(tempRoot, 'bun-demo/README.md'), 'utf8');
+    const localCliCore = await fs.readFile(
+      join(tempRoot, 'bun-demo/scripts/tenkit-cli-core.ts'),
+      'utf8',
+    );
 
     expect(result.packageManager).toBe('bun');
     expect(calls).toContainEqual({ command: 'bun', args: ['install'], stdio: 'ignore' });
@@ -375,6 +387,8 @@ describe('install and git planning', () => {
     expect(await fs.pathExists(join(tempRoot, 'bun-demo/pnpm-workspace.yaml'))).toBe(false);
     expect(readme).toContain('bun install');
     expect(readme).toContain('bun run tenkit build');
+    expect(localCliCore).toContain("bin: 'bun'");
+    expect(localCliCore).toContain("args: ['x', 'expo', ...args]");
     expect(outputLines).toContain('- bun run android');
   });
 
@@ -409,8 +423,8 @@ describe('install and git planning', () => {
     expect(readme).toContain('npm install');
     expect(readme).toContain('npm run tenkit -- build');
     expect(await fs.pathExists(join(tempRoot, 'npm-demo/pnpm-workspace.yaml'))).toBe(false);
-    expect(localCliCore).toContain("bin: 'npx'");
-    expect(localCliCore).toContain("args: ['expo', ...args]");
+    expect(localCliCore).toContain("bin: 'npm'");
+    expect(localCliCore).toContain("args: ['exec', 'expo', '--', ...args]");
   });
 
   test('uses npm from the create launcher for install, generated output, and next steps', async () => {
@@ -419,7 +433,7 @@ describe('install and git planning', () => {
     const calls: {
       command: string;
       args: readonly string[];
-      stdio?: 'inherit' | 'ignore' | 'pipe';
+      stdio?: 'inherit' | 'ignore';
     }[] = [];
 
     const result = await runCreateFlow(

@@ -191,8 +191,11 @@ function createPrebuildCommand(platform: BuildPlatform, slug: string): CommandPl
 
   return {
 {{#if isNpmPackageManager}}
-    bin: 'npx',
-    args: ['expo', ...args],
+    bin: 'npm',
+    args: ['exec', 'expo', '--', ...args],
+{{else if isBunPackageManager}}
+    bin: 'bun',
+    args: ['x', 'expo', ...args],
 {{else}}
     bin: '{{packageManager}}',
     args: ['expo', ...args],
