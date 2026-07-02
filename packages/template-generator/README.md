@@ -18,5 +18,9 @@ entrypoint. Most users should run:
 pnpm create tenkit@latest
 ```
 
+The public create entrypoint also works through npm, npx, Bun, and bunx.
+Generated projects are currently pnpm-first: dependency installation and printed
+next steps use pnpm.
+
 The Public CLI delegates to this package to render selected Setup Type Templates
 and write generated project files.

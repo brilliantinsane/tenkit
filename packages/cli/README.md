@@ -5,7 +5,20 @@ Public Tenkit CLI implementation package.
 Most users should run Tenkit through the package-manager create entrypoint:
 
 ```bash
+# Using pnpm
 pnpm create tenkit@latest
+
+# Using npm
+npm create tenkit@latest
+
+# Using npx
+npx create-tenkit@latest
+
+# Using Bun
+bun create tenkit@latest
+
+# Using bunx
+bunx create-tenkit@latest
 ```
 
 This package owns the real Public CLI implementation behind `create-tenkit`:
@@ -23,5 +36,6 @@ The package exposes a `tenkit` binary for direct usage:
 tenkit --help
 ```
 
-For public project creation, prefer `pnpm create tenkit@latest` so the package
-manager resolves the create entrypoint correctly.
+For public project creation, prefer a package-manager create command so the
+package manager resolves the create entrypoint correctly. Generated projects are
+currently pnpm-first: dependency installation and printed next steps use pnpm.

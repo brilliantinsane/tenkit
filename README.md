@@ -30,7 +30,20 @@ Instead of copying an Expo app for every brand, venue, customer, or business uni
 ## Create A Project
 
 ```bash
+# Using pnpm
 pnpm create tenkit@latest
+
+# Using npm
+npm create tenkit@latest
+
+# Using npx
+npx create-tenkit@latest
+
+# Using Bun
+bun create tenkit@latest
+
+# Using bunx
+bunx create-tenkit@latest
 ```
 
 The create flow asks for:
@@ -39,6 +52,8 @@ The create flow asks for:
 - Setup Type
 
 It then creates a child folder, installs dependencies with pnpm, initializes git when safe, and prints next steps.
+
+Tenkit can be launched through pnpm, npm, npx, Bun, or bunx. Generated projects are currently pnpm-first: dependency installation and printed next steps use pnpm.
 
 Non-interactive examples:
 
