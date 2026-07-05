@@ -1,0 +1,81 @@
+"use client"
+
+import { AnimatePresence, motion, useMotionValue } from "motion/react"
+import {
+  type ElementType,
+  type MouseEvent,
+  type ReactNode,
+  useRef,
+  useState,
+} from "react"
+
+import { cn } from "@/lib/utils"
+
+type GlowingCardProps = {
+  as?: ElementType
+  children: ReactNode
+  className?: string
+  backgroundClassName?: string
+  contentClassName?: string
+  glowClassName?: string
+}
+
+export function GlowingCard({
+  as: Component = "div",
+  children,
+  className,
+  backgroundClassName,
+  contentClassName,
+  glowClassName,
+}: GlowingCardProps) {
+  const cardRef = useRef<HTMLElement | null>(null)
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+  const [showGlow, setShowGlow] = useState(false)
+
+  function handleMouseMove(event: MouseEvent<HTMLElement>) {
+    const card = cardRef.current
+    if (!card) return
+
+    const rect = card.getBoundingClientRect()
+
+    mouseX.set(event.clientX - rect.left)
+    mouseY.set(event.clientY - rect.top)
+  }
+
+  return (
+    <Component
+      ref={cardRef}
+      className={cn("relative overflow-hidden", className)}
+      onMouseEnter={() => setShowGlow(true)}
+      onMouseLeave={() => setShowGlow(false)}
+      onMouseMove={handleMouseMove}
+    >
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-px z-10 rounded-[calc(var(--radius-lg)-1px)] bg-card/80",
+          backgroundClassName
+        )}
+      />
+
+      <AnimatePresence>
+        {showGlow ? (
+          <motion.div
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={cn(
+              "pointer-events-none absolute z-0 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#208AEF]/35 blur-2xl",
+              glowClassName
+            )}
+            style={{ left: mouseX, top: mouseY }}
+            transition={{ duration: 0.16 }}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <div className={cn("relative z-20", contentClassName)}>{children}</div>
+    </Component>
+  )
+}

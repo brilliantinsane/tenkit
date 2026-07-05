@@ -7,7 +7,8 @@
     "changelogithub": "^14.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
-    "prettier": "^3.8.4"
+    "prettier": "^3.8.4",
+    "prettier-plugin-tailwindcss": "^0.8.0"
   },
   "scripts": {
     "start": "pnpm -F playground start",
@@ -15,7 +16,11 @@
     "android": "pnpm -F playground android",
     "ios": "pnpm -F playground ios",
     "web": "pnpm -F playground web",
-    "build": "pnpm -F @tenkit/template-generator build && pnpm -F @tenkit/cli build && pnpm -F create-tenkit build",
+    "web:dev": "pnpm -F @tenkit/web dev",
+    "web:build": "pnpm -F @tenkit/web build",
+    "web:typecheck": "pnpm -F @tenkit/web typecheck",
+    "web:lint": "pnpm -F @tenkit/web lint",
+    "build": "pnpm -F @tenkit/template-generator build && pnpm -F @tenkit/cli build && pnpm -F create-tenkit build && pnpm -F @tenkit/web build",
     "test": "pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test",
     "test:proof": "pnpm -F @tenkit/template-generator test:proof",
     "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm smoke",
@@ -27,8 +32,8 @@
     "release:smoke": "node scripts/release-smoke.mjs",
     "release:published-smoke": "node scripts/published-create-smoke.mjs",
     "release:check": "pnpm check && pnpm test:proof && pnpm release:smoke && pnpm pack:dry-run",
-    "typecheck": "pnpm -F playground typecheck && pnpm -F @tenkit/template-generator typecheck && pnpm -F @tenkit/cli typecheck && pnpm -F create-tenkit typecheck",
-    "lint": "pnpm -F playground lint",
+    "typecheck": "pnpm -F playground typecheck && pnpm -F @tenkit/template-generator typecheck && pnpm -F @tenkit/cli typecheck && pnpm -F create-tenkit typecheck && pnpm -F @tenkit/web typecheck",
+    "lint": "pnpm -F playground lint && pnpm -F @tenkit/web lint",
     "format": "prettier --write .",
     "prepare": "husky"
   },
