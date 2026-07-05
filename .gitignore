@@ -6,8 +6,10 @@ node_modules/
 
 # Expo
 .expo/
+.next/
 dist/
 apps/*/.expo/
+apps/*/.next/
 apps/*/dist/
 web-build/
 apps/*/web-build/
