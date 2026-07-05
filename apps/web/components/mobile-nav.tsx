@@ -2,6 +2,7 @@
 
 import React from "react"
 import { MenuIcon, XIcon } from "lucide-react"
+import Link from "next/link"
 
 import { GitHubMark } from "@/components/github-mark"
 import { NpmMark } from "@/components/npm-mark"
@@ -58,9 +59,9 @@ export function MobileNav({ stats }: { stats: MobileNavStats }) {
                   key={link.label}
                   variant="ghost"
                 >
-                  <a href={link.href} onClick={closeMenu}>
+                  <Link href={link.href} onClick={closeMenu}>
                     {link.label}
-                  </a>
+                  </Link>
                 </Button>
               ))}
             </div>

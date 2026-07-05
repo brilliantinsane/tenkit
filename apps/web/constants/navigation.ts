@@ -1,14 +1,14 @@
 export const navLinks = [
   {
     label: "Signals",
-    href: "#proof",
+    href: "/#proof",
   },
   {
     label: "Setup types",
-    href: "#setup-types",
+    href: "/#setup-types",
   },
   {
     label: "Generated",
-    href: "#generated",
+    href: "/#generated",
   },
 ] as const

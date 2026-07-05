@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 
 import { GitHubMark } from "@/components/github-mark"
 import { MobileNav } from "@/components/mobile-nav"
@@ -59,9 +60,9 @@ export function HeaderClient({ stats }: { stats: HeaderStatsLabels }) {
       >
         <div className="flex items-center gap-2">
           <MobileNav stats={stats} />
-          <a
+          <Link
             className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
-            href="#top"
+            href="/#top"
             aria-label="Tenkit home"
           >
             <Image
@@ -74,13 +75,13 @@ export function HeaderClient({ stats }: { stats: HeaderStatsLabels }) {
               width={75}
             />
             <h2 className="sr-only">tenkit</h2>
-          </a>
+          </Link>
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <nav aria-label="Primary" className="flex items-center gap-1">
             {navLinks.map((link) => (
               <Button asChild key={link.label} size="sm" variant="ghost">
-                <a href={link.href}>{link.label}</a>
+                <Link href={link.href}>{link.label}</Link>
               </Button>
             ))}
           </nav>
