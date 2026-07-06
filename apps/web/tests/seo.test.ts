@@ -56,6 +56,30 @@ describe("Tenkit Public Web App SEO", () => {
     expect(rootMetadata.twitter?.description).toBe(SITE_CONFIG.description)
   })
 
+  test("uses brand-safe keywords for product and integration intent", () => {
+    expect(rootMetadata.keywords).toEqual([
+      "branded mobile apps",
+      "multi-brand apps",
+      "white-label mobile apps",
+      "multi-tenant mobile apps",
+      "shared mobile codebase",
+      "React Native starter kit",
+      "Expo app starter",
+      "React Native",
+      "Expo",
+      "Expo Router",
+      "EAS Build",
+      "EAS Project",
+      "App Variant",
+      "Runtime Tenant",
+      "Setup Type",
+      "create-tenkit",
+      "Build Preparation",
+    ])
+    expect(rootMetadata.keywords).not.toContain("multi-tenant Expo")
+    expect(rootMetadata.keywords).not.toContain("white label apps")
+  })
+
   test("links every markdown mirror and external Tenkit surface from llms.txt", () => {
     const llmsTxt = getLlmsTxt()
 
