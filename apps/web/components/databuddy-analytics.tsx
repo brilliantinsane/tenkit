@@ -2,6 +2,11 @@
 
 import dynamic from "next/dynamic"
 
+import {
+  DATABUDDY_CLIENT_ID,
+  IS_DATABUDDY_TRACKING_ENABLED,
+} from "@/lib/databuddy"
+
 const Databuddy = dynamic(
   () => import("@databuddy/sdk/react").then((module) => module.Databuddy),
   { ssr: false }
@@ -10,8 +15,8 @@ const Databuddy = dynamic(
 export function DatabuddyAnalytics() {
   return (
     <Databuddy
-      clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
-      disabled={process.env.NODE_ENV === "development"}
+      clientId={DATABUDDY_CLIENT_ID}
+      disabled={!IS_DATABUDDY_TRACKING_ENABLED}
       trackOutgoingLinks
       trackWebVitals
       trackInteractions
