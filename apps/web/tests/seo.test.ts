@@ -47,6 +47,15 @@ describe("Tenkit Public Web App SEO", () => {
     ])
   })
 
+  test("uses the product description across web and social metadata", () => {
+    expect(SITE_CONFIG.description).toBe(
+      "Build one mobile app with Expo and ship it as many branded apps from a shared codebase."
+    )
+    expect(rootMetadata.description).toBe(SITE_CONFIG.description)
+    expect(rootMetadata.openGraph?.description).toBe(SITE_CONFIG.description)
+    expect(rootMetadata.twitter?.description).toBe(SITE_CONFIG.description)
+  })
+
   test("links every markdown mirror and external Tenkit surface from llms.txt", () => {
     const llmsTxt = getLlmsTxt()
 

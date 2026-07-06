@@ -6,10 +6,10 @@ import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
 export const SITE_CONFIG = {
   name: "Tenkit",
   url: "https://tenkit.dev",
-  title: "Tenkit - Multi-tenant Expo starter kit",
+  title: "Tenkit - Multi-tenant mobile app starter kit",
   titleTemplate: "%s | Tenkit",
   description:
-    "Tenkit helps teams start multi-tenant Expo projects with explicit Setup Types, App Variants, Runtime Tenants, EAS Projects, and Build Preparation.",
+    "Build one mobile app with Expo and ship it as many branded apps from a shared codebase.",
   applicationName: "Tenkit",
   author: {
     name: "Tenkit",
