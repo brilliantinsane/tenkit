@@ -64,7 +64,7 @@ export function HeroSection() {
             "animate-in delay-100 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          One Codebase. Many Branded Apps.
+          One Codebase Many Branded Apps
         </h1>
 
         <p
