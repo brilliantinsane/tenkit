@@ -1,10 +1,14 @@
 import { Dosis, Geist_Mono, Inter, Space_Grotesk } from "next/font/google"
 
-import "./globals.css"
 import { Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { rootMetadata, rootViewport } from "@/lib/site-metadata"
 import { cn } from "@/lib/utils"
+import "./globals.css"
+
+export const metadata = rootMetadata
+export const viewport = rootViewport
 
 const inter = Inter({
   subsets: ["latin"],

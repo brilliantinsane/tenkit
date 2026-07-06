@@ -13,6 +13,7 @@ import dynamic from "next/dynamic"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GitHubMark } from "@/components/github-mark"
 import { HeroSection } from "@/components/hero"
+import { JsonLdScript } from "@/components/json-ld-script"
 import { ProofSection } from "@/components/proof-section"
 import {
   Accordion,
@@ -24,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GITHUB_REPO_URL } from "@/constants/globals"
 import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
+import { getLandingJsonLdGraph } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 
 const FluidGradientText = dynamic(() =>
@@ -464,15 +466,18 @@ function SixFooter() {
 
 export default function Page() {
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden supports-[overflow:clip]:overflow-clip">
-      <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl grow">
-        <HeroSection />
-        <ProofSection />
-        <SetupTypesSection />
-        <BuildGuidanceBento />
-        <FaqSection />
-        <SixFooter />
-      </div>
-    </main>
+    <>
+      <JsonLdScript graph={getLandingJsonLdGraph()} id="tenkit-json-ld" />
+      <main className="relative flex min-h-screen flex-col overflow-hidden supports-[overflow:clip]:overflow-clip">
+        <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl grow">
+          <HeroSection />
+          <ProofSection />
+          <SetupTypesSection />
+          <BuildGuidanceBento />
+          <FaqSection />
+          <SixFooter />
+        </div>
+      </main>
+    </>
   )
 }
