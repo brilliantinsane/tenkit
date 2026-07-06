@@ -47,6 +47,40 @@ describe("Tenkit Public Web App SEO", () => {
     ])
   })
 
+  test("uses the product description across web and social metadata", () => {
+    expect(SITE_CONFIG.description).toBe(
+      "Build one mobile app with Expo and ship it as many branded apps from a shared codebase."
+    )
+    expect(rootMetadata.description).toBe(SITE_CONFIG.description)
+    expect(rootMetadata.openGraph?.description).toBe(SITE_CONFIG.description)
+    expect(rootMetadata.twitter?.description).toBe(SITE_CONFIG.description)
+  })
+
+  test("uses brand-safe keywords for product and integration intent", () => {
+    expect(rootMetadata.keywords).toEqual([
+      "branded mobile apps",
+      "multi-brand apps",
+      "white-label mobile apps",
+      "multi-tenant mobile apps",
+      "shared mobile codebase",
+      "React Native starter kit",
+      "apps built with Expo",
+      "React Native",
+      "Expo",
+      "Expo Router",
+      "EAS Build",
+      "EAS Project",
+      "App Variant",
+      "Runtime Tenant",
+      "Setup Type",
+      "create-tenkit",
+      "Build Preparation",
+    ])
+    expect(rootMetadata.keywords).not.toContain("multi-tenant Expo")
+    expect(rootMetadata.keywords).not.toContain("white label apps")
+    expect(rootMetadata.keywords).not.toContain("Expo app starter")
+  })
+
   test("links every markdown mirror and external Tenkit surface from llms.txt", () => {
     const llmsTxt = getLlmsTxt()
 

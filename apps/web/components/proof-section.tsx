@@ -56,7 +56,8 @@ export function ProofSection() {
               Proof points
             </p>
             <h2 className="mt-3 font-heading text-2xl font-semibold tracking-normal text-balance sm:text-3xl">
-              The create flow is backed by real Expo setup primitives.
+              The create flow is backed by real setup primitives for apps built
+              with Expo.
             </h2>
           </div>
           <p className="text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7 lg:justify-self-end">

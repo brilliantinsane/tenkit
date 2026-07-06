@@ -6,10 +6,10 @@ import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
 export const SITE_CONFIG = {
   name: "Tenkit",
   url: "https://tenkit.dev",
-  title: "Tenkit - Multi-tenant Expo starter kit",
+  title: "Tenkit - Multi-tenant mobile app starter kit",
   titleTemplate: "%s | Tenkit",
   description:
-    "Tenkit helps teams start multi-tenant Expo projects with explicit Setup Types, App Variants, Runtime Tenants, EAS Projects, and Build Preparation.",
+    "Build one mobile app with Expo and ship it as many branded apps from a shared codebase.",
   applicationName: "Tenkit",
   author: {
     name: "Tenkit",
@@ -19,18 +19,24 @@ export const SITE_CONFIG = {
   creator: "Tenkit",
   ogImage: "/og-image.png",
   ogImageAlt:
-    "Tenkit preview image for multi-tenant Expo setup types and generated app workflows.",
+    "Tenkit preview image for multi-tenant setup types and generated app workflows for apps built with Expo.",
   keywords: [
-    "Expo",
+    "branded mobile apps",
+    "multi-brand apps",
+    "white-label mobile apps",
+    "multi-tenant mobile apps",
+    "shared mobile codebase",
+    "React Native starter kit",
+    "apps built with Expo",
     "React Native",
+    "Expo",
     "Expo Router",
-    "multi-tenant Expo",
-    "white label apps",
+    "EAS Build",
+    "EAS Project",
     "App Variant",
     "Runtime Tenant",
     "Setup Type",
     "create-tenkit",
-    "EAS Project",
     "Build Preparation",
   ],
 } as const
@@ -111,7 +117,7 @@ export function getIndexMarkdown() {
 
 ${SITE_CONFIG.description}
 
-Tenkit is focused on Expo project generation, native identity, setup data, and local Build Preparation. The Public Web App presents Setup Types and command examples, while the Public CLI owns project creation policy.
+Tenkit is focused on project generation for apps built with Expo, native identity, setup data, and local Build Preparation. The Public Web App presents Setup Types and command examples, while the Public CLI owns project creation policy.
 
 ## Canonical URL
 
@@ -184,7 +190,7 @@ export function getLlmsTxt() {
 
 > ${SITE_CONFIG.description}
 
-Tenkit is an Expo-first toolkit for generated apps with explicit Setup Types, App Variants, Runtime Tenants, EAS Projects, and Build Preparation.
+Tenkit is a toolkit for generated apps built with Expo, with explicit Setup Types, App Variants, Runtime Tenants, EAS Projects, and Build Preparation.
 
 ## Markdown Mirrors
 
@@ -286,7 +292,7 @@ export function getLandingJsonLdGraph(): Graph {
         "@id": howToId,
         name: "Create a Tenkit project",
         description:
-          "Generate a Tenkit Expo starter project with the Public CLI.",
+          "Generate a Tenkit starter project for apps built with Expo using the Public CLI.",
         totalTime: "PT5M",
         tool: [
           {

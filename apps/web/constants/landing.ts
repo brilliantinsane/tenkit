@@ -5,7 +5,7 @@ export const SETUP_TYPES = [
     eyebrow: "white-label",
     headline: "Separate store listing per brand.",
     description:
-      "One shared Expo product, with each customer or brand owning its app name, icon set, bundle ID, package name, scheme, theme, and EAS project.",
+      "One shared mobile product built with Expo, with each customer or brand owning its app name, icon set, bundle ID, package name, scheme, theme, and EAS project.",
     examples: [
       "One app per customer",
       "One EAS Project per App Variant",
@@ -48,7 +48,7 @@ export const FAQ_ITEMS = [
     id: "what-is-tenkit",
     question: "What is Tenkit?",
     answer:
-      "Tenkit is an Expo-first toolkit for creating one mobile product around explicit setup data: App Variants, Runtime Tenants, native identity, and Build Preparation.",
+      "Tenkit is a toolkit for creating one mobile product built with Expo around explicit setup data: App Variants, Runtime Tenants, native identity, and Build Preparation.",
   },
   {
     id: "cli-status",
@@ -60,7 +60,7 @@ export const FAQ_ITEMS = [
     id: "backend",
     question: "Does Tenkit handle backend multi-tenancy?",
     answer:
-      "No. Tenkit handles Expo project generation, native identity, setup data, and local build workflows. Your backend, billing, and admin product stay in your stack.",
+      "No. Tenkit handles project generation for apps built with Expo, native identity, setup data, and local build workflows. Your backend, billing, and admin product stay in your stack.",
   },
   {
     id: "setup-type",
