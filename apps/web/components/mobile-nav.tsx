@@ -10,6 +10,7 @@ import { Portal, PortalBackdrop } from "@/components/portal"
 import { Button } from "@/components/ui/button"
 import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { navLinks } from "@/constants/navigation"
+import { trackDatabuddyEvent } from "@/lib/databuddy"
 import { cn } from "@/lib/utils"
 
 type MobileNavStats = {
@@ -20,8 +21,9 @@ type MobileNavStats = {
 export function MobileNav({ stats }: { stats: MobileNavStats }) {
   const [open, setOpen] = React.useState(false)
   const closeMenu = React.useCallback(() => setOpen(false), [])
-  const toggleMenu = React.useCallback(() => {
-    setOpen((isOpen) => !isOpen)
+  const openMenu = React.useCallback(() => {
+    trackDatabuddyEvent("mobile_nav_opened")
+    setOpen(true)
   }, [])
 
   return (
@@ -31,7 +33,7 @@ export function MobileNav({ stats }: { stats: MobileNavStats }) {
         aria-expanded={open}
         aria-label="Toggle menu"
         className="md:hidden"
-        onClick={toggleMenu}
+        onClick={open ? closeMenu : openMenu}
         size="icon"
         variant="outline"
       >

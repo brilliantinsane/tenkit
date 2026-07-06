@@ -152,6 +152,9 @@ importers:
       '@ark-ui/react':
         specifier: ^5.37.2
         version: 5.37.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@databuddy/sdk':
+        specifier: ^2.6.0
+        version: 2.6.0(react@19.2.4)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -995,6 +998,20 @@ packages:
         integrity: sha512-EYlRokl8szrP9Z25qT5aepMdBjzBvHF9ZEhzIiUBc9guz/T31EqRgvD0QSgZcpE93xiwrr+OkB4nz0BZyF6fSA==,
       }
     engines: { node: '>= 20.12.0' }
+
+  '@databuddy/sdk@2.6.0':
+    resolution:
+      {
+        integrity: sha512-coQVa/AJoesgsFSGWPFtlrl7xZx1nTTvoX3A9YLD+9f3+JDwr3ajVog3WOiLBJSLqk7xC+G+FnR/W/Wda5eWbw==,
+      }
+    peerDependencies:
+      react: '>=18'
+      vue: '>=3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
 
   '@dotenvx/dotenvx@1.75.1':
     resolution:
@@ -12377,6 +12394,10 @@ snapshots:
       fast-string-width: 3.0.2
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
+
+  '@databuddy/sdk@2.6.0(react@19.2.4)':
+    optionalDependencies:
+      react: 19.2.4
 
   '@dotenvx/dotenvx@1.75.1':
     dependencies:

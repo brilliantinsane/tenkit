@@ -9,6 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { trackDatabuddyEvent } from "@/lib/databuddy"
 
 type ThemeSwitcherProps = {
   buttonClassName?: string
@@ -34,7 +35,13 @@ export function ThemeSwitcher({
           size={buttonSize}
           className={buttonClassName}
           aria-label="Toggle theme"
-          onClick={() => setTheme(nextTheme)}
+          onClick={() => {
+            trackDatabuddyEvent("theme_changed", {
+              theme: nextTheme,
+              previousTheme: resolvedTheme ?? "unknown",
+            })
+            setTheme(nextTheme)
+          }}
         >
           <SunIcon
             data-icon="inline-start"

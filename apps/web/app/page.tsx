@@ -15,12 +15,7 @@ import { GitHubMark } from "@/components/github-mark"
 import { HeroSection } from "@/components/hero"
 import { JsonLdScript } from "@/components/json-ld-script"
 import { ProofSection } from "@/components/proof-section"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { FaqAccordion } from "@/components/faq-accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GITHUB_REPO_URL } from "@/constants/globals"
@@ -409,18 +404,7 @@ function FaqSection() {
           </p>
         </div>
 
-        <Accordion type="single" collapsible className="bg-card/70 shadow-sm">
-          {FAQ_ITEMS.map((item) => (
-            <AccordionItem key={item.id} value={item.id}>
-              <AccordionTrigger className="text-base hover:no-underline">
-                {item.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                {item.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <FaqAccordion items={FAQ_ITEMS} />
       </div>
       <SectionBoundary />
     </section>
