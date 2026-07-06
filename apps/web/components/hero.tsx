@@ -73,9 +73,9 @@ export function HeroSection() {
             "animate-in delay-200 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          Create an Expo project around the Setup Type you actually ship:
-          white-label App Variants, Runtime Tenants, or a hybrid with selected
-          standalone breakouts.
+          Create a project built with Expo around the Setup Type you actually
+          ship: white-label App Variants, Runtime Tenants, or a hybrid with
+          selected standalone breakouts.
         </p>
 
         <div className="flex w-full max-w-sm animate-in flex-col items-stretch justify-center gap-3 pt-3 delay-300 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3 sm:w-fit sm:max-w-none sm:flex-row sm:items-center">

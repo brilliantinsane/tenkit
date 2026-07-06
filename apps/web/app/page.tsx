@@ -72,7 +72,7 @@ const setupVisuals = [
 const guidanceCards = [
   {
     title: "Starter project",
-    body: "A typed Expo app scaffold with setup data, README commands, and starter values kept easy to replace.",
+    body: "A typed app scaffold built with Expo, setup data, README commands, and starter values kept easy to replace.",
     eyebrow: "Project",
     icon: PackageCheckIcon,
     className:
@@ -88,7 +88,7 @@ const guidanceCards = [
   },
   {
     title: "EAS connection",
-    body: "Expo owner, EAS project IDs, and build environments are named directly.",
+    body: "Expo account owner, EAS project IDs, and build environments are named directly.",
     eyebrow: "Services",
     icon: ClipboardCheckIcon,
     className:
@@ -302,7 +302,7 @@ function BuildGuidanceBento() {
         <SectionIntro
           eyebrow="What gets generated"
           title="A starter project, plus a map for the real production values."
-          description="Tenkit gets the app shape into code. The useful next step is deciding which Expo, EAS, native identity, and product-context values replace the starter data."
+          description="Tenkit gets the app shape into code. The useful next step is deciding which Expo and EAS service values, native identity, and product-context values replace the starter data."
         />
 
         <div className="grid gap-4 md:auto-rows-[8rem] md:grid-cols-6 lg:grid-cols-12">
@@ -399,8 +399,8 @@ function FaqSection() {
             Clear boundaries make the starter easier to trust.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Tenkit is focused on Expo app generation, native identity, setup
-            data, and Build Preparation.
+            Tenkit is focused on project generation for apps built with Expo,
+            native identity, setup data, and Build Preparation.
           </p>
         </div>
 
@@ -420,7 +420,7 @@ function SixFooter() {
             Ready to inspect it
           </p>
           <h2 className="mt-3 font-heading text-3xl font-semibold tracking-normal text-balance sm:text-5xl">
-            Generate a real Expo project and read the setup files.
+            Generate a real project built with Expo and read the setup files.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
             Start with the create command, choose a Setup Type, then replace the

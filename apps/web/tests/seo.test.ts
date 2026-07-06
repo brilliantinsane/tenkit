@@ -64,7 +64,7 @@ describe("Tenkit Public Web App SEO", () => {
       "multi-tenant mobile apps",
       "shared mobile codebase",
       "React Native starter kit",
-      "Expo app starter",
+      "apps built with Expo",
       "React Native",
       "Expo",
       "Expo Router",
@@ -78,6 +78,7 @@ describe("Tenkit Public Web App SEO", () => {
     ])
     expect(rootMetadata.keywords).not.toContain("multi-tenant Expo")
     expect(rootMetadata.keywords).not.toContain("white label apps")
+    expect(rootMetadata.keywords).not.toContain("Expo app starter")
   })
 
   test("links every markdown mirror and external Tenkit surface from llms.txt", () => {
