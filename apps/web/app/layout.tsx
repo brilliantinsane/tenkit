@@ -1,6 +1,8 @@
 import { Dosis, Geist_Mono, Inter, Space_Grotesk } from "next/font/google"
 
+import { DatabuddyAnalytics } from "@/components/databuddy-analytics"
 import { Header } from "@/components/header"
+import { JotaiProvider } from "@/components/jotai-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { rootMetadata, rootViewport } from "@/lib/site-metadata"
@@ -54,19 +56,22 @@ export default function RootLayout({
           "min-h-svh overflow-x-clip bg-background text-foreground"
         )}
       >
-        <ThemeProvider>
-          <TooltipProvider>
-            <div
-              aria-hidden="true"
-              className="pointer-events-none fixed inset-x-4 inset-y-0 z-40 mx-auto max-w-6xl"
-            >
-              <span className="absolute inset-y-0 left-0 w-px bg-border" />
-              <span className="absolute inset-y-0 right-0 w-px bg-border" />
-            </div>
-            <Header />
-            {children}
-          </TooltipProvider>
-        </ThemeProvider>
+        <DatabuddyAnalytics />
+        <JotaiProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none fixed inset-x-4 inset-y-0 z-40 mx-auto max-w-6xl"
+              >
+                <span className="absolute inset-y-0 left-0 w-px bg-border" />
+                <span className="absolute inset-y-0 right-0 w-px bg-border" />
+              </div>
+              <Header />
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
+        </JotaiProvider>
       </body>
     </html>
   )

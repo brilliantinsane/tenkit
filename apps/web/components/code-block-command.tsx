@@ -7,6 +7,7 @@ import { useAtom } from "jotai"
 import { CopyButton } from "@/components/copy-button"
 import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
+import { trackDatabuddyEvent } from "@/lib/databuddy"
 import { cn } from "@/lib/utils"
 
 export type PackageManager = "prompt" | "pnpm" | "yarn" | "npm" | "bun"
@@ -114,6 +115,11 @@ export function CodeBlockCommand({
         size="icon-sm"
         text={tabs[packageManager] || ""}
         onCopySuccess={(copiedCommand) => {
+          trackDatabuddyEvent("create_command_copied", {
+            packageManager,
+            command: copiedCommand,
+          })
+
           onCopySuccess?.({
             packageManager,
             command: copiedCommand,
