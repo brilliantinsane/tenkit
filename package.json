@@ -21,7 +21,7 @@
     "web:typecheck": "pnpm -F @tenkit/web typecheck",
     "web:lint": "pnpm -F @tenkit/web lint",
     "build": "pnpm -F @tenkit/template-generator build && pnpm -F @tenkit/cli build && pnpm -F create-tenkit build && pnpm -F @tenkit/web build",
-    "test": "pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test",
+    "test": "pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test && pnpm -F @tenkit/web test",
     "test:proof": "pnpm -F @tenkit/template-generator test:proof",
     "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm smoke",
     "smoke": "pnpm -F create-tenkit smoke",
