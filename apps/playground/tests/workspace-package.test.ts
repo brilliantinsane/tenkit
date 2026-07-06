@@ -28,7 +28,7 @@ test('workspace root is a private command router rather than an Expo app package
   assert.equal(workspacePackageJson.scripts?.['web:lint'], 'pnpm -F @tenkit/web lint');
   assert.equal(
     workspacePackageJson.scripts?.test,
-    'pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test',
+    'pnpm -F playground test && pnpm -F @tenkit/template-generator test && pnpm -F @tenkit/cli test && pnpm -F @tenkit/web test',
   );
   assert.equal(
     workspacePackageJson.scripts?.typecheck,
