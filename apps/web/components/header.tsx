@@ -1,66 +1,199 @@
-import { GITHUB_REPO_API, NPM_WEEKLY_DOWNLOADS_API } from "@/constants/globals"
-import { HeaderClient, type HeaderStatsLabels } from "./header-client"
+import { Suspense } from "react"
 
-const FALLBACK_STATS = {
-  stars: 14,
-  weeklyDownloads: 249,
+import { GitHubMark } from "@/components/github-mark"
+import { NpmMark } from "@/components/npm-mark"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
+import {
+  getGitHubStarsLabel,
+  getWeeklyNpmDownloadsLabel,
+} from "@/lib/header-stats"
+import { cn } from "@/lib/utils"
+import { HeaderClient, type HeaderStatsSlots } from "./header-client"
+
+function HeaderStatButtonSkeleton({
+  label,
+  className,
+}: {
+  label: string
+  className: string
+}) {
+  return (
+    <span
+      aria-label={label}
+      role="status"
+      className={cn(
+        "inline-flex animate-pulse rounded-full border border-border bg-muted",
+        className
+      )}
+    />
+  )
 }
 
-const STATS_REVALIDATE_SECONDS = 3600
+async function DesktopGitHubStarsButton() {
+  const stars = await getGitHubStarsLabel()
 
-function formatCompactCount(value: number) {
-  if (value < 1000) {
-    return value.toString()
-  }
-
-  return new Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: value < 10000 ? 1 : 0,
-  }).format(value)
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="w-20 gap-1.5 rounded-full font-medium"
+        >
+          <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+            <GitHubMark data-icon="inline-start" />
+            <span className="tabular-nums" aria-label={`${stars} GitHub stars`}>
+              {stars}
+            </span>
+          </a>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={8}>
+        GitHub stars
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
-async function fetchNumberField(url: string, field: string, fallback: number) {
-  try {
-    const response = await fetch(url, {
-      next: { revalidate: STATS_REVALIDATE_SECONDS },
-    })
+async function DesktopWeeklyNpmDownloadsButton() {
+  const weeklyDownloads = await getWeeklyNpmDownloadsLabel()
 
-    if (!response.ok) {
-      return fallback
-    }
-
-    const json: unknown = await response.json()
-    const value =
-      typeof json === "object" && json !== null && field in json
-        ? json[field as keyof typeof json]
-        : null
-
-    return typeof value === "number" && Number.isFinite(value)
-      ? value
-      : fallback
-  } catch {
-    return fallback
-  }
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="w-30 gap-1.5 rounded-full font-medium"
+        >
+          <a href={NPM_PACKAGE_URL} target="_blank" rel="noreferrer">
+            <NpmMark data-icon="inline-start" />
+            <span
+              className="tabular-nums"
+              aria-label={`${weeklyDownloads} weekly npm downloads`}
+            >
+              {weeklyDownloads}/wk
+            </span>
+          </a>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={8}>
+        Weekly npm downloads
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
-async function getHeaderStats(): Promise<HeaderStatsLabels> {
-  const [stars, weeklyDownloads] = await Promise.all([
-    fetchNumberField(GITHUB_REPO_API, "stargazers_count", FALLBACK_STATS.stars),
-    fetchNumberField(
-      NPM_WEEKLY_DOWNLOADS_API,
-      "downloads",
-      FALLBACK_STATS.weeklyDownloads
-    ),
-  ])
+async function MobileGitHubStarsButton() {
+  const stars = await getGitHubStarsLabel()
 
+  return (
+    <Button
+      asChild
+      className="w-full justify-center gap-1.5 rounded-full font-medium"
+      variant="outline"
+    >
+      <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+        <GitHubMark data-icon="inline-start" />
+        <span className="tabular-nums" aria-label={`${stars} GitHub stars`}>
+          {stars}
+        </span>
+      </a>
+    </Button>
+  )
+}
+
+async function MobileWeeklyNpmDownloadsButton() {
+  const weeklyDownloads = await getWeeklyNpmDownloadsLabel()
+
+  return (
+    <Button
+      asChild
+      className="w-full justify-center gap-1.5 rounded-full font-medium"
+      variant="outline"
+    >
+      <a href={NPM_PACKAGE_URL} target="_blank" rel="noreferrer">
+        <NpmMark data-icon="inline-start" />
+        <span
+          className="tabular-nums"
+          aria-label={`${weeklyDownloads} weekly npm downloads`}
+        >
+          {weeklyDownloads}/wk
+        </span>
+      </a>
+    </Button>
+  )
+}
+
+function createDesktopStatsSlots(): HeaderStatsSlots {
   return {
-    stars: formatCompactCount(stars),
-    weeklyDownloads: formatCompactCount(weeklyDownloads),
+    github: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading GitHub stars"
+            className="h-8 w-20"
+          />
+        }
+      >
+        <DesktopGitHubStarsButton />
+      </Suspense>
+    ),
+    npm: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading weekly npm downloads"
+            className="h-8 w-30"
+          />
+        }
+      >
+        <DesktopWeeklyNpmDownloadsButton />
+      </Suspense>
+    ),
   }
 }
 
-export async function Header() {
-  const stats = await getHeaderStats()
+function createMobileStatsSlots(): HeaderStatsSlots {
+  return {
+    github: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading GitHub stars"
+            className="h-9 w-full"
+          />
+        }
+      >
+        <MobileGitHubStarsButton />
+      </Suspense>
+    ),
+    npm: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading weekly npm downloads"
+            className="h-9 w-full"
+          />
+        }
+      >
+        <MobileWeeklyNpmDownloadsButton />
+      </Suspense>
+    ),
+  }
+}
 
-  return <HeaderClient stats={stats} />
+export function Header() {
+  const desktopStats = createDesktopStatsSlots()
+  const mobileStats = createMobileStatsSlots()
+
+  return <HeaderClient desktopStats={desktopStats} mobileStats={mobileStats} />
 }

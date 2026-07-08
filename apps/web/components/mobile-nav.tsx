@@ -1,21 +1,19 @@
 "use client"
 
 import React from "react"
+import type { ReactNode } from "react"
 import { MenuIcon, XIcon } from "lucide-react"
 import Link from "next/link"
 
-import { GitHubMark } from "@/components/github-mark"
-import { NpmMark } from "@/components/npm-mark"
 import { Portal, PortalBackdrop } from "@/components/portal"
 import { Button } from "@/components/ui/button"
-import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { navLinks } from "@/constants/navigation"
 import { trackDatabuddyEvent } from "@/lib/databuddy"
 import { cn } from "@/lib/utils"
 
 type MobileNavStats = {
-  stars: string
-  weeklyDownloads: string
+  github: ReactNode
+  npm: ReactNode
 }
 
 export function MobileNav({ stats }: { stats: MobileNavStats }) {
@@ -25,6 +23,14 @@ export function MobileNav({ stats }: { stats: MobileNavStats }) {
     trackDatabuddyEvent("mobile_nav_opened")
     setOpen(true)
   }, [])
+  const closeMenuFromStatsLink = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.target instanceof Element && event.target.closest("a[href]")) {
+        closeMenu()
+      }
+    },
+    [closeMenu]
+  )
 
   return (
     <div className="md:hidden">
@@ -68,47 +74,12 @@ export function MobileNav({ stats }: { stats: MobileNavStats }) {
               ))}
             </div>
             <div className="relative mt-10 pt-4 before:pointer-events-none before:absolute before:top-0 before:right-[calc(50%_-_50dvw)] before:left-[calc(50%_-_50dvw)] before:h-px before:bg-border">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  asChild
-                  className="justify-center gap-1.5 rounded-full font-medium"
-                  variant="outline"
-                >
-                  <a
-                    href={GITHUB_REPO_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={closeMenu}
-                  >
-                    <GitHubMark data-icon="inline-start" />
-                    <span
-                      className="tabular-nums"
-                      aria-label={`${stats.stars} GitHub stars`}
-                    >
-                      {stats.stars}
-                    </span>
-                  </a>
-                </Button>
-                <Button
-                  asChild
-                  className="justify-center gap-1.5 rounded-full font-medium"
-                  variant="outline"
-                >
-                  <a
-                    href={NPM_PACKAGE_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={closeMenu}
-                  >
-                    <NpmMark data-icon="inline-start" />
-                    <span
-                      className="tabular-nums"
-                      aria-label={`${stats.weeklyDownloads} weekly npm downloads`}
-                    >
-                      {stats.weeklyDownloads}/wk
-                    </span>
-                  </a>
-                </Button>
+              <div
+                className="grid grid-cols-2 gap-2"
+                onClickCapture={closeMenuFromStatsLink}
+              >
+                {stats.github}
+                {stats.npm}
               </div>
             </div>
           </div>

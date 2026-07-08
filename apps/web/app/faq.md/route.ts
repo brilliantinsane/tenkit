@@ -1,7 +1,5 @@
 import { getFaqMarkdown } from "@/lib/seo"
 
-export const dynamic = "force-static"
-
 export function GET() {
   return new Response(getFaqMarkdown(), {
     headers: {

@@ -1,11 +1,10 @@
-"use client"
-
-import { ExternalLinkIcon, Layers3Icon, Pause, Play } from "lucide-react"
-import { useCallback, useRef, useState } from "react"
+import { ExternalLinkIcon, Layers3Icon } from "lucide-react"
+import { preload } from "react-dom"
 
 import { CodeBlockCommand } from "@/components/code-block-command"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GitHubMark } from "@/components/github-mark"
+import { HeroDemoVideo } from "@/components/hero-demo-video"
 import {
   Announcement,
   AnnouncementTag,
@@ -13,24 +12,11 @@ import {
 } from "@/components/kibo-ui/announcement"
 import { Button } from "@/components/ui/button"
 import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
+import { HERO_POSTER_PATH } from "@/lib/hero-media"
 import { cn } from "@/lib/utils"
 
 export function HeroSection() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [playing, setPlaying] = useState(true)
-
-  const togglePlay = useCallback(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    if (video.paused) {
-      void video.play()
-      setPlaying(true)
-    } else {
-      video.pause()
-      setPlaying(false)
-    }
-  }, [])
+  preload(HERO_POSTER_PATH, { as: "image" })
 
   return (
     <section id="top">
@@ -115,34 +101,7 @@ export function HeroSection() {
           )}
           style={{ aspectRatio: "16 / 9" }}
         >
-          <video
-            ref={videoRef}
-            src="/hero-video.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="block h-full w-full object-cover"
-          />
-          <button
-            type="button"
-            onClick={togglePlay}
-            aria-label={playing ? "Pause preview" : "Play preview"}
-            className="absolute inset-0 flex items-center justify-center bg-transparent focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
-          >
-            <span
-              aria-hidden
-              data-show={!playing}
-              className="pointer-events-none flex size-14 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100 data-[show=true]:opacity-100 motion-reduce:transition-none"
-            >
-              {playing ? (
-                <Pause className="size-5" />
-              ) : (
-                <Play className="size-5 translate-x-0.5" />
-              )}
-            </span>
-          </button>
+          <HeroDemoVideo />
         </div>
         <FullWidthDivider position="bottom" />
       </div>

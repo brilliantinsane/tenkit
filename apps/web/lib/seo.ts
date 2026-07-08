@@ -5,7 +5,7 @@ import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
 
 export const SITE_CONFIG = {
   name: "Tenkit",
-  url: "https://tenkit.dev",
+  url: "https://www.tenkit.dev",
   title: "Tenkit - Multi-tenant mobile app starter kit",
   titleTemplate: "%s | Tenkit",
   description:
