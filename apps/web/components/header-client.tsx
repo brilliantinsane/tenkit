@@ -1,29 +1,28 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 
-import { GitHubMark } from "@/components/github-mark"
 import { MobileNav } from "@/components/mobile-nav"
-import { NpmMark } from "@/components/npm-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { navLinks } from "@/constants/navigation"
 import { useScroll } from "@/hooks/use-scroll"
 import { cn } from "@/lib/utils"
 
-export type HeaderStatsLabels = {
-  stars: string
-  weeklyDownloads: string
+export type HeaderStatsSlots = {
+  github: ReactNode
+  npm: ReactNode
 }
 
-export function HeaderClient({ stats }: { stats: HeaderStatsLabels }) {
+export function HeaderClient({
+  desktopStats,
+  mobileStats,
+}: {
+  desktopStats: HeaderStatsSlots
+  mobileStats: HeaderStatsSlots
+}) {
   const scrolled = useScroll(72, 28)
 
   return (
@@ -59,7 +58,7 @@ export function HeaderClient({ stats }: { stats: HeaderStatsLabels }) {
         )}
       >
         <div className="flex items-center gap-2">
-          <MobileNav stats={stats} />
+          <MobileNav stats={mobileStats} />
           <Link
             className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
             href="/#top"
@@ -86,52 +85,8 @@ export function HeaderClient({ stats }: { stats: HeaderStatsLabels }) {
             ))}
           </nav>
           <div className="flex items-center gap-1.5 border-l pl-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className="w-20 gap-1.5 rounded-full font-medium"
-                >
-                  <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
-                    <GitHubMark data-icon="inline-start" />
-                    <span
-                      className="tabular-nums"
-                      aria-label={`${stats.stars} GitHub stars`}
-                    >
-                      {stats.stars}
-                    </span>
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={8}>
-                GitHub stars
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className="w-30 gap-1.5 rounded-full font-medium"
-                >
-                  <a href={NPM_PACKAGE_URL} target="_blank" rel="noreferrer">
-                    <NpmMark data-icon="inline-start" />
-                    <span
-                      className="tabular-nums"
-                      aria-label={`${stats.weeklyDownloads} weekly npm downloads`}
-                    >
-                      {stats.weeklyDownloads}/wk
-                    </span>
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={8}>
-                Weekly npm downloads
-              </TooltipContent>
-            </Tooltip>
+            {desktopStats.github}
+            {desktopStats.npm}
             <ThemeSwitcher buttonSize="icon-sm" />
           </div>
         </div>

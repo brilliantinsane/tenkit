@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest"
 
-import { dynamic as commandsDynamic } from "@/app/commands.md/route"
-import { dynamic as faqDynamic } from "@/app/faq.md/route"
-import { dynamic as indexDynamic } from "@/app/index.md/route"
-import { dynamic as llmsFullDynamic } from "@/app/llms-full.txt/route"
-import { dynamic as llmsDynamic } from "@/app/llms.txt/route"
-import { dynamic as setupTypesDynamic } from "@/app/setup-types.md/route"
+import { GET as getCommandsRoute } from "@/app/commands.md/route"
+import { GET as getFaqRoute } from "@/app/faq.md/route"
+import { GET as getIndexRoute } from "@/app/index.md/route"
+import { GET as getLlmsFullRoute } from "@/app/llms-full.txt/route"
+import { GET as getLlmsRoute } from "@/app/llms.txt/route"
+import { GET as getSetupTypesRoute } from "@/app/setup-types.md/route"
 import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
 import { rootMetadata } from "@/lib/site-metadata"
 import {
@@ -26,24 +26,24 @@ type JsonLdNode = {
 }
 
 describe("Tenkit Public Web App SEO", () => {
-  test("uses tenkit.dev as the canonical URL", () => {
-    expect(SITE_CONFIG.url).toBe("https://tenkit.dev")
-    expect(absoluteUrl("/")).toBe("https://tenkit.dev/")
-    expect(rootMetadata.metadataBase.toString()).toBe("https://tenkit.dev/")
+  test("uses www.tenkit.dev as the canonical URL", () => {
+    expect(SITE_CONFIG.url).toBe("https://www.tenkit.dev")
+    expect(absoluteUrl("/")).toBe("https://www.tenkit.dev/")
+    expect(rootMetadata.metadataBase.toString()).toBe("https://www.tenkit.dev/")
     expect(rootMetadata.alternates?.canonical).toBe("/")
   })
 
   test("points Open Graph and Twitter metadata at the static OG image", () => {
     expect(SITE_CONFIG.ogImage).toBe("/og-image.png")
-    expect(ogImageUrl()).toBe("https://tenkit.dev/og-image.png")
+    expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png")
     expect(rootMetadata.openGraph?.images).toEqual([
       {
-        url: "https://tenkit.dev/og-image.png",
+        url: "https://www.tenkit.dev/og-image.png",
         alt: SITE_CONFIG.ogImageAlt,
       },
     ])
     expect(rootMetadata.twitter?.images).toEqual([
-      "https://tenkit.dev/og-image.png",
+      "https://www.tenkit.dev/og-image.png",
     ])
   })
 
@@ -121,12 +121,12 @@ describe("Tenkit Public Web App SEO", () => {
     ])
 
     expect(nodes.map((node) => node["@id"])).toEqual([
-      "https://tenkit.dev/#organization",
-      "https://tenkit.dev/#website",
-      "https://tenkit.dev/#software",
-      "https://tenkit.dev/#faq",
-      "https://tenkit.dev/#setup-types",
-      "https://tenkit.dev/#create-tenkit",
+      "https://www.tenkit.dev/#organization",
+      "https://www.tenkit.dev/#website",
+      "https://www.tenkit.dev/#software",
+      "https://www.tenkit.dev/#faq",
+      "https://www.tenkit.dev/#setup-types",
+      "https://www.tenkit.dev/#create-tenkit",
     ])
   })
 
@@ -135,21 +135,31 @@ describe("Tenkit Public Web App SEO", () => {
     expect(rootMetadata.other?.["Content-Signal"]).toBe(CONTENT_SIGNAL)
   })
 
-  test("renders static AI-readable routes as static Next routes", () => {
-    expect([
-      commandsDynamic,
-      faqDynamic,
-      indexDynamic,
-      llmsDynamic,
-      llmsFullDynamic,
-      setupTypesDynamic,
-    ]).toEqual([
-      "force-static",
-      "force-static",
-      "force-static",
-      "force-static",
-      "force-static",
-      "force-static",
-    ])
+  test("serves AI-readable route handlers with stable content types", async () => {
+    const routes = [
+      {
+        response: getCommandsRoute(),
+        contentType: "text/markdown; charset=utf-8",
+      },
+      { response: getFaqRoute(), contentType: "text/markdown; charset=utf-8" },
+      {
+        response: getIndexRoute(),
+        contentType: "text/markdown; charset=utf-8",
+      },
+      { response: getLlmsRoute(), contentType: "text/plain; charset=utf-8" },
+      {
+        response: getLlmsFullRoute(),
+        contentType: "text/plain; charset=utf-8",
+      },
+      {
+        response: getSetupTypesRoute(),
+        contentType: "text/markdown; charset=utf-8",
+      },
+    ]
+
+    for (const route of routes) {
+      expect(route.response.headers.get("Content-Type")).toBe(route.contentType)
+      await expect(route.response.text()).resolves.toContain("Tenkit")
+    }
   })
 })
