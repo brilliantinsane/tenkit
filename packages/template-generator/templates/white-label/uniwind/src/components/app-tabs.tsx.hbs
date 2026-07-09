@@ -7,23 +7,23 @@ type AppTabsProps = {
 };
 
 export default function AppTabs({ accent }: AppTabsProps) {
-  const [bg, bgLight, text, textMuted] = useCSSVariable([
-    '--color-bg',
-    '--color-bg-light',
-    '--color-text',
-    '--color-text-muted',
+  const [surface, surfaceRaised, foreground, muted] = useCSSVariable([
+    '--color-surface',
+    '--color-surface-raised',
+    '--color-foreground',
+    '--color-muted',
   ]) as ColorValue[];
 
   return (
     <NativeTabs
-      backgroundColor={bg}
-      indicatorColor={bgLight}
+      backgroundColor={surface}
+      indicatorColor={surfaceRaised}
       iconColor=\{{
-        default: textMuted,
+        default: muted,
         selected: accent,
       }}
       labelStyle=\{{
-        default: { color: text },
+        default: { color: foreground },
         selected: { color: accent },
       }}
     >

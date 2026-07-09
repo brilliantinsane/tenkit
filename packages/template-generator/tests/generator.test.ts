@@ -100,20 +100,20 @@ function expectedUniwindGlobalCss(accent: string) {
 @layer theme {
   :root {
     @variant dark {
-      --color-bg-dark: #000000;
-      --color-bg: #0d0d0d;
-      --color-bg-light: #1a1a1a;
-      --color-text: #f2f2f2;
-      --color-text-muted: #b3b3b3;
+      --color-background: #000000;
+      --color-surface: #0d0d0d;
+      --color-surface-raised: #1a1a1a;
+      --color-foreground: #f2f2f2;
+      --color-muted: #b3b3b3;
       --color-accent: ${accent};
     }
 
     @variant light {
-      --color-bg-dark: #e6e6e6;
-      --color-bg: #f2f2f2;
-      --color-bg-light: #ffffff;
-      --color-text: #0d0d0d;
-      --color-text-muted: #4d4d4d;
+      --color-background: #e6e6e6;
+      --color-surface: #f2f2f2;
+      --color-surface-raised: #ffffff;
+      --color-foreground: #0d0d0d;
+      --color-muted: #4d4d4d;
       --color-accent: ${accent};
     }
   }
@@ -255,39 +255,44 @@ function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: strin
   assert.equal(layout.match(/'--color-accent': theme\.accent/g)?.length, 2);
   assert.match(nativeTabs, /type ColorValue/);
   assert.match(nativeTabs, /useCSSVariable/);
-  assert.match(nativeTabs, /const \[bg, bgLight, text, textMuted\] = useCSSVariable\(\[/);
-  assert.match(nativeTabs, /'--color-bg'/);
-  assert.match(nativeTabs, /'--color-bg-light'/);
-  assert.match(nativeTabs, /'--color-text'/);
-  assert.match(nativeTabs, /'--color-text-muted'/);
+  assert.match(
+    nativeTabs,
+    /const \[surface, surfaceRaised, foreground, muted\] = useCSSVariable\(\[/,
+  );
+  assert.match(nativeTabs, /'--color-surface'/);
+  assert.match(nativeTabs, /'--color-surface-raised'/);
+  assert.match(nativeTabs, /'--color-foreground'/);
+  assert.match(nativeTabs, /'--color-muted'/);
   assert.match(nativeTabs, /\]\) as ColorValue\[\]/);
   assert.notMatch(nativeTabs, /as \[string, string, string, string\]/);
   assert.match(nativeTabs, /selected: accent/);
   assert.notMatch(nativeTabs, /backgroundColor="#f8fafc"|indicatorColor="#ffffff"/);
   assert.notMatch(nativeTabs, /#[0-9a-f]{3,8}\b/i);
-  assert.match(home, /bg-bg-dark/);
-  assert.match(home, /text-text/);
-  assert.match(home, /text-text-muted/);
+  assert.match(home, /bg-background/);
+  assert.match(home, /text-foreground/);
+  assert.match(home, /text-muted/);
   assert.match(home, /style=\{\{ color: theme\.accent \}\}/);
   assert.notMatch(home, /appVariant\.theme/);
   assert.match(webTabs, /className=/);
-  assert.match(webTabs, /bg-bg-light/);
-  assert.match(webTabs, /bg-bg/);
-  assert.match(webTabs, /text-text/);
-  assert.match(webTabs, /text-text-muted/);
+  assert.match(webTabs, /bg-surface-raised/);
+  assert.match(webTabs, /bg-surface/);
+  assert.match(webTabs, /text-foreground/);
+  assert.match(webTabs, /text-muted/);
   assert.match(webTabs, /from '@\/lib\/cn'/);
   assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
   if (hasVirtualFile(tree, 'src/app/explore.tsx')) {
     assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /withUniwind\(NativeSafeAreaView\)/);
   }
-  assert.match(uniwindComponentSource, /bg-bg-dark/);
-  assert.match(uniwindComponentSource, /bg-bg/);
-  assert.match(uniwindComponentSource, /bg-bg-light/);
-  assert.match(uniwindComponentSource, /text-text/);
-  assert.match(uniwindComponentSource, /text-text-muted/);
+  assert.match(uniwindComponentSource, /bg-background/);
+  assert.match(uniwindComponentSource, /bg-surface/);
+  assert.match(uniwindComponentSource, /bg-surface-raised/);
+  assert.match(uniwindComponentSource, /text-foreground/);
+  assert.match(uniwindComponentSource, /text-muted/);
+  assert.notMatch(uniwindComponentSource, /bg-bg|border-bg|text-text/);
+  assert.notMatch(globalCss, /--color-bg(?:-|:)|--color-text(?:-|:)/);
   assert.notMatch(
     uniwindComponentSource,
-    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])bg-background(?:[\s'"]|$)|(?:^|[\s'"])bg-card(?:[\s'"]|$)|(?:^|[\s'"])text-foreground(?:[\s'"]|$)|(?:^|[\s'"])text-muted(?:[\s'"]|$)|(?:^|[\s'"])text-accent(?:[\s'"]|$)|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])text-accent(?:[\s'"]|$)|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
   );
 }
 

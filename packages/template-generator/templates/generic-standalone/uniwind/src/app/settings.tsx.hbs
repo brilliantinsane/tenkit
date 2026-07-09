@@ -14,10 +14,10 @@ export default function SettingsScreen() {
   } = useActiveRuntimeTenant();
 
   return (
-    <View className="flex-1 gap-5 bg-bg-dark px-6 py-10">
+    <View className="flex-1 gap-5 bg-background px-6 py-10">
       <View className="gap-1">
-        <Text className="text-2xl font-semibold text-text">Settings</Text>
-        <Text className="text-base text-text-muted">Active Runtime Tenant</Text>
+        <Text className="text-2xl font-semibold text-foreground">Settings</Text>
+        <Text className="text-base text-muted">Active Runtime Tenant</Text>
       </View>
 
       {hasRuntimeTenantSelection ? (
@@ -30,18 +30,18 @@ export default function SettingsScreen() {
                 key={runtimeTenant.runtimeTenantId}
                 onPress={() => setActiveRuntimeTenantId(runtimeTenant.runtimeTenantId)}
                 className={cn(
-                  'rounded-2xl border bg-bg px-4 py-3 active:opacity-75',
-                  'border-bg-light',
+                  'rounded-2xl border bg-surface px-4 py-3 active:opacity-75',
+                  'border-surface-raised',
                 )}
                 style={selected ? { borderColor: theme.accent } : undefined}
               >
                 <Text
-                  className="text-base font-semibold text-text"
+                  className="text-base font-semibold text-foreground"
                   style={selected ? { color: theme.accent } : undefined}
                 >
                   {runtimeTenant.name}
                 </Text>
-                <Text className="font-mono text-sm text-text-muted">
+                <Text className="font-mono text-sm text-muted">
                   Runtime Tenant ID: {runtimeTenant.runtimeTenantId}
                 </Text>
               </Pressable>

@@ -4,20 +4,20 @@
 @layer theme {
   :root {
     @variant dark {
-      --color-bg-dark: #000000;
-      --color-bg: #0d0d0d;
-      --color-bg-light: #1a1a1a;
-      --color-text: #f2f2f2;
-      --color-text-muted: #b3b3b3;
+      --color-background: #000000;
+      --color-surface: #0d0d0d;
+      --color-surface-raised: #1a1a1a;
+      --color-foreground: #f2f2f2;
+      --color-muted: #b3b3b3;
       --color-accent: {{#if hasAccentOverride}}{{accentOverride}}{{else}}#eb2556{{/if}};
     }
 
     @variant light {
-      --color-bg-dark: #e6e6e6;
-      --color-bg: #f2f2f2;
-      --color-bg-light: #ffffff;
-      --color-text: #0d0d0d;
-      --color-text-muted: #4d4d4d;
+      --color-background: #e6e6e6;
+      --color-surface: #f2f2f2;
+      --color-surface-raised: #ffffff;
+      --color-foreground: #0d0d0d;
+      --color-muted: #4d4d4d;
       --color-accent: {{#if hasAccentOverride}}{{accentOverride}}{{else}}#eb2556{{/if}};
     }
   }

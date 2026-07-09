@@ -40,11 +40,11 @@ function TabButton({ accent, children, isFocused, ...props }: TabTriggerSlotProp
       <View
         className={cn(
           'rounded-2xl px-3 py-1',
-          isFocused ? 'bg-bg-light' : 'bg-bg',
+          isFocused ? 'bg-surface-raised' : 'bg-surface',
         )}
       >
         <Text
-          className={cn('text-sm font-semibold', isFocused ? 'text-text' : 'text-text-muted')}
+          className={cn('text-sm font-semibold', isFocused ? 'text-foreground' : 'text-muted')}
           style={isFocused ? { color: accent } : undefined}
         >
           {children}
@@ -57,8 +57,8 @@ function TabButton({ accent, children, isFocused, ...props }: TabTriggerSlotProp
 function CustomTabList(props: TabListProps) {
   return (
     <View {...props} className="absolute w-full flex-row items-center justify-center p-4">
-      <View className="max-w-3xl flex-grow flex-row items-center gap-2 rounded-3xl border border-bg-light bg-bg px-6 py-2">
-        <Text className="mr-auto text-sm font-semibold text-text">
+      <View className="max-w-3xl flex-grow flex-row items-center gap-2 rounded-3xl border border-surface-raised bg-surface px-6 py-2">
+        <Text className="mr-auto text-sm font-semibold text-foreground">
           {projectName}
         </Text>
         {props.children}

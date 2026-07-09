@@ -26,7 +26,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling-choice <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--accent <#RRGGBB>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--accent <#RRGGBB>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -84,7 +84,7 @@ function parseArgs(args: string[]): ResolvedArgs {
     if (arg === '--setup-type') {
       parsed.setupType = parseSetupType(readValue(args, index, arg));
       index += 1;
-    } else if (arg === '--styling-choice') {
+    } else if (arg === '--styling') {
       parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
       index += 1;
     } else if (arg === '--accent') {

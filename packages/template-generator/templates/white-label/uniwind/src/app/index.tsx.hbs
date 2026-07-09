@@ -6,19 +6,19 @@ export default function HomeScreen() {
   const { appVariant, theme } = useAppVariantConfig();
 
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-bg-dark px-6">
+    <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
       <Text className="text-sm font-semibold uppercase tracking-normal" style=\{{ color: theme.accent }}>
         Tenkit
       </Text>
-      <Text className="text-center text-4xl font-bold text-text">
+      <Text className="text-center text-4xl font-bold text-foreground">
         White Label App
       </Text>
       <View className="min-w-56 gap-1">
-        <Text selectable className="font-mono text-sm text-text">
+        <Text selectable className="font-mono text-sm text-foreground">
           App Variant: {appVariant.slug}
         </Text>
       </View>
-      <Text className="max-w-sm text-center text-base text-text-muted">
+      <Text className="max-w-sm text-center text-base text-muted">
         A generated Expo SDK 56 app with White Label app configuration applied.
       </Text>
     </View>
