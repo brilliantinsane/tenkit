@@ -11,6 +11,12 @@ const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const templatesRoot = join(packageRoot, 'templates');
 const setupTypeTemplatePaths = ['white-label', 'runtime-tenants', 'generic-standalone'] as const;
 const stylingTemplatePaths = ['bare', 'uniwind'] as const;
+const universalSharedPaths = [
+  'app.config.ts.hbs',
+  'pnpm-workspace.yaml.hbs',
+  'src/constants/project-config.ts.hbs',
+  'tsconfig.json.hbs',
+] as const;
 
 function readPackageSource(path: string): string {
   return fs.readFileSync(join(packageRoot, path), 'utf8');
@@ -37,6 +43,13 @@ test('Template source paths use ADR 0009 owners', () => {
   });
 
   assert.deepEqual(unexpectedPaths, []);
+  for (const path of universalSharedPaths) {
+    assert.ok(paths.includes(`shared/${path}`));
+    for (const setupType of setupTypeTemplatePaths) {
+      assert.notInclude(paths, `${setupType}/shared/${path}`);
+    }
+  }
+
   assert.deepEqual(
     paths.filter((path) => path.endsWith('package.json.hbs')),
     setupTypeTemplatePaths.map((setupType) => `${setupType}/shared/package.json.hbs`).sort(),

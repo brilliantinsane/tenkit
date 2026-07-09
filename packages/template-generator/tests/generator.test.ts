@@ -430,6 +430,9 @@ test('generated output stays free of Template composition details across the mat
       assert.ok(paths.includes('package.json'));
       assert.ok(paths.includes('README.md'));
       assert.ok(paths.includes('app.config.ts'));
+      assert.ok(paths.includes('pnpm-workspace.yaml'));
+      assert.ok(paths.includes('src/constants/project-config.ts'));
+      assert.ok(paths.includes('tsconfig.json'));
       assert.ok(paths.includes('src/app/_layout.tsx'));
       assert.ok(paths.includes('src/app/index.tsx'));
       assert.ok(paths.includes('src/components/app-tabs.tsx'));
