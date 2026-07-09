@@ -12,7 +12,11 @@ export const appVariants = [
     bundleIdentifier: 'com.brilliantinsane.firsttenant',
     packageName: 'com.brilliantinsane.firsttenant',
     theme: {
+      {{#if hasAccentOverride}}
+      accent: {{{accentOverrideStringLiteral}}},
+      {{else}}
       accent: '#208AEF',
+      {{/if}}
     },
     eas: {
       projectId: '',
@@ -27,7 +31,11 @@ export const appVariants = [
     bundleIdentifier: 'com.brilliantinsane.secondtenant',
     packageName: 'com.brilliantinsane.secondtenant',
     theme: {
+      {{#if hasAccentOverride}}
+      accent: {{{accentOverrideStringLiteral}}},
+      {{else}}
       accent: '#ef8520',
+      {{/if}}
     },
     eas: {
       projectId: '',

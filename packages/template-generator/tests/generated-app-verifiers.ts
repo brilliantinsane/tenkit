@@ -6,6 +6,7 @@ import {
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupType,
 } from '../src/generated-setup-types';
+import { type GeneratedStylingChoice } from '../src/generated-styling-choices';
 
 type PackageJson = {
   name?: string;
@@ -373,10 +374,131 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   );
 }
 
+async function verifyUniwindGeneratedApp(setupType: GeneratedSetupType, targetDir: string) {
+  const definition = getGeneratedSetupTypeDefinition(setupType);
+  const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
+  const tsconfig = await readText(join(targetDir, 'tsconfig.json'));
+  const metroConfig = await readText(join(targetDir, 'metro.config.js'));
+  const globalCss = await readText(join(targetDir, 'src/global.css'));
+  const uniwindEnv = await readText(join(targetDir, 'src/uniwind-env.d.ts'));
+  const gitignore = await readText(join(targetDir, '.gitignore'));
+  const layout = await readText(join(targetDir, 'src/app/_layout.tsx'));
+  const app = await readText(join(targetDir, 'src/app/index.tsx'));
+  const nativeTabs = await readText(join(targetDir, 'src/components/app-tabs.tsx'));
+  const webTabs = await readText(join(targetDir, 'src/components/app-tabs.web.tsx'));
+  const appConfig = await readText(join(targetDir, 'app.config.ts'));
+
+  assert.equal(packageJson.name, definition.defaultPackageName);
+  assert.equal(packageJson.dependencies?.uniwind, '^1.10.0');
+  assert.equal(packageJson.dependencies?.clsx, '^2.1.1');
+  assert.equal(packageJson.dependencies?.['tailwind-merge'], '^3.6.0');
+  assert.equal(packageJson.dependencies?.['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies?.tailwindcss, '^4.3.2');
+  assert.match(tsconfig, /"uniwind\/types"/);
+  assert.match(tsconfig, /"src\/uniwind-env\.d\.ts"/);
+  assert.match(metroConfig, /withUniwindConfig\(config, \{/);
+  assert.match(metroConfig, /cssEntryFile: '\.\/src\/global\.css'/);
+  assert.match(metroConfig, /dtsFile: '\.\/src\/uniwind-types\.d\.ts'/);
+  assert.match(globalCss, /@layer theme/);
+  assert.match(globalCss, /@variant dark/);
+  assert.match(globalCss, /@variant light/);
+  assert.match(globalCss, /--color-accent:/);
+  assert.match(uniwindEnv, /<reference types="uniwind\/types" \/>/);
+  assert.match(uniwindEnv, /declare module '\*\.css';/);
+  assert.match(gitignore, /src\/uniwind-types\.d\.ts/);
+  assert.match(layout, /import '\.\.\/global\.css'/);
+  assert.match(app, /bg-bg-dark/);
+  assert.match(app, /text-text/);
+  assert.match(app, /text-text-muted/);
+  assert.match(app, /theme\.accent/);
+  assert.notMatch(app, /appVariant\.theme/);
+  assert.match(nativeTabs, /useCSSVariable/);
+  assert.match(nativeTabs, /as ColorValue\[\]/);
+  assert.match(nativeTabs, /selected: accent/);
+  assert.notMatch(nativeTabs, /#[0-9a-f]{3,8}\b/i);
+  assert.match(webTabs, /className=/);
+  assert.match(webTabs, /bg-bg-light/);
+  assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.equal(await exists(join(targetDir, 'src/css.d.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/uniwind-env.d.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/uniwind-types.d.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/lib/cn.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/theme/colors.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/design-tokens.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/globals.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-text.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-view.tsx')), false);
+
+  for (const slug of definition.appVariantSlugs) {
+    assert.equal(await exists(join(targetDir, `assets/${slug}/icons/icon.png`)), true);
+    assert.equal(await exists(join(targetDir, `assets/${slug}/app.icon/icon.json`)), true);
+  }
+
+  const generatedSource = [appConfig, layout, app, nativeTabs, webTabs, globalCss];
+
+  if (setupType === 'white-label-apps') {
+    const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+    const explore = await readText(join(targetDir, 'src/app/explore.tsx'));
+
+    assert.match(appConfig, /APP_VARIANT_SLUG/);
+    assert.match(appVariants, /slug: 'first-tenant'/);
+    assert.match(appVariants, /slug: 'second-tenant'/);
+    assert.match(explore, /withUniwind\(NativeSafeAreaView\)/);
+    assert.equal(await exists(join(targetDir, 'src/app/settings.tsx')), false);
+    generatedSource.push(appVariants, explore);
+  } else {
+    const settings = await readText(join(targetDir, 'src/app/settings.tsx'));
+    const activeRuntimeTenantHook = await readText(
+      join(targetDir, 'src/hooks/use-active-runtime-tenant.ts'),
+    );
+    const runtimeTenantAccess = await readText(join(targetDir, 'src/lib/runtime-tenant-access.ts'));
+    const appPreferences = await readText(join(targetDir, 'src/storage/app-preferences.ts'));
+
+    assert.match(app, /useActiveRuntimeTenant/);
+    assert.match(settings, /hasRuntimeTenantSelection/);
+    assert.match(settings, /setActiveRuntimeTenantId/);
+    assert.match(settings, /theme\.accent/);
+    assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+    assert.match(runtimeTenantAccess, /validateRuntimeTenantAccess/);
+    assert.match(appPreferences, /createMMKV/);
+    assert.equal(await exists(join(targetDir, 'src/app/explore.tsx')), false);
+    generatedSource.push(settings, activeRuntimeTenantHook, runtimeTenantAccess, appPreferences);
+
+    if (setupType === 'single-app-runtime-tenants') {
+      const appVariant = await readText(join(targetDir, 'src/constants/app-variant.ts'));
+      assert.match(appVariant, /slug: 'acme-app'/);
+      assert.match(activeRuntimeTenantHook, /runtimeTenantAccess\.allowedRuntimeTenantIds/);
+      assert.equal(await exists(join(targetDir, 'src/constants/app-variants.ts')), false);
+      generatedSource.push(appVariant);
+    } else {
+      const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+      assert.match(appConfig, /APP_VARIANT_SLUG/);
+      assert.match(appVariants, /role: 'generic'/);
+      assert.match(appVariants, /role: 'standalone'/);
+      assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+      assert.match(
+        runtimeTenantAccess,
+        /must not appear in Generic App Variant Runtime Tenant Access/,
+      );
+      generatedSource.push(appVariants);
+    }
+  }
+
+  assertNoStandaloneGeneratedSourceLeaks(generatedSource.join('\n'));
+}
+
 export async function verifyGeneratedAppShape(
   setupType: GeneratedSetupType,
   targetDir: string,
+  stylingChoice: GeneratedStylingChoice = 'bare',
 ): Promise<void> {
+  if (stylingChoice === 'uniwind') {
+    await verifyUniwindGeneratedApp(setupType, targetDir);
+    return;
+  }
+
   if (setupType === 'white-label-apps') {
     await verifyWhiteLabelApps(targetDir);
     return;

@@ -9,7 +9,11 @@ export const appVariant = {
   bundleIdentifier: 'com.example.acmeapp',
   packageName: 'com.example.acmeapp',
   theme: {
+    {{#if hasAccentOverride}}
+    accent: {{{accentOverrideStringLiteral}}},
+    {{else}}
     accent: '#eb2556',
+    {{/if}}
   },
   eas: {
     projectId: '',

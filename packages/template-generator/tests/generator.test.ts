@@ -22,6 +22,9 @@ type SetupTypeCase = {
     | 'single-app-runtime-tenants'
     | 'generic-with-standalone-app-variants';
   expectedRoute: 'explore' | 'settings';
+  appVariantPath: 'src/constants/app-variant.ts' | 'src/constants/app-variants.ts';
+  appVariantCount: 1 | 2;
+  defaultAccents: readonly string[];
 };
 
 function readVirtualFile(tree: VirtualFileTree, path: string): string {
@@ -46,12 +49,31 @@ function hasVirtualFile(tree: VirtualFileTree, path: string): boolean {
 }
 
 const setupTypeCases = [
-  { setupType: 'white-label-apps', expectedRoute: 'explore' },
-  { setupType: 'single-app-runtime-tenants', expectedRoute: 'settings' },
-  { setupType: 'generic-with-standalone-app-variants', expectedRoute: 'settings' },
+  {
+    setupType: 'white-label-apps',
+    expectedRoute: 'explore',
+    appVariantPath: 'src/constants/app-variants.ts',
+    appVariantCount: 2,
+    defaultAccents: ['#208AEF', '#ef8520'],
+  },
+  {
+    setupType: 'single-app-runtime-tenants',
+    expectedRoute: 'settings',
+    appVariantPath: 'src/constants/app-variant.ts',
+    appVariantCount: 1,
+    defaultAccents: ['#eb2556'],
+  },
+  {
+    setupType: 'generic-with-standalone-app-variants',
+    expectedRoute: 'settings',
+    appVariantPath: 'src/constants/app-variants.ts',
+    appVariantCount: 2,
+    defaultAccents: ['#20EF99', '#9A00CD'],
+  },
 ] as const satisfies readonly SetupTypeCase[];
 
-const expectedUniwindGlobalCss = `@import 'tailwindcss';
+function expectedUniwindGlobalCss(accent: string) {
+  return `@import 'tailwindcss';
 @import 'uniwind';
 
 @layer theme {
@@ -62,6 +84,7 @@ const expectedUniwindGlobalCss = `@import 'tailwindcss';
       --color-bg-light: #1a1a1a;
       --color-text: #f2f2f2;
       --color-text-muted: #b3b3b3;
+      --color-accent: ${accent};
     }
 
     @variant light {
@@ -70,10 +93,12 @@ const expectedUniwindGlobalCss = `@import 'tailwindcss';
       --color-bg-light: #ffffff;
       --color-text: #0d0d0d;
       --color-text-muted: #4d4d4d;
+      --color-accent: ${accent};
     }
   }
 }
 `;
+}
 
 function assertSetupTypeBehavior(tree: VirtualFileTree, setupType: SetupTypeCase['setupType']) {
   const appConfig = readVirtualFile(tree, 'app.config.ts');
@@ -132,6 +157,7 @@ function assertBareStylingOutput(tree: VirtualFileTree) {
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
   };
+  const gitignore = readVirtualFile(tree, '.gitignore');
 
   assert.ok(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'));
   assert.ok(hasVirtualFile(tree, 'src/theme/colors.ts'));
@@ -141,15 +167,18 @@ function assertBareStylingOutput(tree: VirtualFileTree) {
   assert.ok(hasVirtualFile(tree, 'src/components/themed-view.tsx'));
   assert.equal(hasVirtualFile(tree, 'metro.config.js'), false);
   assert.equal(hasVirtualFile(tree, 'src/global.css'), false);
+  assert.equal(hasVirtualFile(tree, 'src/css.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-env.d.ts'), false);
   assert.equal(hasVirtualFile(tree, 'src/uniwind-types.d.ts'), false);
   assert.equal(hasVirtualFile(tree, 'src/lib/cn.ts'), false);
+  assert.notMatch(gitignore, /src\/uniwind-types\.d\.ts/);
   assert.equal(packageJson.dependencies.uniwind, undefined);
   assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
   assert.equal(packageJson.dependencies.clsx, undefined);
   assert.equal(packageJson.devDependencies.tailwindcss, undefined);
 }
 
-function assertUniwindStylingOutput(tree: VirtualFileTree) {
+function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: string) {
   const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
@@ -160,7 +189,8 @@ function assertUniwindStylingOutput(tree: VirtualFileTree) {
   const webTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
   const metroConfig = readVirtualFile(tree, 'metro.config.js');
   const globalCss = readVirtualFile(tree, 'src/global.css');
-  const uniwindTypes = readVirtualFile(tree, 'src/uniwind-types.d.ts');
+  const uniwindEnv = readVirtualFile(tree, 'src/uniwind-env.d.ts');
+  const gitignore = readVirtualFile(tree, '.gitignore');
   const uniwindComponentSource = tree
     .filter((file) => file.path.startsWith('src/app/') || file.path.startsWith('src/components/'))
     .map((file) => file.contents)
@@ -179,7 +209,9 @@ function assertUniwindStylingOutput(tree: VirtualFileTree) {
   assert.equal(hasVirtualFile(tree, 'src/components/themed-view.tsx'), false);
   assert.ok(hasVirtualFile(tree, 'metro.config.js'));
   assert.ok(hasVirtualFile(tree, 'src/global.css'));
-  assert.ok(hasVirtualFile(tree, 'src/uniwind-types.d.ts'));
+  assert.equal(hasVirtualFile(tree, 'src/css.d.ts'), false);
+  assert.ok(hasVirtualFile(tree, 'src/uniwind-env.d.ts'));
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-types.d.ts'), false);
   assert.ok(hasVirtualFile(tree, 'src/lib/cn.ts'));
   assert.equal(packageJson.dependencies.uniwind, '^1.10.0');
   assert.equal(packageJson.dependencies['tailwind-merge'], '^3.6.0');
@@ -187,13 +219,19 @@ function assertUniwindStylingOutput(tree: VirtualFileTree) {
   assert.equal(packageJson.dependencies['@expo/ui'], undefined);
   assert.equal(packageJson.devDependencies.tailwindcss, '^4.3.2');
   assert.ok(tsconfig.compilerOptions.types.includes('uniwind/types'));
-  assert.ok(tsconfig.include.includes('src/uniwind-types.d.ts'));
+  assert.ok(tsconfig.include.includes('src/uniwind-env.d.ts'));
   assert.match(metroConfig, /withUniwindConfig\(config, \{/);
   assert.match(metroConfig, /cssEntryFile: '\.\/src\/global\.css'/);
   assert.match(metroConfig, /dtsFile: '\.\/src\/uniwind-types\.d\.ts'/);
-  assert.equal(globalCss, expectedUniwindGlobalCss);
+  assert.equal(globalCss, expectedUniwindGlobalCss(expectedAccent));
+  assert.match(uniwindEnv, /<reference types="uniwind\/types" \/>/);
+  assert.match(uniwindEnv, /declare module '\*\.css';/);
+  assert.match(gitignore, /src\/uniwind-types\.d\.ts/);
   assert.match(layout, /import '..\/global\.css';/);
   assert.match(layout, /ThemeProvider/);
+  assert.match(layout, /Uniwind\.updateCSSVariables\('light',/);
+  assert.match(layout, /Uniwind\.updateCSSVariables\('dark',/);
+  assert.equal(layout.match(/'--color-accent': theme\.accent/g)?.length, 2);
   assert.match(nativeTabs, /type ColorValue/);
   assert.match(nativeTabs, /useCSSVariable/);
   assert.match(nativeTabs, /const \[bg, bgLight, text, textMuted\] = useCSSVariable\(\[/);
@@ -209,6 +247,8 @@ function assertUniwindStylingOutput(tree: VirtualFileTree) {
   assert.match(home, /bg-bg-dark/);
   assert.match(home, /text-text/);
   assert.match(home, /text-text-muted/);
+  assert.match(home, /style=\{\{ color: theme\.accent \}\}/);
+  assert.notMatch(home, /appVariant\.theme/);
   assert.match(webTabs, /className=/);
   assert.match(webTabs, /bg-bg-light/);
   assert.match(webTabs, /bg-bg/);
@@ -216,7 +256,6 @@ function assertUniwindStylingOutput(tree: VirtualFileTree) {
   assert.match(webTabs, /text-text-muted/);
   assert.match(webTabs, /from '@\/lib\/cn'/);
   assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
-  assert.match(uniwindTypes, /<reference types="uniwind\/types" \/>/);
   if (hasVirtualFile(tree, 'src/app/explore.tsx')) {
     assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /withUniwind\(NativeSafeAreaView\)/);
   }
@@ -329,6 +368,36 @@ test('Template generation rejects unsupported Styling Choice values', () => {
   );
 });
 
+test('Accent override updates every App Variant and both Styling Choices', () => {
+  for (const { setupType, appVariantPath, appVariantCount, defaultAccents } of setupTypeCases) {
+    for (const stylingChoice of ['bare', 'uniwind'] as const) {
+      const tree = generateProject({ setupType, stylingChoice, accent: '#123ABC' });
+      const appVariants = readVirtualFile(tree, appVariantPath);
+
+      assert.equal(appVariants.match(/accent: "#123ABC"/g)?.length, appVariantCount);
+      for (const defaultAccent of defaultAccents) {
+        assert.notMatch(appVariants, new RegExp(defaultAccent));
+      }
+
+      if (stylingChoice === 'uniwind') {
+        const globalCss = readVirtualFile(tree, 'src/global.css');
+        assert.equal(globalCss.match(/--color-accent: #123ABC;/g)?.length, 2);
+      }
+
+      if (hasVirtualFile(tree, 'src/constants/runtime-tenants.ts')) {
+        assert.notMatch(readVirtualFile(tree, 'src/constants/runtime-tenants.ts'), /accent/);
+      }
+    }
+  }
+});
+
+test('Template generation rejects invalid accent colors', () => {
+  assert.throws(
+    () => generateProject({ setupType: 'white-label-apps', accent: 'blue' }),
+    /Invalid generated accent color "blue".*six-digit hex color.*#208AEF/,
+  );
+});
+
 test('Bare Template generation keeps generated output paths layer-free for every Setup Type', () => {
   const generatedTrees = [
     generateProject({ setupType: 'white-label-apps' }),
@@ -361,7 +430,7 @@ test('Bare Template generation keeps generated output paths layer-free for every
 test('Styling Choice matrix emits Bare and Uniwind output for every Setup Type', () => {
   const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
 
-  for (const { setupType, expectedRoute } of setupTypeCases) {
+  for (const { setupType, expectedRoute, defaultAccents } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       const tree = generateProject({ setupType, stylingChoice });
       const paths = tree.map((file) => file.path);
@@ -396,7 +465,7 @@ test('Styling Choice matrix emits Bare and Uniwind output for every Setup Type',
       if (stylingChoice === 'bare') {
         assertBareStylingOutput(tree);
       } else {
-        assertUniwindStylingOutput(tree);
+        assertUniwindStylingOutput(tree, defaultAccents[0]);
       }
     }
   }

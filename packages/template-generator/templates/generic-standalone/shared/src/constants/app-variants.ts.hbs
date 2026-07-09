@@ -13,7 +13,11 @@ export const appVariants = [
     bundleIdentifier: 'com.example.atlasnetwork',
     packageName: 'com.example.atlasnetwork',
     theme: {
+      {{#if hasAccentOverride}}
+      accent: {{{accentOverrideStringLiteral}}},
+      {{else}}
       accent: '#20EF99',
+      {{/if}}
     },
     eas: {
       projectId: '',
@@ -34,7 +38,11 @@ export const appVariants = [
     bundleIdentifier: 'com.example.weststudio',
     packageName: 'com.example.weststudio',
     theme: {
+      {{#if hasAccentOverride}}
+      accent: {{{accentOverrideStringLiteral}}},
+      {{else}}
       accent: '#9A00CD',
+      {{/if}}
     },
     eas: {
       projectId: '',

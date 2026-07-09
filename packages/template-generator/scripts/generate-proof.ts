@@ -5,20 +5,27 @@ import { resolve } from 'pathe';
 
 import {
   formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedAccentColor,
+  normalizeGeneratedStylingChoice,
   normalizeGeneratedSetupType,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
+  type GeneratedAccentColor,
+  type GeneratedStylingChoice,
 } from '../src/generator';
 import { getGeneratedSetupTypeDefinition } from '../src/generated-setup-types';
 import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-proof';
 
 type ParsedArgs = {
+  accent?: GeneratedAccentColor;
   setupType?: GeneratedSetupType;
   target?: string;
   force: boolean;
   install: boolean;
   projectName?: string;
   packageName?: string;
+  stylingChoice: GeneratedStylingChoice;
 };
 
 type ResolvedArgs = ParsedArgs & {
@@ -27,7 +34,7 @@ type ResolvedArgs = ParsedArgs & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--styling-choice <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--accent <#RRGGBB>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -50,10 +57,31 @@ function parseSetupType(value: string): GeneratedSetupType {
   }
 }
 
+function parseStylingChoice(value: string): GeneratedStylingChoice {
+  try {
+    return normalizeGeneratedStylingChoice(value);
+  } catch {
+    throw new Error(
+      `Unsupported generated Styling Choice ${JSON.stringify(value)}. Expected one of: ${SUPPORTED_GENERATED_STYLING_CHOICES.join(', ')}.`,
+    );
+  }
+}
+
+function parseAccent(value: string): GeneratedAccentColor {
+  const accent = normalizeGeneratedAccentColor(value);
+
+  if (accent === undefined) {
+    throw new Error('--accent requires a value.');
+  }
+
+  return accent;
+}
+
 function parseArgs(args: string[]): ResolvedArgs {
   const parsed: ParsedArgs = {
     force: false,
     install: true,
+    stylingChoice: 'bare',
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -68,6 +96,12 @@ function parseArgs(args: string[]): ResolvedArgs {
       index += 1;
     } else if (arg === '--target') {
       parsed.target = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--styling-choice') {
+      parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--accent') {
+      parsed.accent = parseAccent(readValue(args, index, arg));
       index += 1;
     } else if (arg === '--force') {
       parsed.force = true;
@@ -92,7 +126,11 @@ function parseArgs(args: string[]): ResolvedArgs {
     throw new Error(`Missing --target.\n${usage()}`);
   }
 
-  return parsed as ResolvedArgs;
+  return {
+    ...parsed,
+    setupType: parsed.setupType,
+    target: parsed.target,
+  };
 }
 
 function resolveFromInitialWorkingDirectory(path: string): string {
@@ -127,11 +165,13 @@ async function main() {
 
   const result = await runGenerationProof({
     setupType: args.setupType,
+    accent: args.accent,
     targetDir,
     force: args.force,
     git: 'init',
     projectName: args.projectName,
     packageName: args.packageName,
+    stylingChoice: args.stylingChoice,
     workspaceRoot,
   });
 

@@ -6,10 +6,14 @@ import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
 
+import { type GeneratedAccentColor } from './generated-accent-color';
 import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
+  accentOverride?: GeneratedAccentColor;
+  accentOverrideStringLiteral?: string;
+  hasAccentOverride: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -38,7 +42,9 @@ function toVirtualPath(path: string): string {
 }
 
 function toOutputPath(path: string): string {
-  const mappedPath = path
+  const emittedPath = path.endsWith('.hbs') ? path.slice(0, -'.hbs'.length) : path;
+
+  return emittedPath
     .split('/')
     .map((segment) => {
       if (segment === '_gitignore') return '.gitignore';
@@ -47,8 +53,6 @@ function toOutputPath(path: string): string {
       return segment;
     })
     .join('/');
-
-  return mappedPath.endsWith('.hbs') ? mappedPath.slice(0, -'.hbs'.length) : mappedPath;
 }
 
 function renderTemplateContent(contents: string, context: TemplateContext): string {

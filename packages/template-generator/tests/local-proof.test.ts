@@ -211,6 +211,63 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
   }
 });
 
+test('local proof command boundary selects Uniwind output for every Setup Type', async () => {
+  const setupTypes = [
+    'white-label-apps',
+    'single-app-runtime-tenants',
+    'generic-with-standalone-app-variants',
+  ] as const;
+
+  for (const setupType of setupTypes) {
+    const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+    const targetDir = join(tempRoot, 'generated-app');
+    const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+    try {
+      await runGenerationProof({
+        setupType,
+        stylingChoice: 'uniwind',
+        targetDir,
+        git: false,
+        workspaceRoot,
+      });
+
+      await verifyGeneratedAppShape(setupType, targetDir, 'uniwind');
+      assert.equal(await exists(join(targetDir, 'src/global.css')), true);
+      assert.equal(await exists(join(targetDir, 'src/uniwind-env.d.ts')), true);
+      assert.equal(await exists(join(targetDir, 'src/uniwind-types.d.ts')), false);
+      assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+    } finally {
+      await fs.remove(tempRoot);
+    }
+  }
+});
+
+test('local proof command boundary forwards an accent override', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+  const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+  try {
+    await runGenerationProof({
+      setupType: 'white-label-apps',
+      stylingChoice: 'uniwind',
+      accent: '#123ABC',
+      targetDir,
+      git: false,
+      workspaceRoot,
+    });
+
+    const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
+    const globalCss = await fs.readFile(join(targetDir, 'src/global.css'), 'utf8');
+
+    assert.equal(appVariants.match(/accent: "#123ABC"/g)?.length, 2);
+    assert.equal(globalCss.match(/--color-accent: #123ABC;/g)?.length, 2);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
 test('local proof command boundary generates Single App Runtime Tenants by Setup Type', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
   const targetDir = join(tempRoot, 'generated-app');

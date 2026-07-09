@@ -3,11 +3,11 @@ import { Text, View } from 'react-native';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 export default function HomeScreen() {
-  const { appVariant } = useAppVariantConfig();
+  const { appVariant, theme } = useAppVariantConfig();
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-bg-dark px-6">
-      <Text className="text-sm font-semibold uppercase tracking-normal" style=\{{ color: appVariant.theme.accent }}>
+      <Text className="text-sm font-semibold uppercase tracking-normal" style=\{{ color: theme.accent }}>
         Tenkit
       </Text>
       <Text className="text-center text-4xl font-bold text-text">

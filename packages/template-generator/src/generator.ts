@@ -4,6 +4,7 @@ import {
   getGeneratedSetupTypeDefinition,
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
+import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
 import {
   type GeneratedStylingChoice,
   normalizeGeneratedStylingChoice,
@@ -26,6 +27,7 @@ export {
   type GeneratedSetupTypeInput,
   type PublicSetupSlug,
 } from './generated-setup-types';
+export { normalizeGeneratedAccentColor, type GeneratedAccentColor } from './generated-accent-color';
 export {
   normalizeGeneratedStylingChoice,
   SUPPORTED_GENERATED_STYLING_CHOICES,
@@ -35,6 +37,7 @@ export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
   setupType: 'white-label' | 'white-label-apps';
+  accent?: string;
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -43,6 +46,7 @@ export type WhiteLabelAppsProjectConfig = {
 
 export type SingleAppRuntimeTenantsProjectConfig = {
   setupType: 'runtime-tenants' | 'single-app-runtime-tenants';
+  accent?: string;
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -51,6 +55,7 @@ export type SingleAppRuntimeTenantsProjectConfig = {
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
   setupType: 'generic-standalone' | 'generic-with-standalone-app-variants';
+  accent?: string;
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -96,12 +101,14 @@ function normalizePackageManager(
 }
 
 function normalizeTemplateContext({
+  accent: rawAccent,
   projectName: rawProjectName,
   packageName: rawPackageName,
   packageManager: rawPackageManager,
   stylingChoice: rawStylingChoice,
   setupTypeDefinition,
 }: {
+  accent?: string;
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -109,10 +116,15 @@ function normalizeTemplateContext({
   setupTypeDefinition: GeneratedSetupTypeDefinition;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
+  const accentOverride = normalizeGeneratedAccentColor(rawAccent);
   const packageManager = normalizePackageManager(rawPackageManager);
   const stylingChoice = normalizeGeneratedStylingChoice(rawStylingChoice);
 
   return {
+    accentOverride,
+    accentOverrideStringLiteral:
+      accentOverride === undefined ? undefined : JSON.stringify(accentOverride),
+    hasAccentOverride: accentOverride !== undefined,
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -171,6 +183,7 @@ export function generateWhiteLabelAppsProject(
 
   const setupTypeDefinition = getGeneratedSetupTypeDefinition('white-label-apps');
   const context = normalizeTemplateContext({
+    accent: config.accent,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -194,6 +207,7 @@ export function generateSingleAppRuntimeTenantsProject(
 
   const setupTypeDefinition = getGeneratedSetupTypeDefinition('single-app-runtime-tenants');
   const context = normalizeTemplateContext({
+    accent: config.accent,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -221,6 +235,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
     'generic-with-standalone-app-variants',
   );
   const context = normalizeTemplateContext({
+    accent: config.accent,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -238,6 +253,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
 export function generateProject(config: GenerateProjectConfig): VirtualFileTree {
   const setupType = normalizeGeneratedSetupType(config.setupType);
   const baseConfig = {
+    accent: config.accent,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,

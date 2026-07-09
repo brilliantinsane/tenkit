@@ -8,11 +8,7 @@ import { writeProject, type WriteProjectOverwriteMode, type WriteProjectResult }
 
 export type GeneratedProjectGitMode = false | 'init' | 'commit';
 
-type WithoutStylingChoice<TConfig> = TConfig extends unknown
-  ? Omit<TConfig, 'stylingChoice'>
-  : never;
-
-export type RunGenerationProofOptions = WithoutStylingChoice<GenerateProjectConfig> & {
+export type RunGenerationProofOptions = GenerateProjectConfig & {
   targetDir: string;
   force?: boolean;
   git?: boolean | GeneratedProjectGitMode;
@@ -110,9 +106,11 @@ export async function runGenerationProof(
 ): Promise<RunGenerationProofResult> {
   const tree = generateProject({
     setupType: options.setupType,
+    accent: options.accent,
     projectName: options.projectName,
     packageName: options.packageName,
     packageManager: options.packageManager,
+    stylingChoice: options.stylingChoice,
   });
   const overwrite: WriteProjectOverwriteMode = options.force ? 'always' : 'never';
   const targetWasEmpty = await isExistingTargetDirectoryEmpty(options.targetDir);
