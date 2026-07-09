@@ -24,6 +24,8 @@ export async function runCreateFlow(
 
   const tree = generate({
     setupType: resolvedOptions.setupType,
+    stylingChoice: resolvedOptions.stylingChoice,
+    accent: resolvedOptions.accent,
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     packageManager: resolvedOptions.packageManager,
@@ -43,6 +45,8 @@ export async function runCreateFlow(
       projectName: resolvedOptions.projectName,
       packageName: resolvedOptions.packageName,
       setupType: resolvedOptions.setupType,
+      stylingChoice: resolvedOptions.stylingChoice,
+      accent: resolvedOptions.accent,
       packageManager: resolvedOptions.packageManager,
       installed: false,
       installFailed: false,
@@ -93,6 +97,8 @@ export async function runCreateFlow(
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     setupType: resolvedOptions.setupType,
+    stylingChoice: resolvedOptions.stylingChoice,
+    accent: resolvedOptions.accent,
     packageManager: resolvedOptions.packageManager,
     installed,
     installFailed,

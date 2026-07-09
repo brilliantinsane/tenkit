@@ -1,10 +1,14 @@
 import {
   formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedAccentColor,
   normalizeGeneratedSetupType,
+  normalizeGeneratedStylingChoice,
+  type GeneratedAccentColor,
+  type GeneratedStylingChoice,
   type GeneratedSetupType,
 } from '@tenkit/template-generator';
 
-import { DEFAULT_PUBLIC_SETUP_SLUG } from '../constants';
+import { DEFAULT_PUBLIC_SETUP_SLUG, supportedStylingValues } from '../constants';
 import type { PublicCliGitMode } from './types';
 
 function isPathSeparatorPresent(value: string): boolean {
@@ -96,6 +100,26 @@ export function normalizeSetupInput(
   } catch {
     throw new Error(
       `Unsupported Setup Type ${JSON.stringify(selectedSetup)}. Expected ${formatSupportedGeneratedSetupTypes()}.`,
+    );
+  }
+}
+
+export function normalizeStylingInput(value: string | undefined): GeneratedStylingChoice {
+  try {
+    return normalizeGeneratedStylingChoice(value);
+  } catch {
+    throw new Error(
+      `Unsupported Styling Choice ${JSON.stringify(value)}. Expected one of: ${supportedStylingValues().join(', ')}.`,
+    );
+  }
+}
+
+export function normalizeAccentInput(value: string | undefined): GeneratedAccentColor | undefined {
+  try {
+    return normalizeGeneratedAccentColor(value);
+  } catch {
+    throw new Error(
+      `Invalid accent color ${JSON.stringify(value)}. Expected a six-digit hex color such as "#208AEF".`,
     );
   }
 }

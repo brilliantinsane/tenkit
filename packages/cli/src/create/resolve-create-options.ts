@@ -5,13 +5,17 @@ import { normalizeGeneratedSetupType, type GeneratedSetupType } from '@tenkit/te
 import {
   DEFAULT_PROJECT_NAME,
   DEFAULT_PUBLIC_SETUP_SLUG,
+  DEFAULT_STYLING_CHOICE,
   PROMPT_CANCELLED,
   SETUP_PROMPT_CHOICES,
+  STYLING_PROMPT_CHOICES,
 } from '../constants';
 import { CreateFlowCancelledError } from '../errors';
 import {
   derivePackageName,
+  normalizeAccentInput,
   normalizeSetupInput,
+  normalizeStylingInput,
   parseGitMode,
   validatePackageName,
   validateProjectName,
@@ -54,6 +58,28 @@ async function readProjectName(
   }
 
   return validateProjectName(answer);
+}
+
+async function readStylingChoice(options: CreateCommandOptions, env: CreateFlowEnvironment) {
+  if (options.styling !== undefined) {
+    return normalizeStylingInput(options.styling);
+  }
+
+  if (options.yes || !env.isInteractive) {
+    return DEFAULT_STYLING_CHOICE;
+  }
+
+  const answer = await env.prompts.select({
+    message: 'Styling Choice',
+    initialValue: DEFAULT_STYLING_CHOICE,
+    options: STYLING_PROMPT_CHOICES,
+  });
+
+  if (answer === PROMPT_CANCELLED) {
+    throw new CreateFlowCancelledError();
+  }
+
+  return normalizeStylingInput(answer);
 }
 
 async function readSetupType(
@@ -109,6 +135,8 @@ export async function resolveCreateOptions(
 ): Promise<ResolvedCreateOptions> {
   const projectName = await readProjectName(options, env);
   const setupType = await readSetupType(options, env);
+  const stylingChoice = await readStylingChoice(options, env);
+  const accent = normalizeAccentInput(options.accent);
   const packageName =
     options.packageName !== undefined
       ? validatePackageName(options.packageName)
@@ -125,6 +153,8 @@ export async function resolveCreateOptions(
     projectName,
     packageName,
     setupType,
+    stylingChoice,
+    accent,
     targetDir,
     packageManager,
     install: options.install !== false,

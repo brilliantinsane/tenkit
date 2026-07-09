@@ -1,7 +1,12 @@
 import { intro, outro } from '@clack/prompts';
 import { Command } from 'commander';
 
-import { CLI_VERSION, DEFAULT_PROJECT_NAME, supportedSetupValues } from '../constants';
+import {
+  CLI_VERSION,
+  DEFAULT_PROJECT_NAME,
+  supportedSetupValues,
+  supportedStylingValues,
+} from '../constants';
 import { runCreateFlow } from '../create/run-create';
 import type { CreateCommandOptions, CreateFlowEnvironment } from '../create/types';
 import { SUPPORTED_PACKAGE_MANAGERS } from '../create/package-manager';
@@ -12,6 +17,8 @@ type CommanderOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  styling?: string;
+  accent?: string;
   packageManager?: string;
   yes?: boolean;
   install?: boolean;
@@ -25,6 +32,8 @@ function normalizeCommanderOptions(options: CommanderOptions): CreateCommandOpti
     packageName: options.packageName,
     setup: options.setup,
     setupType: options.setupType,
+    styling: options.styling,
+    accent: options.accent,
     packageManager: options.packageManager,
     yes: options.yes,
     install: options.install,
@@ -45,6 +54,8 @@ export function createProgram(env: CreateFlowEnvironment): Command {
     .option('--package-name <name>', 'generated package.json name override')
     .option('-s, --setup <setup>', `public Setup slug: ${supportedSetupValues().join(', ')}`)
     .option('--setup-type <setupType>', 'canonical Setup Type ID or public Setup slug')
+    .option('--styling <styling>', `Styling Choice: ${supportedStylingValues().join(', ')}`)
+    .option('--accent <color>', 'generated app accent as a six-digit hex color')
     .option(
       '--package-manager <manager>',
       `install and generated command package manager: ${SUPPORTED_PACKAGE_MANAGERS.join(', ')}`,

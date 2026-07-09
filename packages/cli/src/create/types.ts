@@ -1,6 +1,7 @@
 import type {
+  GeneratedAccentColor,
   GeneratedSetupType,
-  PublicSetupSlug,
+  GeneratedStylingChoice,
   VirtualFileTree,
   WriteProjectResult,
 } from '@tenkit/template-generator';
@@ -15,11 +16,19 @@ export type CreateCommandOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  styling?: string;
+  accent?: string;
   packageManager?: string;
   yes?: boolean;
   install?: boolean;
   git?: PublicCliGitMode;
   dryRun?: boolean;
+};
+
+export type PromptSelectOptions<Value extends string> = {
+  message: string;
+  initialValue: Value;
+  options: readonly PromptChoice<Value>[];
 };
 
 export type PromptAdapter = {
@@ -29,11 +38,9 @@ export type PromptAdapter = {
     defaultValue: string;
     validate(value: string | undefined): string | undefined;
   }): Promise<string | typeof PROMPT_CANCELLED>;
-  select(options: {
-    message: string;
-    initialValue: PublicSetupSlug;
-    options: readonly PromptChoice[];
-  }): Promise<PublicSetupSlug | typeof PROMPT_CANCELLED>;
+  select<Value extends string>(
+    options: PromptSelectOptions<Value>,
+  ): Promise<Value | typeof PROMPT_CANCELLED>;
   confirm(options: {
     message: string;
     initialValue: boolean;
@@ -73,6 +80,8 @@ export type CreateFlowEnvironment = {
   runCommand?: RunCommand;
   generate?: (config: {
     setupType: GeneratedSetupType;
+    stylingChoice: GeneratedStylingChoice;
+    accent?: GeneratedAccentColor;
     projectName: string;
     packageName: string;
     packageManager?: PublicCliPackageManager;
@@ -90,6 +99,8 @@ export type CreateFlowResult = {
   projectName: string;
   packageName: string;
   setupType: GeneratedSetupType;
+  stylingChoice: GeneratedStylingChoice;
+  accent?: GeneratedAccentColor;
   packageManager: PublicCliPackageManager;
   installed: boolean;
   installFailed: boolean;
@@ -103,6 +114,8 @@ export type ResolvedCreateOptions = {
   projectName: string;
   packageName: string;
   setupType: GeneratedSetupType;
+  stylingChoice: GeneratedStylingChoice;
+  accent?: GeneratedAccentColor;
   targetDir: string;
   packageManager: PublicCliPackageManager;
   install: boolean;

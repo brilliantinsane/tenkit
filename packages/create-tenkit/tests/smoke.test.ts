@@ -140,9 +140,52 @@ test('built create-tenkit delegates to the real CLI and creates a project', asyn
 
   const generatedPackageJson = (await fs.readJson(join(tempRoot, 'tenkit-smoke/package.json'))) as {
     name?: unknown;
+    dependencies?: Record<string, string>;
   };
-
   expect(generatedPackageJson.name).toBe('tenkit-smoke');
+  expect(generatedPackageJson.dependencies?.uniwind).toBeUndefined();
+  expect(await fs.pathExists(join(tempRoot, 'tenkit-smoke/src/global.css'))).toBe(false);
+
+  const createUniwind = await runNode(
+    [
+      binPath,
+      '--name',
+      'tenkit-uniwind-smoke',
+      '--setup',
+      'runtime-tenants',
+      '--styling',
+      'uniwind',
+      '--accent',
+      '#123ABC',
+      '--yes',
+      '--no-install',
+      '--no-git',
+    ],
+    tempRoot,
+  );
+
+  expect(createUniwind.stderr).toBe('');
+  expect(createUniwind.code).toBe(0);
+
+  const generatedUniwindPackageJson = (await fs.readJson(
+    join(tempRoot, 'tenkit-uniwind-smoke/package.json'),
+  )) as {
+    name?: unknown;
+    dependencies?: Record<string, string>;
+  };
+  const generatedAppVariant = await fs.readFile(
+    join(tempRoot, 'tenkit-uniwind-smoke/src/constants/app-variant.ts'),
+    'utf8',
+  );
+  const generatedGlobalCss = await fs.readFile(
+    join(tempRoot, 'tenkit-uniwind-smoke/src/global.css'),
+    'utf8',
+  );
+
+  expect(generatedUniwindPackageJson.name).toBe('tenkit-uniwind-smoke');
+  expect(generatedUniwindPackageJson.dependencies?.uniwind).toBe('^1.10.0');
+  expect(generatedAppVariant).toContain('accent: "#123ABC"');
+  expect(generatedGlobalCss).toContain('--color-accent: #123ABC;');
   expect(helpMs).toBeLessThan(1000);
   expect(createTenkitPackageSize).toBeGreaterThan(0);
   expect(cliPackageSize).toBeGreaterThan(0);

@@ -10,10 +10,16 @@ import { createProgram } from '../src/commands/create';
 import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
 import { normalizePackageManagerInput } from '../src/create/package-manager';
 import { runCreateFlow } from '../src/create/run-create';
-import type { CreateFlowEnvironment, PromptAdapter } from '../src/create/types';
+import type {
+  CreateFlowEnvironment,
+  PromptAdapter,
+  PromptSelectOptions,
+} from '../src/create/types';
 import {
   derivePackageName,
+  normalizeAccentInput,
   normalizeSetupInput,
+  normalizeStylingInput,
   validatePackageName,
   validateProjectName,
 } from '../src/create/validation';
@@ -33,7 +39,9 @@ afterEach(async () => {
 function createPrompts(overrides: Partial<PromptAdapter> = {}): PromptAdapter {
   return {
     text: vi.fn(async () => DEFAULT_PROJECT_NAME),
-    select: vi.fn(async () => 'white-label' as const),
+    async select<Value extends string>(options: PromptSelectOptions<Value>): Promise<Value> {
+      return options.initialValue;
+    },
     confirm: vi.fn(async () => false),
     ...overrides,
   };
@@ -112,6 +120,20 @@ describe('create-flow validation', () => {
     expect(() => validateProjectName('bad:name')).toThrow(/unsafe/);
     expect(() => validatePackageName('BadName')).toThrow(/lowercase/);
   });
+
+  test('normalizes Public CLI Styling and Accent inputs', () => {
+    expect(normalizeStylingInput(undefined)).toBe('bare');
+    expect(normalizeStylingInput('uniwind')).toBe('uniwind');
+    expect(() => normalizeStylingInput('nativewind')).toThrow(
+      /Unsupported Styling Choice "nativewind".*bare, uniwind/,
+    );
+
+    expect(normalizeAccentInput(undefined)).toBeUndefined();
+    expect(normalizeAccentInput('#123ABC')).toBe('#123ABC');
+    expect(() => normalizeAccentInput('blue')).toThrow(
+      /Invalid accent color "blue".*six-digit hex color.*#208AEF/,
+    );
+  });
 });
 
 describe('non-interactive create', () => {
@@ -129,6 +151,8 @@ describe('non-interactive create', () => {
     expect(result.projectName).toBe(DEFAULT_PROJECT_NAME);
     expect(result.packageName).toBe(DEFAULT_PROJECT_NAME);
     expect(result.setupType).toBe('white-label-apps');
+    expect(result.stylingChoice).toBe('bare');
+    expect(result.accent).toBeUndefined();
     expect(await fs.pathExists(join(tempRoot, DEFAULT_PROJECT_NAME, 'package.json'))).toBe(true);
   });
 
@@ -195,6 +219,34 @@ describe('non-interactive create', () => {
     expect(
       await fs.pathExists(join(tempRoot, 'runtime-demo/src/constants/runtime-tenants.ts')),
     ).toBe(true);
+  });
+
+  test('passes explicit Styling and Accent choices into generated output', async () => {
+    const tempRoot = await createTempRoot();
+    const result = await runCreateFlow(
+      {
+        name: 'styled-demo',
+        setup: 'white-label',
+        styling: 'uniwind',
+        accent: '#123ABC',
+        install: false,
+        git: false,
+        yes: true,
+      },
+      createEnv({ cwd: tempRoot }),
+    );
+    const packageJson = await fs.readJson(join(tempRoot, 'styled-demo/package.json'));
+    const appVariants = await fs.readFile(
+      join(tempRoot, 'styled-demo/src/constants/app-variants.ts'),
+      'utf8',
+    );
+    const globalCss = await fs.readFile(join(tempRoot, 'styled-demo/src/global.css'), 'utf8');
+
+    expect(result.stylingChoice).toBe('uniwind');
+    expect(result.accent).toBe('#123ABC');
+    expect(packageJson.dependencies.uniwind).toBe('^1.10.0');
+    expect(appVariants.match(/accent: "#123ABC"/g)).toHaveLength(2);
+    expect(globalCss.match(/--color-accent: #123ABC;/g)).toHaveLength(2);
   });
 
   test('rejects unsafe existing or protected targets', async () => {
@@ -580,7 +632,9 @@ describe('interactive prompts', () => {
   test('accepts prompt defaults when the user presses return', async () => {
     const tempRoot = await createTempRoot();
     const textPrompt = vi.fn(async () => DEFAULT_PROJECT_NAME);
-    const setupPrompt = vi.fn(async () => 'white-label' as const);
+    const selectPrompt: PromptAdapter['select'] = async <Value extends string>(
+      options: PromptSelectOptions<Value>,
+    ): Promise<Value> => options.initialValue;
 
     const result = await runCreateFlow(
       { install: false, git: false },
@@ -590,7 +644,7 @@ describe('interactive prompts', () => {
         isCi: false,
         prompts: createPrompts({
           text: textPrompt,
-          select: setupPrompt,
+          select: selectPrompt,
         }),
       }),
     );
@@ -598,13 +652,33 @@ describe('interactive prompts', () => {
     expect(result.projectName).toBe(DEFAULT_PROJECT_NAME);
     expect(result.packageName).toBe(DEFAULT_PROJECT_NAME);
     expect(result.setupType).toBe('white-label-apps');
+    expect(result.stylingChoice).toBe('bare');
     expect(await fs.pathExists(join(tempRoot, DEFAULT_PROJECT_NAME, 'package.json'))).toBe(true);
   });
 
-  test('asks only for project name and Setup Type when both are missing', async () => {
+  test('asks for project name, Setup Type, and Styling Choice in order', async () => {
     const tempRoot = await createTempRoot();
-    const textPrompt = vi.fn(async () => 'prompted-app');
-    const setupPrompt = vi.fn(async () => 'generic-standalone' as const);
+    const promptOrder: string[] = [];
+    const selectCalls = vi.fn();
+    const textPrompt = vi.fn(async (options: { message: string }) => {
+      promptOrder.push(options.message);
+      return 'prompted-app';
+    });
+    const selectPrompt: PromptAdapter['select'] = async <Value extends string>(
+      options: PromptSelectOptions<Value>,
+    ): Promise<Value> => {
+      promptOrder.push(options.message);
+      selectCalls(options);
+      const requestedValue =
+        options.message === 'Styling Choice' ? 'uniwind' : 'generic-standalone';
+      const selectedOption = options.options.find((option) => option.value === requestedValue);
+
+      if (!selectedOption) {
+        throw new Error(`Missing test prompt option ${requestedValue}.`);
+      }
+
+      return selectedOption.value;
+    };
     const confirmPrompt = vi.fn(async () => false);
 
     const result = await runCreateFlow(
@@ -615,7 +689,7 @@ describe('interactive prompts', () => {
         isCi: false,
         prompts: createPrompts({
           text: textPrompt,
-          select: setupPrompt,
+          select: selectPrompt,
           confirm: confirmPrompt,
         }),
       }),
@@ -623,6 +697,8 @@ describe('interactive prompts', () => {
 
     expect(result.projectName).toBe('prompted-app');
     expect(result.setupType).toBe('generic-with-standalone-app-variants');
+    expect(result.stylingChoice).toBe('uniwind');
+    expect(promptOrder).toEqual(['Project name', 'Setup Type', 'Styling Choice']);
     expect(textPrompt).toHaveBeenCalledTimes(1);
     expect(textPrompt).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -631,8 +707,8 @@ describe('interactive prompts', () => {
         placeholder: DEFAULT_PROJECT_NAME,
       }),
     );
-    expect(setupPrompt).toHaveBeenCalledTimes(1);
-    expect(setupPrompt).toHaveBeenCalledWith({
+    expect(selectCalls).toHaveBeenCalledTimes(2);
+    expect(selectCalls).toHaveBeenNthCalledWith(1, {
       initialValue: 'white-label',
       message: 'Setup Type',
       options: [
@@ -641,13 +717,33 @@ describe('interactive prompts', () => {
         { label: 'Generic + Standalone Apps', value: 'generic-standalone' },
       ],
     });
+    expect(selectCalls).toHaveBeenNthCalledWith(2, {
+      initialValue: 'bare',
+      message: 'Styling Choice',
+      options: [
+        { label: 'Bare', value: 'bare' },
+        { label: 'Uniwind', value: 'uniwind' },
+      ],
+    });
     expect(confirmPrompt).not.toHaveBeenCalled();
   });
 
   test('prompts only for missing values when options are partially provided', async () => {
     const tempRoot = await createTempRoot();
     const textPrompt = vi.fn(async () => 'mixed-app');
-    const setupPrompt = vi.fn(async () => 'white-label' as const);
+    const selectCalls = vi.fn();
+    const selectPrompt: PromptAdapter['select'] = async <Value extends string>(
+      options: PromptSelectOptions<Value>,
+    ): Promise<Value> => {
+      selectCalls(options);
+      const selectedOption = options.options.find((option) => option.value === 'uniwind');
+
+      if (!selectedOption) {
+        throw new Error('Missing test prompt option uniwind.');
+      }
+
+      return selectedOption.value;
+    };
 
     const result = await runCreateFlow(
       {
@@ -661,15 +757,24 @@ describe('interactive prompts', () => {
         isCi: false,
         prompts: createPrompts({
           text: textPrompt,
-          select: setupPrompt,
+          select: selectPrompt,
         }),
       }),
     );
 
     expect(result.projectName).toBe('mixed-app');
     expect(result.setupType).toBe('single-app-runtime-tenants');
+    expect(result.stylingChoice).toBe('uniwind');
     expect(textPrompt).toHaveBeenCalledTimes(1);
-    expect(setupPrompt).not.toHaveBeenCalled();
+    expect(selectCalls).toHaveBeenCalledTimes(1);
+    expect(selectCalls).toHaveBeenCalledWith({
+      initialValue: 'bare',
+      message: 'Styling Choice',
+      options: [
+        { label: 'Bare', value: 'bare' },
+        { label: 'Uniwind', value: 'uniwind' },
+      ],
+    });
   });
 
   test('cancelling a prompt exits before generation', async () => {
@@ -686,6 +791,26 @@ describe('interactive prompts', () => {
         }),
       ),
     ).rejects.toThrow(/Create cancelled/);
+  });
+
+  test('cancelling the Styling Choice prompt exits before generation', async () => {
+    const write = vi.fn();
+    const cancelStylingPrompt: PromptAdapter['select'] = async () => PROMPT_CANCELLED;
+
+    await expect(
+      runCreateFlow(
+        { name: 'cancelled-styling', setup: 'white-label', install: false, git: false },
+        createEnv({
+          isInteractive: true,
+          prompts: createPrompts({
+            select: cancelStylingPrompt,
+          }),
+          write,
+        }),
+      ),
+    ).rejects.toThrow(/Create cancelled/);
+
+    expect(write).not.toHaveBeenCalled();
   });
 });
 
@@ -712,6 +837,8 @@ describe('Commander contract', () => {
 
     expect(help).toContain('--name <name>');
     expect(help).toContain('--setup <setup>');
+    expect(help).toContain('--styling <styling>');
+    expect(help).toContain('--accent <color>');
     expect(help).toContain('--package-manager <manager>');
     expect(help).not.toContain('--json');
     expect(help).not.toContain('[target');
@@ -731,6 +858,26 @@ describe('Commander contract', () => {
         from: 'user',
       }),
     ).rejects.toThrow(/Git mode must be one of/);
+  });
+
+  test.each([
+    {
+      args: ['--styling', 'nativewind'],
+      message: /Unsupported Styling Choice "nativewind".*bare, uniwind/,
+    },
+    {
+      args: ['--accent', 'blue'],
+      message: /Invalid accent color "blue".*six-digit hex color.*#208AEF/,
+    },
+  ])('reports invalid public options through Commander', async ({ args, message }) => {
+    const program = createProgram(createEnv());
+
+    await expect(
+      program.parseAsync(
+        ['--name', 'invalid-option-demo', '--setup', 'white-label', '--yes', ...args],
+        { from: 'user' },
+      ),
+    ).rejects.toThrow(message);
   });
 
   test('detects direct CLI execution through a symlinked bin path', async () => {
