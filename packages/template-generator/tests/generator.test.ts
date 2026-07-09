@@ -48,6 +48,27 @@ function hasVirtualFile(tree: VirtualFileTree, path: string): boolean {
   return getVirtualFile(tree, path) !== undefined;
 }
 
+function assertNoGeneratedSourceLeaks(tree: VirtualFileTree) {
+  const generatedSource = tree
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+  const generatedPaths = tree.map((file) => file.path).join('\n');
+
+  assert.notMatch(
+    generatedSource,
+    /(?:^|[\s'"(])(?:apps|packages)\/(?:playground|web|template-generator|cli|create-tenkit)\//m,
+  );
+  assert.notMatch(generatedSource, /from ['"](?:@tenkit\/|tenkit\/)/);
+  assert.notMatch(generatedSource, /\/Users\/[^/]+\/|\/private\/var\/folders\//);
+  assert.notMatch(generatedSource, /active[-_\s]?setup/i);
+  assert.notMatch(generatedSource, /setup[-_\s]?type/i);
+  assert.notMatch(generatedSource, /base-expo|templates\/(?:assets|surfaces|styling)/);
+  assert.notMatch(generatedPaths, /^(?:shared|bare|uniwind|surfaces|styling|setup-types)\//m);
+  assert.notMatch(generatedPaths, /^(?:tenkit|types|constants|assets\/app)\//m);
+  assert.notMatch(generatedPaths, /(?:^|\/)templates\/|LICENSE|\.hbs$/m);
+}
+
 const setupTypeCases = [
   {
     setupType: 'white-label-apps',
@@ -398,32 +419,22 @@ test('Template generation rejects invalid accent colors', () => {
   );
 });
 
-test('Bare Template generation keeps generated output paths layer-free for every Setup Type', () => {
-  const generatedTrees = [
-    generateProject({ setupType: 'white-label-apps' }),
-    generateProject({ setupType: 'single-app-runtime-tenants' }),
-    generateProject({ setupType: 'generic-with-standalone-app-variants' }),
-  ];
+test('generated output stays free of Template composition details across the matrix', () => {
+  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
 
-  for (const tree of generatedTrees) {
-    const paths = tree.map((file) => file.path);
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const tree = generateProject({ setupType, stylingChoice });
+      const paths = tree.map((file) => file.path);
 
-    assert.ok(paths.includes('package.json'));
-    assert.ok(paths.includes('README.md'));
-    assert.ok(paths.includes('app.config.ts'));
-    assert.ok(paths.includes('src/app/_layout.tsx'));
-    assert.ok(paths.includes('src/app/index.tsx'));
-    assert.ok(paths.includes('src/components/app-tabs.tsx'));
-    assert.ok(paths.includes('src/theme/ThemeContext.tsx'));
-    assert.ok(paths.includes('src/constants/design-tokens.ts'));
-    assert.equal(
-      paths.some((path) => path.split('/').some((segment) => segment === 'shared')),
-      false,
-    );
-    assert.equal(
-      paths.some((path) => path.split('/').some((segment) => segment === 'bare')),
-      false,
-    );
+      assert.ok(paths.includes('package.json'));
+      assert.ok(paths.includes('README.md'));
+      assert.ok(paths.includes('app.config.ts'));
+      assert.ok(paths.includes('src/app/_layout.tsx'));
+      assert.ok(paths.includes('src/app/index.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.tsx'));
+      assertNoGeneratedSourceLeaks(tree);
+    }
   }
 });
 
@@ -780,13 +791,8 @@ test('White Label Apps generated tree is standalone and does not import from the
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineWhiteLabelAppsSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.notMatch(generatedSource, /single-app-runtime-tenants/);
   assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
 });
@@ -918,13 +924,8 @@ test('Single App Runtime Tenants generated tree is standalone selected output', 
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineSingleAppRuntimeTenantsSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
 });
 
@@ -1041,11 +1042,6 @@ test('Generic With Standalone App Variants generated tree is standalone selected
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineGenericAppSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
 });
