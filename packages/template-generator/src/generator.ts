@@ -123,7 +123,8 @@ function readProjectTemplateTree({
   appVariantSlugs: readonly string[];
 }): VirtualFileTree {
   const sharedTree = readTemplateTree('shared', context);
-  const templateTree = readTemplateTree(templatePath, context);
+  const setupTypeSharedTree = readTemplateTree(`${templatePath}/shared`, context);
+  const setupTypeBareTree = readTemplateTree(`${templatePath}/bare`, context);
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = appVariantSlugs.flatMap((slug) =>
     assetTree.map((file) => ({
@@ -132,7 +133,12 @@ function readProjectTemplateTree({
     })),
   );
 
-  return mergeVirtualFileTrees(sharedTree, templateTree, appVariantAssets);
+  return mergeVirtualFileTrees(
+    sharedTree,
+    setupTypeSharedTree,
+    setupTypeBareTree,
+    appVariantAssets,
+  );
 }
 
 export function generateWhiteLabelAppsProject(

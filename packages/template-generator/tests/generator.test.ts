@@ -107,6 +107,35 @@ test('generic Template generation dispatches by Setup Type', () => {
   );
 });
 
+test('Bare Template generation keeps generated output paths layer-free for every Setup Type', () => {
+  const generatedTrees = [
+    generateProject({ setupType: 'white-label-apps' }),
+    generateProject({ setupType: 'single-app-runtime-tenants' }),
+    generateProject({ setupType: 'generic-with-standalone-app-variants' }),
+  ];
+
+  for (const tree of generatedTrees) {
+    const paths = tree.map((file) => file.path);
+
+    assert.ok(paths.includes('package.json'));
+    assert.ok(paths.includes('README.md'));
+    assert.ok(paths.includes('app.config.ts'));
+    assert.ok(paths.includes('src/app/_layout.tsx'));
+    assert.ok(paths.includes('src/app/index.tsx'));
+    assert.ok(paths.includes('src/components/app-tabs.tsx'));
+    assert.ok(paths.includes('src/theme/ThemeContext.tsx'));
+    assert.ok(paths.includes('src/constants/design-tokens.ts'));
+    assert.equal(
+      paths.some((path) => path.split('/').some((segment) => segment === 'shared')),
+      false,
+    );
+    assert.equal(
+      paths.some((path) => path.split('/').some((segment) => segment === 'bare')),
+      false,
+    );
+  }
+});
+
 test('generic Template generation rejects unsupported Setup Types', () => {
   assert.throws(
     () =>
