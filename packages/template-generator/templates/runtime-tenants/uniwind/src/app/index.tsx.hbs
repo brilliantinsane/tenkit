@@ -1,0 +1,34 @@
+import { Text, View } from 'react-native';
+
+import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+
+export default function HomeScreen() {
+  const { appVariant } = useAppVariantConfig();
+  const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+
+  return (
+    <View className="flex-1 items-center justify-center gap-4 bg-bg-dark px-6">
+      <Text className="text-sm font-semibold uppercase tracking-normal" style=\{{ color: appVariant.theme.accent }}>
+        Tenkit
+      </Text>
+      <Text className="text-center text-4xl font-bold text-text">
+        Runtime Tenants App
+      </Text>
+      <View className="min-w-56 gap-1">
+        <Text selectable className="font-mono text-sm text-text">
+          App Variant: {appVariant.slug}
+        </Text>
+        <Text selectable className="font-mono text-sm text-text">
+          Active Runtime Tenant: {activeRuntimeTenant.name}
+        </Text>
+        <Text selectable className="font-mono text-sm text-text">
+          Active Runtime Tenant ID: {activeRuntimeTenantId}
+        </Text>
+      </View>
+      <Text className="max-w-sm text-center text-base text-text-muted">
+        A generated Expo SDK 56 app with one native App Variant and selectable Runtime Tenants.
+      </Text>
+    </View>
+  );
+}

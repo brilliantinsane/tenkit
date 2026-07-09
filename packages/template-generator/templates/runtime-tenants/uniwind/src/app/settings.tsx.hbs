@@ -1,0 +1,54 @@
+import { Pressable, Text, View } from 'react-native';
+
+import { cn } from '@/lib/cn';
+import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+
+export default function SettingsScreen() {
+  const { theme } = useAppVariantConfig();
+  const {
+    activeRuntimeTenantId,
+    hasRuntimeTenantSelection,
+    selectableRuntimeTenants,
+    setActiveRuntimeTenantId,
+  } = useActiveRuntimeTenant();
+
+  return (
+    <View className="flex-1 gap-5 bg-bg-dark px-6 py-10">
+      <View className="gap-1">
+        <Text className="text-2xl font-semibold text-text">Settings</Text>
+        <Text className="text-base text-text-muted">Active Runtime Tenant</Text>
+      </View>
+
+      {hasRuntimeTenantSelection ? (
+        <View className="gap-3">
+          {selectableRuntimeTenants.map((runtimeTenant) => {
+            const selected = activeRuntimeTenantId === runtimeTenant.runtimeTenantId;
+
+            return (
+              <Pressable
+                key={runtimeTenant.runtimeTenantId}
+                onPress={() => setActiveRuntimeTenantId(runtimeTenant.runtimeTenantId)}
+                className={cn(
+                  'rounded-2xl border bg-bg px-4 py-3 active:opacity-75',
+                  'border-bg-light',
+                )}
+                style={selected ? { borderColor: theme.accent } : undefined}
+              >
+                <Text
+                  className="text-base font-semibold text-text"
+                  style={selected ? { color: theme.accent } : undefined}
+                >
+                  {runtimeTenant.name}
+                </Text>
+                <Text className="font-mono text-sm text-text-muted">
+                  Runtime Tenant ID: {runtimeTenant.runtimeTenantId}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}

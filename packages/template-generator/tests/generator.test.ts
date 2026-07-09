@@ -7,12 +7,22 @@ import {
   generateProject,
   generateSingleAppRuntimeTenantsProject,
   generateWhiteLabelAppsProject,
+  normalizeGeneratedStylingChoice,
+  type GeneratedStylingChoice,
 } from '../src/generator';
 import {
   getVirtualFile,
   mergeVirtualFileTrees,
   type VirtualFileTree,
 } from '../src/virtual-file-tree';
+
+type SetupTypeCase = {
+  setupType:
+    | 'white-label-apps'
+    | 'single-app-runtime-tenants'
+    | 'generic-with-standalone-app-variants';
+  expectedRoute: 'explore' | 'settings';
+};
 
 function readVirtualFile(tree: VirtualFileTree, path: string): string {
   const file = getVirtualFile(tree, path);
@@ -29,6 +39,196 @@ function readVirtualBinary(tree: VirtualFileTree, path: string): Uint8Array {
   assert.ok(file, `Expected virtual file ${path}`);
   assert.ok(file.contents instanceof Uint8Array, `Expected virtual file ${path} to be binary`);
   return file.contents;
+}
+
+function hasVirtualFile(tree: VirtualFileTree, path: string): boolean {
+  return getVirtualFile(tree, path) !== undefined;
+}
+
+const setupTypeCases = [
+  { setupType: 'white-label-apps', expectedRoute: 'explore' },
+  { setupType: 'single-app-runtime-tenants', expectedRoute: 'settings' },
+  { setupType: 'generic-with-standalone-app-variants', expectedRoute: 'settings' },
+] as const satisfies readonly SetupTypeCase[];
+
+const expectedUniwindGlobalCss = `@import 'tailwindcss';
+@import 'uniwind';
+
+@layer theme {
+  :root {
+    @variant dark {
+      --color-bg-dark: #000000;
+      --color-bg: #0d0d0d;
+      --color-bg-light: #1a1a1a;
+      --color-text: #f2f2f2;
+      --color-text-muted: #b3b3b3;
+    }
+
+    @variant light {
+      --color-bg-dark: #e6e6e6;
+      --color-bg: #f2f2f2;
+      --color-bg-light: #ffffff;
+      --color-text: #0d0d0d;
+      --color-text-muted: #4d4d4d;
+    }
+  }
+}
+`;
+
+function assertSetupTypeBehavior(tree: VirtualFileTree, setupType: SetupTypeCase['setupType']) {
+  const appConfig = readVirtualFile(tree, 'app.config.ts');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
+
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.match(home, /useAppVariantConfig/);
+
+  if (setupType === 'white-label-apps') {
+    assert.match(appConfig, /APP_VARIANT_SLUG/);
+    assert.match(home, /App Variant: \{appVariant\.slug\}/);
+    assert.equal(hasVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts'), false);
+    assert.equal(hasVirtualFile(tree, 'src/lib/runtime-tenant-access.ts'), false);
+    assert.equal(hasVirtualFile(tree, 'src/storage/app-preferences.ts'), false);
+    return;
+  }
+
+  const settings = readVirtualFile(tree, 'src/app/settings.tsx');
+  const activeRuntimeTenantHook = readVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts');
+  const runtimeTenantAccess = readVirtualFile(tree, 'src/lib/runtime-tenant-access.ts');
+  const appPreferences = readVirtualFile(tree, 'src/storage/app-preferences.ts');
+
+  assert.match(home, /useActiveRuntimeTenant/);
+  assert.match(settings, /useActiveRuntimeTenant/);
+  assert.match(settings, /hasRuntimeTenantSelection/);
+  assert.match(settings, /selectableRuntimeTenants/);
+  assert.match(settings, /setActiveRuntimeTenantId/);
+  assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+  assert.match(activeRuntimeTenantHook, /ACTIVE_RUNTIME_TENANT_ID_KEY/);
+  assert.match(runtimeTenantAccess, /validateRuntimeTenantAccess/);
+  assert.match(appPreferences, /createMMKV/);
+  assert.match(appPreferences, /active-runtime-tenant-id/);
+
+  if (setupType === 'single-app-runtime-tenants') {
+    assert.match(activeRuntimeTenantHook, /runtimeTenantAccess\.allowedRuntimeTenantIds/);
+    assert.match(runtimeTenantAccess, /Default Runtime Tenant ID/);
+    assert.match(
+      runtimeTenantAccess,
+      /Runtime Tenant list includes IDs not allowed by App Variant/,
+    );
+    return;
+  }
+
+  assert.match(appConfig, /APP_VARIANT_SLUG/);
+  assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+  assert.match(
+    activeRuntimeTenantHook,
+    /hasRuntimeTenantSelection: appVariant\.role === 'generic'/,
+  );
+  assert.match(runtimeTenantAccess, /standaloneRuntimeTenantId/);
+  assert.match(runtimeTenantAccess, /must not appear in Generic App Variant Runtime Tenant Access/);
+}
+
+function assertBareStylingOutput(tree: VirtualFileTree) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+
+  assert.ok(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'));
+  assert.ok(hasVirtualFile(tree, 'src/theme/colors.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/constants/design-tokens.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/constants/globals.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/components/themed-text.tsx'));
+  assert.ok(hasVirtualFile(tree, 'src/components/themed-view.tsx'));
+  assert.equal(hasVirtualFile(tree, 'metro.config.js'), false);
+  assert.equal(hasVirtualFile(tree, 'src/global.css'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-types.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/lib/cn.ts'), false);
+  assert.equal(packageJson.dependencies.uniwind, undefined);
+  assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
+  assert.equal(packageJson.dependencies.clsx, undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, undefined);
+}
+
+function assertUniwindStylingOutput(tree: VirtualFileTree) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const layout = readVirtualFile(tree, 'src/app/_layout.tsx');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
+  const nativeTabs = readVirtualFile(tree, 'src/components/app-tabs.tsx');
+  const webTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
+  const metroConfig = readVirtualFile(tree, 'metro.config.js');
+  const globalCss = readVirtualFile(tree, 'src/global.css');
+  const uniwindTypes = readVirtualFile(tree, 'src/uniwind-types.d.ts');
+  const uniwindComponentSource = tree
+    .filter((file) => file.path.startsWith('src/app/') || file.path.startsWith('src/components/'))
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+  const tsconfig = JSON.parse(readVirtualFile(tree, 'tsconfig.json')) as {
+    compilerOptions: { types: string[] };
+    include: string[];
+  };
+
+  assert.equal(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/colors.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/design-tokens.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/globals.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-text.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-view.tsx'), false);
+  assert.ok(hasVirtualFile(tree, 'metro.config.js'));
+  assert.ok(hasVirtualFile(tree, 'src/global.css'));
+  assert.ok(hasVirtualFile(tree, 'src/uniwind-types.d.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/lib/cn.ts'));
+  assert.equal(packageJson.dependencies.uniwind, '^1.10.0');
+  assert.equal(packageJson.dependencies['tailwind-merge'], '^3.6.0');
+  assert.equal(packageJson.dependencies.clsx, '^2.1.1');
+  assert.equal(packageJson.dependencies['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, '^4.3.2');
+  assert.ok(tsconfig.compilerOptions.types.includes('uniwind/types'));
+  assert.ok(tsconfig.include.includes('src/uniwind-types.d.ts'));
+  assert.match(metroConfig, /withUniwindConfig\(config, \{/);
+  assert.match(metroConfig, /cssEntryFile: '\.\/src\/global\.css'/);
+  assert.match(metroConfig, /dtsFile: '\.\/src\/uniwind-types\.d\.ts'/);
+  assert.equal(globalCss, expectedUniwindGlobalCss);
+  assert.match(layout, /import '..\/global\.css';/);
+  assert.match(layout, /ThemeProvider/);
+  assert.match(nativeTabs, /type ColorValue/);
+  assert.match(nativeTabs, /useCSSVariable/);
+  assert.match(nativeTabs, /const \[bg, bgLight, text, textMuted\] = useCSSVariable\(\[/);
+  assert.match(nativeTabs, /'--color-bg'/);
+  assert.match(nativeTabs, /'--color-bg-light'/);
+  assert.match(nativeTabs, /'--color-text'/);
+  assert.match(nativeTabs, /'--color-text-muted'/);
+  assert.match(nativeTabs, /\]\) as ColorValue\[\]/);
+  assert.notMatch(nativeTabs, /as \[string, string, string, string\]/);
+  assert.match(nativeTabs, /selected: accent/);
+  assert.notMatch(nativeTabs, /backgroundColor="#f8fafc"|indicatorColor="#ffffff"/);
+  assert.notMatch(nativeTabs, /#[0-9a-f]{3,8}\b/i);
+  assert.match(home, /bg-bg-dark/);
+  assert.match(home, /text-text/);
+  assert.match(home, /text-text-muted/);
+  assert.match(webTabs, /className=/);
+  assert.match(webTabs, /bg-bg-light/);
+  assert.match(webTabs, /bg-bg/);
+  assert.match(webTabs, /text-text/);
+  assert.match(webTabs, /text-text-muted/);
+  assert.match(webTabs, /from '@\/lib\/cn'/);
+  assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
+  assert.match(uniwindTypes, /<reference types="uniwind\/types" \/>/);
+  if (hasVirtualFile(tree, 'src/app/explore.tsx')) {
+    assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /withUniwind\(NativeSafeAreaView\)/);
+  }
+  assert.match(uniwindComponentSource, /bg-bg-dark/);
+  assert.match(uniwindComponentSource, /bg-bg/);
+  assert.match(uniwindComponentSource, /bg-bg-light/);
+  assert.match(uniwindComponentSource, /text-text/);
+  assert.match(uniwindComponentSource, /text-text-muted/);
+  assert.notMatch(
+    uniwindComponentSource,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])bg-background(?:[\s'"]|$)|(?:^|[\s'"])bg-card(?:[\s'"]|$)|(?:^|[\s'"])text-foreground(?:[\s'"]|$)|(?:^|[\s'"])text-muted(?:[\s'"]|$)|(?:^|[\s'"])text-accent(?:[\s'"]|$)|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
+  );
 }
 
 test('White Label Apps Template generation is deterministic', () => {
@@ -107,6 +307,28 @@ test('generic Template generation dispatches by Setup Type', () => {
   );
 });
 
+test('missing Styling Choice defaults to Bare output', () => {
+  assert.equal(normalizeGeneratedStylingChoice(undefined), 'bare');
+
+  for (const { setupType } of setupTypeCases) {
+    assert.deepEqual(
+      generateProject({ setupType }),
+      generateProject({ setupType, stylingChoice: 'bare' }),
+    );
+  }
+});
+
+test('Template generation rejects unsupported Styling Choice values', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        stylingChoice: 'unsupported-styling',
+      } as unknown as Parameters<typeof generateProject>[0]),
+    /Unsupported generated Styling Choice "unsupported-styling".*Expected one of: bare, uniwind/,
+  );
+});
+
 test('Bare Template generation keeps generated output paths layer-free for every Setup Type', () => {
   const generatedTrees = [
     generateProject({ setupType: 'white-label-apps' }),
@@ -133,6 +355,60 @@ test('Bare Template generation keeps generated output paths layer-free for every
       paths.some((path) => path.split('/').some((segment) => segment === 'bare')),
       false,
     );
+  }
+});
+
+test('Styling Choice matrix emits Bare and Uniwind output for every Setup Type', () => {
+  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType, expectedRoute } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const tree = generateProject({ setupType, stylingChoice });
+      const paths = tree.map((file) => file.path);
+
+      assert.ok(paths.includes('package.json'));
+      assert.ok(paths.includes('README.md'));
+      assert.ok(paths.includes('app.config.ts'));
+      assert.ok(paths.includes('src/app/_layout.tsx'));
+      assert.ok(paths.includes('src/app/index.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.web.tsx'));
+      assert.equal(paths.includes(`src/app/${expectedRoute}.tsx`), true);
+      assert.equal(
+        paths.includes(
+          expectedRoute === 'explore' ? 'src/app/settings.tsx' : 'src/app/explore.tsx',
+        ),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'shared')),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'bare')),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'uniwind')),
+        false,
+      );
+
+      if (stylingChoice === 'bare') {
+        assertBareStylingOutput(tree);
+      } else {
+        assertUniwindStylingOutput(tree);
+      }
+    }
+  }
+});
+
+test('Styling Choice preserves generated Setup Type behavior across the matrix', () => {
+  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      assertSetupTypeBehavior(generateProject({ setupType, stylingChoice }), setupType);
+    }
   }
 });
 

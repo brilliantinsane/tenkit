@@ -6,13 +6,16 @@ import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
 
+import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   isSingleAppRuntimeTenants: boolean;
+  isBareStyling: boolean;
   isBunPackageManager: boolean;
   isNpmPackageManager: boolean;
   isPnpmPackageManager: boolean;
+  isUniwindStyling: boolean;
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
@@ -20,6 +23,7 @@ export type TemplateContext = {
   packageManagerTenkitCommand: string;
   projectName: string;
   projectNameStringLiteral: string;
+  stylingChoice: GeneratedStylingChoice;
 };
 
 export const GENERATED_PROJECT_PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun'] as const;

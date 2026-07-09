@@ -5,6 +5,10 @@ import {
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
 import {
+  type GeneratedStylingChoice,
+  normalizeGeneratedStylingChoice,
+} from './generated-styling-choices';
+import {
   GENERATED_PROJECT_PACKAGE_MANAGERS,
   readTemplateTree,
   type GeneratedProjectPackageManager,
@@ -22,6 +26,11 @@ export {
   type GeneratedSetupTypeInput,
   type PublicSetupSlug,
 } from './generated-setup-types';
+export {
+  normalizeGeneratedStylingChoice,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
+  type GeneratedStylingChoice,
+} from './generated-styling-choices';
 export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
@@ -29,6 +38,7 @@ export type WhiteLabelAppsProjectConfig = {
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
+  stylingChoice?: GeneratedStylingChoice;
 };
 
 export type SingleAppRuntimeTenantsProjectConfig = {
@@ -36,6 +46,7 @@ export type SingleAppRuntimeTenantsProjectConfig = {
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
+  stylingChoice?: GeneratedStylingChoice;
 };
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
@@ -43,6 +54,7 @@ export type GenericWithStandaloneAppVariantsProjectConfig = {
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
+  stylingChoice?: GeneratedStylingChoice;
 };
 
 export type GenerateProjectConfig =
@@ -87,21 +99,26 @@ function normalizeTemplateContext({
   projectName: rawProjectName,
   packageName: rawPackageName,
   packageManager: rawPackageManager,
+  stylingChoice: rawStylingChoice,
   setupTypeDefinition,
 }: {
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
+  stylingChoice?: GeneratedStylingChoice;
   setupTypeDefinition: GeneratedSetupTypeDefinition;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
   const packageManager = normalizePackageManager(rawPackageManager);
+  const stylingChoice = normalizeGeneratedStylingChoice(rawStylingChoice);
 
   return {
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
+    isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
     isNpmPackageManager: packageManager === 'npm',
     isPnpmPackageManager: packageManager === 'pnpm',
+    isUniwindStyling: stylingChoice === 'uniwind',
     projectName,
     projectNameStringLiteral: JSON.stringify(projectName),
     packageName: normalizePackageName(rawPackageName, setupTypeDefinition.defaultPackageName),
@@ -110,6 +127,7 @@ function normalizeTemplateContext({
     packageManagerRunCommand: `${packageManager} run`,
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
+    stylingChoice,
   };
 }
 
@@ -124,7 +142,10 @@ function readProjectTemplateTree({
 }): VirtualFileTree {
   const sharedTree = readTemplateTree('shared', context);
   const setupTypeSharedTree = readTemplateTree(`${templatePath}/shared`, context);
-  const setupTypeBareTree = readTemplateTree(`${templatePath}/bare`, context);
+  const setupTypeStylingTree = readTemplateTree(
+    `${templatePath}/${context.stylingChoice}`,
+    context,
+  );
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = appVariantSlugs.flatMap((slug) =>
     assetTree.map((file) => ({
@@ -136,7 +157,7 @@ function readProjectTemplateTree({
   return mergeVirtualFileTrees(
     sharedTree,
     setupTypeSharedTree,
-    setupTypeBareTree,
+    setupTypeStylingTree,
     appVariantAssets,
   );
 }
@@ -153,6 +174,7 @@ export function generateWhiteLabelAppsProject(
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
+    stylingChoice: config.stylingChoice,
     setupTypeDefinition,
   });
 
@@ -175,6 +197,7 @@ export function generateSingleAppRuntimeTenantsProject(
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
+    stylingChoice: config.stylingChoice,
     setupTypeDefinition,
   });
 
@@ -201,6 +224,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
+    stylingChoice: config.stylingChoice,
     setupTypeDefinition,
   });
 
@@ -217,6 +241,7 @@ export function generateProject(config: GenerateProjectConfig): VirtualFileTree 
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
+    stylingChoice: config.stylingChoice,
   };
 
   if (setupType === 'white-label-apps') {

@@ -4,7 +4,8 @@
     "strict": true,
     "types": [
       "node",
-      "react"
+      "react"{{#if isUniwindStyling}},
+      "uniwind/types"{{/if}}
     ],
     "paths": {
       "@/*": [
@@ -17,6 +18,7 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx"{{#if isUniwindStyling}},
+    "src/uniwind-types.d.ts"{{/if}}
   ]
 }

@@ -8,7 +8,11 @@ import { writeProject, type WriteProjectOverwriteMode, type WriteProjectResult }
 
 export type GeneratedProjectGitMode = false | 'init' | 'commit';
 
-export type RunGenerationProofOptions = GenerateProjectConfig & {
+type WithoutStylingChoice<TConfig> = TConfig extends unknown
+  ? Omit<TConfig, 'stylingChoice'>
+  : never;
+
+export type RunGenerationProofOptions = WithoutStylingChoice<GenerateProjectConfig> & {
   targetDir: string;
   force?: boolean;
   git?: boolean | GeneratedProjectGitMode;

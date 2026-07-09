@@ -1,0 +1,68 @@
+import {
+  TabList,
+  TabSlot,
+  TabTrigger,
+  Tabs,
+  type TabListProps,
+  type TabTriggerSlotProps,
+} from 'expo-router/ui';
+import { Pressable, Text, View } from 'react-native';
+
+import { cn } from '@/lib/cn';
+
+const projectName = {{projectNameStringLiteral}};
+
+type AppTabsProps = {
+  accent: string;
+};
+
+export default function AppTabs({ accent }: AppTabsProps) {
+  return (
+    <Tabs>
+      <TabSlot style=\{{ height: '100%' }} />
+      <TabList asChild>
+        <CustomTabList>
+          <TabTrigger name="home" href="/" asChild>
+            <TabButton accent={accent}>Home</TabButton>
+          </TabTrigger>
+          <TabTrigger name="explore" href="/explore" asChild>
+            <TabButton accent={accent}>Explore</TabButton>
+          </TabTrigger>
+        </CustomTabList>
+      </TabList>
+    </Tabs>
+  );
+}
+
+function TabButton({ accent, children, isFocused, ...props }: TabTriggerSlotProps & AppTabsProps) {
+  return (
+    <Pressable {...props} className="active:opacity-70">
+      <View
+        className={cn(
+          'rounded-2xl px-3 py-1',
+          isFocused ? 'bg-bg-light' : 'bg-bg',
+        )}
+      >
+        <Text
+          className={cn('text-sm font-semibold', isFocused ? 'text-text' : 'text-text-muted')}
+          style={isFocused ? { color: accent } : undefined}
+        >
+          {children}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function CustomTabList(props: TabListProps) {
+  return (
+    <View {...props} className="absolute w-full flex-row items-center justify-center p-4">
+      <View className="max-w-3xl flex-grow flex-row items-center gap-2 rounded-3xl border border-bg-light bg-bg px-6 py-2">
+        <Text className="mr-auto text-sm font-semibold text-text">
+          {projectName}
+        </Text>
+        {props.children}
+      </View>
+    </View>
+  );
+}

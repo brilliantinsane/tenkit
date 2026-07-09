@@ -1,0 +1,21 @@
+import { Text, View } from 'react-native';
+import { SafeAreaView as NativeSafeAreaView } from 'react-native-safe-area-context';
+import { withUniwind } from 'uniwind';
+
+const SafeAreaView = withUniwind(NativeSafeAreaView);
+
+export default function ExploreScreen() {
+  return (
+    <View className="flex-1 bg-bg-dark">
+      <SafeAreaView className="flex-1 gap-5 px-6 py-6">
+        <Text className="text-2xl font-semibold text-text">Explore</Text>
+        <View className="gap-2 rounded-2xl border border-bg-light bg-bg p-4">
+          <Text className="text-sm font-semibold text-text">Project shape</Text>
+          <Text className="text-base text-text-muted">
+            This app uses Expo Router native tabs, TypeScript, and a dynamic Expo config.
+          </Text>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
