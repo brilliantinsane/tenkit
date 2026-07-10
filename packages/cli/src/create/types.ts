@@ -9,19 +9,18 @@ import type {
 import { PROMPT_CANCELLED, type PromptChoice } from '../constants';
 import type { PublicCliPackageManager } from './package-manager';
 
-export type PublicCliGitMode = false | 'init' | 'commit' | 'none';
-
 export type CreateCommandOptions = {
   name?: string;
   packageName?: string;
   setup?: string;
   setupType?: string;
   styling?: string;
-  accent?: string;
+  appVariantNamesInput?: string;
+  appVariantAccentsInput?: string;
   packageManager?: string;
   yes?: boolean;
   install?: boolean;
-  git?: PublicCliGitMode;
+  git?: boolean;
   dryRun?: boolean;
 };
 
@@ -73,7 +72,6 @@ export type CreateFlowEnvironment = {
   workspaceRoot?: string;
   packageRoot?: string;
   isInteractive: boolean;
-  isCi: boolean;
   packageManagerUserAgent?: string;
   output: CreateFlowOutput;
   prompts: PromptAdapter;
@@ -82,6 +80,7 @@ export type CreateFlowEnvironment = {
     setupType: GeneratedSetupType;
     stylingChoice: GeneratedStylingChoice;
     appVariantAccents?: readonly GeneratedAccentColor[];
+    appVariantNames?: readonly string[];
     projectName: string;
     packageName: string;
     packageManager?: PublicCliPackageManager;
@@ -100,7 +99,8 @@ export type CreateFlowResult = {
   packageName: string;
   setupType: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
-  accent?: GeneratedAccentColor;
+  appVariantAccents: readonly GeneratedAccentColor[];
+  appVariantNames: readonly string[];
   packageManager: PublicCliPackageManager;
   installed: boolean;
   installFailed: boolean;
@@ -115,10 +115,11 @@ export type ResolvedCreateOptions = {
   packageName: string;
   setupType: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
-  accent?: GeneratedAccentColor;
+  appVariantAccents: readonly GeneratedAccentColor[];
+  appVariantNames: readonly string[];
   targetDir: string;
   packageManager: PublicCliPackageManager;
   install: boolean;
-  git: PublicCliGitMode | undefined;
+  git: boolean;
   dryRun: boolean;
 };

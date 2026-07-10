@@ -17,7 +17,7 @@ import type {
 } from '../src/create/types';
 import {
   derivePackageName,
-  normalizeAccentInput,
+  normalizeAppVariantCustomization,
   normalizeSetupInput,
   normalizeStylingInput,
   validatePackageName,
@@ -71,7 +71,6 @@ function createEnv(overrides: Partial<CreateFlowEnvironment> = {}): CreateFlowEn
   return {
     cwd: process.cwd(),
     isInteractive: false,
-    isCi: true,
     output: output.output,
     prompts: createPrompts(),
     ...overrides,
@@ -112,27 +111,55 @@ describe('create-flow validation', () => {
   });
 
   test('validates project folder names and derived package names', () => {
-    expect(validateProjectName('My Tenkit App')).toBe('My Tenkit App');
+    expect(validateProjectName('My Tenkit App')).toBe('my-tenkit-app');
     expect(derivePackageName('My Tenkit App')).toBe('my-tenkit-app');
     expect(validatePackageName('custom_app.name')).toBe('custom_app.name');
 
-    expect(() => validateProjectName('../escape')).toThrow(/path separators/);
-    expect(() => validateProjectName('bad:name')).toThrow(/unsafe/);
+    expect(validateProjectName('../escape')).toBe('escape');
+    expect(validateProjectName('bad:name')).toBe('bad-name');
+    expect(() => validateProjectName('...')).toThrow(/usable Latin letter or number/);
     expect(() => validatePackageName('BadName')).toThrow(/lowercase/);
   });
 
-  test('normalizes Public CLI Styling and Accent inputs', () => {
+  test('normalizes Public CLI Styling and ordered App Variant inputs', () => {
     expect(normalizeStylingInput(undefined)).toBe('bare');
     expect(normalizeStylingInput('uniwind')).toBe('uniwind');
     expect(() => normalizeStylingInput('nativewind')).toThrow(
       /Unsupported Styling Choice "nativewind".*bare, uniwind/,
     );
 
-    expect(normalizeAccentInput(undefined)).toBeUndefined();
-    expect(normalizeAccentInput('#123ABC')).toBe('#123ABC');
-    expect(() => normalizeAccentInput('blue')).toThrow(
-      /Invalid accent color "blue".*six-digit hex color.*#208AEF/,
-    );
+    expect(normalizeAppVariantCustomization('white-label-apps', undefined, undefined)).toEqual({
+      appVariantNames: ['First Tenant', 'Second Tenant'],
+      appVariantAccents: ['#208AEF', '#EF8520'],
+    });
+    expect(
+      normalizeAppVariantCustomization(
+        'white-label-apps',
+        '  North App , South App  ',
+        '123abc, #456def',
+      ),
+    ).toEqual({
+      appVariantNames: ['North App', 'South App'],
+      appVariantAccents: ['#123ABC', '#456DEF'],
+    });
+    expect(() =>
+      normalizeAppVariantCustomization('white-label-apps', 'North App,', undefined),
+    ).toThrow(/App Variant names must not contain empty items/);
+    expect(() =>
+      normalizeAppVariantCustomization('single-app-runtime-tenants', 'Runtime, Tenant', undefined),
+    ).toThrow(/Expected exactly 1 App Variant names/);
+    expect(() =>
+      normalizeAppVariantCustomization('white-label-apps', 'Only One', undefined),
+    ).toThrow(/Expected exactly 2 App Variant names/);
+    expect(() =>
+      normalizeAppVariantCustomization('white-label-apps', 'Cool App,CoolApp', undefined),
+    ).toThrow(/Duplicate derived App Variant identity/);
+    expect(() =>
+      normalizeAppVariantCustomization('single-app-runtime-tenants', undefined, 'blue'),
+    ).toThrow(/Invalid App Variant Accent "blue".*six-digit hex color.*#208AEF/);
+    expect(() =>
+      normalizeAppVariantCustomization('white-label-apps', undefined, '#123ABC,'),
+    ).toThrow(/App Variant Accents must not contain empty items/);
   });
 });
 
@@ -152,8 +179,42 @@ describe('non-interactive create', () => {
     expect(result.packageName).toBe(DEFAULT_PROJECT_NAME);
     expect(result.setupType).toBe('white-label-apps');
     expect(result.stylingChoice).toBe('bare');
-    expect(result.accent).toBeUndefined();
+    expect(result.appVariantNames).toEqual(['First Tenant', 'Second Tenant']);
+    expect(result.appVariantAccents).toEqual(['#208AEF', '#EF8520']);
     expect(await fs.pathExists(join(tempRoot, DEFAULT_PROJECT_NAME, 'package.json'))).toBe(true);
+  });
+
+  test('--yes bypasses every prompt and deterministically uses defaults', async () => {
+    const tempRoot = await createTempRoot();
+    const prompts = createPrompts({
+      text: vi.fn(async () => {
+        throw new Error('Unexpected text prompt.');
+      }),
+      select: vi.fn(async () => {
+        throw new Error('Unexpected select prompt.');
+      }),
+      confirm: vi.fn(async () => {
+        throw new Error('Unexpected confirm prompt.');
+      }),
+    });
+
+    const result = await runCreateFlow(
+      { yes: true, dryRun: true },
+      createEnv({
+        cwd: tempRoot,
+        isInteractive: true,
+        packageManagerUserAgent: 'pnpm/10.0.0',
+        prompts,
+      }),
+    );
+
+    expect(result.projectName).toBe(DEFAULT_PROJECT_NAME);
+    expect(result.setupType).toBe('white-label-apps');
+    expect(result.stylingChoice).toBe('bare');
+    expect(result.packageManager).toBe('pnpm');
+    expect(prompts.text).not.toHaveBeenCalled();
+    expect(prompts.select).not.toHaveBeenCalled();
+    expect(prompts.confirm).not.toHaveBeenCalled();
   });
 
   test('rejects explicitly empty create options instead of falling back to defaults', async () => {
@@ -164,7 +225,7 @@ describe('non-interactive create', () => {
         { name: '', setup: 'white-label', install: false, git: false, yes: true },
         createEnv({ cwd: tempRoot }),
       ),
-    ).rejects.toThrow(/Project name is required/);
+    ).rejects.toThrow(/usable Latin letter or number/);
 
     await expect(
       runCreateFlow(
@@ -221,14 +282,15 @@ describe('non-interactive create', () => {
     ).toBe(true);
   });
 
-  test('passes explicit Styling and Accent choices into generated output', async () => {
+  test('passes explicit Styling and per-App-Variant choices into generated output', async () => {
     const tempRoot = await createTempRoot();
     const result = await runCreateFlow(
       {
         name: 'styled-demo',
         setup: 'white-label',
         styling: 'uniwind',
-        accent: '#123ABC',
+        appVariantNamesInput: 'North App,South App',
+        appVariantAccentsInput: '123abc,#456def',
         install: false,
         git: false,
         yes: true,
@@ -243,9 +305,13 @@ describe('non-interactive create', () => {
     const globalCss = await fs.readFile(join(tempRoot, 'styled-demo/src/global.css'), 'utf8');
 
     expect(result.stylingChoice).toBe('uniwind');
-    expect(result.accent).toBe('#123ABC');
+    expect(result.appVariantNames).toEqual(['North App', 'South App']);
+    expect(result.appVariantAccents).toEqual(['#123ABC', '#456DEF']);
     expect(packageJson.dependencies.uniwind).toBe('^1.10.0');
-    expect(appVariants.match(/accent: "#123ABC"/g)).toHaveLength(2);
+    expect(appVariants).toContain("slug: 'north-app'");
+    expect(appVariants).toContain("slug: 'south-app'");
+    expect(appVariants).toContain('accent: "#123ABC"');
+    expect(appVariants).toContain('accent: "#456DEF"');
     expect(globalCss.match(/--color-accent: #123ABC;/g)).toHaveLength(2);
   });
 
@@ -284,7 +350,7 @@ describe('non-interactive create', () => {
       createEnv({ cwd: tempRoot }),
     );
 
-    const packageJson = await fs.readJson(join(tempRoot, 'Folder Name/package.json'));
+    const packageJson = await fs.readJson(join(tempRoot, 'folder-name/package.json'));
 
     expect(packageJson.name).toBe('custom-package');
   });
@@ -327,7 +393,7 @@ describe('non-interactive create', () => {
     expect(await fs.pathExists(join(tempRoot, 'dry-run-protected'))).toBe(false);
   });
 
-  test('quotes project folders with spaces in next-step commands', async () => {
+  test('uses the normalized project folder in next-step commands', async () => {
     const tempRoot = await createTempRoot();
     const outputLines: string[] = [];
 
@@ -353,7 +419,7 @@ describe('non-interactive create', () => {
       }),
     );
 
-    expect(outputLines).toContain("- cd 'My Tenkit App'");
+    expect(outputLines).toContain('- cd my-tenkit-app');
   });
 });
 
@@ -593,42 +659,152 @@ describe('install and git planning', () => {
     expect(calls).not.toContain('git init');
   });
 
-  test('cancelling nested git confirmation happens before writing files', async () => {
+  test('does not prompt or mutate Git inside an existing worktree', async () => {
     const tempRoot = await createTempRoot();
     const write = vi.fn(async () => ({
-      targetDir: join(tempRoot, 'nested-cancel-demo'),
+      targetDir: join(tempRoot, 'nested-interactive-demo'),
       filesWritten: [],
       filesSkipped: [],
     }));
-    const cancelNestedGitPrompt: PromptAdapter['confirm'] = async () => PROMPT_CANCELLED;
+    const confirmPrompt = vi.fn<PromptAdapter['confirm']>(async () => PROMPT_CANCELLED);
+    const calls: string[] = [];
 
-    await expect(
-      runCreateFlow(
-        {
-          name: 'nested-cancel-demo',
-          setup: 'white-label',
-          install: false,
-          yes: true,
-        },
-        createEnv({
-          cwd: tempRoot,
-          isInteractive: true,
-          isCi: false,
-          prompts: createPrompts({
-            confirm: cancelNestedGitPrompt,
-          }),
-          runCommand: vi.fn(async () => ({ ok: true, code: 0 })),
-          write,
+    const result = await runCreateFlow(
+      {
+        name: 'nested-interactive-demo',
+        setup: 'white-label',
+        appVariantNamesInput: 'First Tenant,Second Tenant',
+        appVariantAccentsInput: '#208AEF,#EF8520',
+        install: false,
+        git: true,
+      },
+      createEnv({
+        cwd: tempRoot,
+        isInteractive: true,
+        prompts: createPrompts({
+          confirm: confirmPrompt,
         }),
-      ),
-    ).rejects.toThrow(/Create cancelled/);
+        runCommand: vi.fn(async (command, args) => {
+          calls.push([command, ...args].join(' '));
+          return { ok: true, code: 0 };
+        }),
+        write,
+      }),
+    );
 
-    expect(write).not.toHaveBeenCalled();
-    expect(await fs.pathExists(join(tempRoot, 'nested-cancel-demo'))).toBe(false);
+    expect(result.gitSkippedReason).toBe('nested-worktree');
+    expect(confirmPrompt).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(calls).not.toContain('git init');
+    expect(calls).not.toContain('git add --all');
+    expect(calls).not.toContain('git commit -m Initial commit');
   });
 });
 
 describe('interactive prompts', () => {
+  test('prompts in create-policy order and normalizes the project folder preview', async () => {
+    const tempRoot = await createTempRoot();
+    const promptOrder: string[] = [];
+    const outputLines: string[] = [];
+    const commandCalls: string[] = [];
+    let packageManagerInitialValue: string | undefined;
+    let packageManagerChoices: readonly string[] = [];
+    const textPrompt = vi.fn(async (options: { message: string }) => {
+      promptOrder.push(options.message);
+
+      const answers: Record<string, string> = {
+        'Project name': 'My Fancy Project',
+        'App Variant name: Atlas Network': 'Atlas Group',
+        'App Variant Accent: Atlas Network': '123abc',
+        'App Variant name: West Studio': 'West App',
+        'App Variant Accent: West Studio': '#456def',
+      };
+
+      return answers[options.message] ?? '';
+    });
+    const selectPrompt: PromptAdapter['select'] = async <Value extends string>(
+      options: PromptSelectOptions<Value>,
+    ): Promise<Value> => {
+      promptOrder.push(options.message);
+      if (options.message === 'Package manager') {
+        packageManagerInitialValue = options.initialValue;
+        packageManagerChoices = options.options.map(({ value }) => value);
+      }
+      const selectedValue =
+        options.message === 'Setup Type'
+          ? 'generic-standalone'
+          : options.message === 'Styling Choice'
+            ? 'uniwind'
+            : 'npm';
+      const selectedOption = options.options.find((option) => option.value === selectedValue);
+
+      if (!selectedOption) {
+        throw new Error(`Missing test prompt option ${selectedValue}.`);
+      }
+
+      return selectedOption.value;
+    };
+    const confirmPrompt = vi.fn(async (options: { message: string }) => {
+      promptOrder.push(options.message);
+      return true;
+    });
+
+    const result = await runCreateFlow(
+      {},
+      createEnv({
+        cwd: tempRoot,
+        isInteractive: true,
+        packageManagerUserAgent: 'bun/1.2.0',
+        output: {
+          log(message = '') {
+            outputLines.push(message);
+          },
+          error(message) {
+            outputLines.push(message);
+          },
+        },
+        prompts: createPrompts({
+          text: textPrompt,
+          select: selectPrompt,
+          confirm: confirmPrompt,
+        }),
+        runCommand: vi.fn(async (command, args) => {
+          commandCalls.push([command, ...args].join(' '));
+          return {
+            ok: !(command === 'git' && args[0] === 'rev-parse'),
+            code: command === 'git' && args[0] === 'rev-parse' ? 1 : 0,
+          };
+        }),
+      }),
+    );
+
+    expect(promptOrder).toEqual([
+      'Project name',
+      'Setup Type',
+      'Customize App Variant names and Accent colors?',
+      'App Variant name: Atlas Network',
+      'App Variant Accent: Atlas Network',
+      'App Variant name: West Studio',
+      'App Variant Accent: West Studio',
+      'Styling Choice',
+      'Package manager',
+      'Initialize Git?',
+      'Install dependencies?',
+    ]);
+    expect(result.projectName).toBe('my-fancy-project');
+    expect(result.packageName).toBe('my-fancy-project');
+    expect(result.appVariantNames).toEqual(['Atlas Group', 'West App']);
+    expect(result.appVariantAccents).toEqual(['#123ABC', '#456DEF']);
+    expect(result.packageManager).toBe('npm');
+    expect(packageManagerInitialValue).toBe('bun');
+    expect(packageManagerChoices).toEqual(['pnpm', 'npm', 'bun']);
+    expect(commandCalls).toContain('npm install');
+    expect(await fs.readFile(join(tempRoot, 'my-fancy-project/README.md'), 'utf8')).toContain(
+      'npm install',
+    );
+    expect(outputLines).toContain('Project folder/package: my-fancy-project');
+  });
+
   test('accepts prompt defaults when the user presses return', async () => {
     const tempRoot = await createTempRoot();
     const textPrompt = vi.fn(async () => DEFAULT_PROJECT_NAME);
@@ -641,7 +817,6 @@ describe('interactive prompts', () => {
       createEnv({
         cwd: tempRoot,
         isInteractive: true,
-        isCi: false,
         prompts: createPrompts({
           text: textPrompt,
           select: selectPrompt,
@@ -656,7 +831,7 @@ describe('interactive prompts', () => {
     expect(await fs.pathExists(join(tempRoot, DEFAULT_PROJECT_NAME, 'package.json'))).toBe(true);
   });
 
-  test('asks for project name, Setup Type, and Styling Choice in order', async () => {
+  test('asks for project name, Setup Type, App Variant customization, and Styling in order', async () => {
     const tempRoot = await createTempRoot();
     const promptOrder: string[] = [];
     const selectCalls = vi.fn();
@@ -679,14 +854,16 @@ describe('interactive prompts', () => {
 
       return selectedOption.value;
     };
-    const confirmPrompt = vi.fn(async () => false);
+    const confirmPrompt = vi.fn(async (options: { message: string }) => {
+      promptOrder.push(options.message);
+      return false;
+    });
 
     const result = await runCreateFlow(
-      { install: false, git: false },
+      { packageManager: 'pnpm', install: false, git: false },
       createEnv({
         cwd: tempRoot,
         isInteractive: true,
-        isCi: false,
         prompts: createPrompts({
           text: textPrompt,
           select: selectPrompt,
@@ -698,7 +875,12 @@ describe('interactive prompts', () => {
     expect(result.projectName).toBe('prompted-app');
     expect(result.setupType).toBe('generic-with-standalone-app-variants');
     expect(result.stylingChoice).toBe('uniwind');
-    expect(promptOrder).toEqual(['Project name', 'Setup Type', 'Styling Choice']);
+    expect(promptOrder).toEqual([
+      'Project name',
+      'Setup Type',
+      'Customize App Variant names and Accent colors?',
+      'Styling Choice',
+    ]);
     expect(textPrompt).toHaveBeenCalledTimes(1);
     expect(textPrompt).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -725,7 +907,11 @@ describe('interactive prompts', () => {
         { label: 'Uniwind', value: 'uniwind' },
       ],
     });
-    expect(confirmPrompt).not.toHaveBeenCalled();
+    expect(confirmPrompt).toHaveBeenCalledOnce();
+    expect(confirmPrompt).toHaveBeenCalledWith({
+      initialValue: false,
+      message: 'Customize App Variant names and Accent colors?',
+    });
   });
 
   test('prompts only for missing values when options are partially provided', async () => {
@@ -748,13 +934,13 @@ describe('interactive prompts', () => {
     const result = await runCreateFlow(
       {
         setup: 'runtime-tenants',
+        packageManager: 'pnpm',
         install: false,
         git: false,
       },
       createEnv({
         cwd: tempRoot,
         isInteractive: true,
-        isCi: false,
         prompts: createPrompts({
           text: textPrompt,
           select: selectPrompt,
@@ -838,8 +1024,14 @@ describe('Commander contract', () => {
     expect(help).toContain('--name <name>');
     expect(help).toContain('--setup <setup>');
     expect(help).toContain('--styling <styling>');
-    expect(help).toContain('--accent <color>');
+    expect(help).toContain('--variant-names <names>');
+    expect(help).toContain('--variant-accents <colors>');
     expect(help).toContain('--package-manager <manager>');
+    expect(help).toContain('--install');
+    expect(help).toContain('--no-install');
+    expect(help).toContain('--git');
+    expect(help).toContain('--no-git');
+    expect(help).not.toContain('--accent <color>');
     expect(help).not.toContain('--json');
     expect(help).not.toContain('[target');
 
@@ -850,14 +1042,24 @@ describe('Commander contract', () => {
     expect(lines.join('\n')).toContain('0.1.2');
   });
 
-  test('rejects explicitly empty git mode from Commander options', async () => {
+  test('accepts symmetric Git and install flags from Commander', async () => {
     const program = createProgram(createEnv());
 
     await expect(
-      program.parseAsync(['--name', 'git-mode-demo', '--setup', 'white-label', '--git', ''], {
-        from: 'user',
-      }),
-    ).rejects.toThrow(/Git mode must be one of/);
+      program.parseAsync(
+        [
+          '--name',
+          'symmetric-flags-demo',
+          '--setup',
+          'white-label',
+          '--yes',
+          '--no-git',
+          '--no-install',
+          '--dry-run',
+        ],
+        { from: 'user' },
+      ),
+    ).resolves.toBe(program);
   });
 
   test.each([
@@ -866,8 +1068,8 @@ describe('Commander contract', () => {
       message: /Unsupported Styling Choice "nativewind".*bare, uniwind/,
     },
     {
-      args: ['--accent', 'blue'],
-      message: /Invalid accent color "blue".*six-digit hex color.*#208AEF/,
+      args: ['--variant-accents', 'blue,#123ABC'],
+      message: /Invalid App Variant Accent "blue".*six-digit hex color.*#208AEF/,
     },
   ])('reports invalid public options through Commander', async ({ args, message }) => {
     const program = createProgram(createEnv());

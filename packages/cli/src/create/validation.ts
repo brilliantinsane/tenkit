@@ -7,34 +7,25 @@ import {
   type GeneratedStylingChoice,
   type GeneratedSetupType,
 } from '@tenkit/template-generator';
+import {
+  deriveAppVariantIdentity,
+  deriveAppVariantIdentities,
+  GENERATED_SETUP_TYPE_DEFINITIONS,
+  normalizeProjectName,
+} from '@tenkit/template-generator/setup-type-definitions';
 
 import { DEFAULT_PUBLIC_SETUP_SLUG, supportedStylingValues } from '../constants';
-import type { PublicCliGitMode } from './types';
 
 function isPathSeparatorPresent(value: string): boolean {
   return value.includes('/') || value.includes('\\');
 }
 
 export function validateProjectName(value: string): string {
-  const projectName = value.trim();
-
-  if (projectName.length === 0) {
-    throw new Error('Project name is required.');
+  try {
+    return normalizeProjectName(value);
+  } catch {
+    throw new Error('Project name must contain a usable Latin letter or number.');
   }
-
-  if (projectName === '.' || projectName === '..') {
-    throw new Error('Project name must be a child folder name.');
-  }
-
-  if (isPathSeparatorPresent(projectName)) {
-    throw new Error('Project name must not contain path separators.');
-  }
-
-  if (/[\0-\x1F<>:"|?*]/.test(projectName)) {
-    throw new Error('Project name contains characters that are unsafe for a project folder.');
-  }
-
-  return projectName;
 }
 
 function slugifyPackageName(projectName: string): string {
@@ -85,6 +76,27 @@ export function derivePackageName(projectName: string): string {
   return validatePackageName(packageName);
 }
 
+export function normalizeAppVariantNameInput(value: string): string {
+  return deriveAppVariantIdentity(value).displayName;
+}
+
+export function normalizeAppVariantAccentInput(value: string): GeneratedAccentColor {
+  const accent = value.trim();
+  const normalizedInput = accent.startsWith('#') ? accent : `#${accent}`;
+
+  try {
+    const normalizedAccent = normalizeGeneratedAccentColor(normalizedInput);
+
+    if (normalizedAccent) {
+      return normalizedAccent;
+    }
+  } catch {}
+
+  throw new Error(
+    `Invalid App Variant Accent ${JSON.stringify(accent)}. Expected a six-digit hex color such as "#208AEF".`,
+  );
+}
+
 export function normalizeSetupInput(
   setup: string | undefined,
   setupType: string | undefined,
@@ -114,28 +126,55 @@ export function normalizeStylingInput(value: string | undefined): GeneratedStyli
   }
 }
 
-export function normalizeAccentInput(value: string | undefined): GeneratedAccentColor | undefined {
-  try {
-    return normalizeGeneratedAccentColor(value);
-  } catch {
+export function normalizeAppVariantCustomization(
+  setupType: GeneratedSetupType,
+  appVariantNamesInput: string | undefined,
+  appVariantAccentsInput: string | undefined,
+): {
+  appVariantNames: readonly string[];
+  appVariantAccents: readonly GeneratedAccentColor[];
+} {
+  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
+    (candidate) => candidate.setupType === setupType,
+  );
+
+  if (!definition) {
+    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
+  }
+
+  const appVariantNames =
+    appVariantNamesInput === undefined
+      ? definition.appVariants.map(({ defaultName }) => defaultName)
+      : appVariantNamesInput.split(',').map((name) => name.trim());
+
+  if (appVariantNames.some((name) => name.length === 0)) {
+    throw new Error('App Variant names must not contain empty items.');
+  }
+
+  if (appVariantNames.length !== definition.appVariants.length) {
     throw new Error(
-      `Invalid accent color ${JSON.stringify(value)}. Expected a six-digit hex color such as "#208AEF".`,
+      `Expected exactly ${definition.appVariants.length} App Variant names for ${definition.publicSlug}.`,
     );
   }
-}
 
-export function parseGitMode(value: unknown): PublicCliGitMode | undefined {
-  if (value === false) {
-    return false;
+  deriveAppVariantIdentities(appVariantNames);
+
+  const rawAccents =
+    appVariantAccentsInput === undefined
+      ? definition.appVariants.map(({ defaultAccent }) => defaultAccent)
+      : appVariantAccentsInput.split(',').map((accent) => accent.trim());
+
+  if (rawAccents.some((accent) => accent.length === 0)) {
+    throw new Error('App Variant Accents must not contain empty items.');
   }
 
-  if (value === undefined) {
-    return undefined;
+  if (rawAccents.length !== definition.appVariants.length) {
+    throw new Error(
+      `Expected exactly ${definition.appVariants.length} App Variant Accents for ${definition.publicSlug}.`,
+    );
   }
 
-  if (value === 'init' || value === 'commit' || value === 'none') {
-    return value;
-  }
+  const appVariantAccents = rawAccents.map(normalizeAppVariantAccentInput);
 
-  throw new Error('Git mode must be one of: init, commit, none.');
+  return { appVariantNames, appVariantAccents };
 }

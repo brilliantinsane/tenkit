@@ -1,36 +1,11 @@
 import fs from 'fs-extra';
-import {
-  generateProject,
-  preflightWriteProject,
-  writeProject,
-  type GeneratedAccentColor,
-} from '@tenkit/template-generator';
-import { GENERATED_SETUP_TYPE_DEFINITIONS } from '@tenkit/template-generator/setup-type-definitions';
+import { generateProject, preflightWriteProject, writeProject } from '@tenkit/template-generator';
 
 import { defaultRunCommand } from '../adapters/command-runner';
 import { prepareInitialGitSetup } from '../adapters/git';
 import { logFinalOutput } from './create-messages';
 import { resolveCreateOptions } from './resolve-create-options';
 import type { CreateCommandOptions, CreateFlowEnvironment, CreateFlowResult } from './types';
-
-function expandLegacyAccentForFixedAppVariants(
-  setupType: CreateFlowResult['setupType'],
-  accent: CreateFlowResult['accent'],
-): readonly GeneratedAccentColor[] | undefined {
-  if (accent === undefined) {
-    return undefined;
-  }
-
-  const setupTypeDefinition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
-    (definition) => definition.setupType === setupType,
-  );
-
-  if (!setupTypeDefinition) {
-    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
-  }
-
-  return setupTypeDefinition.appVariants.map(() => accent);
-}
 
 export async function runCreateFlow(
   options: CreateCommandOptions,
@@ -50,10 +25,8 @@ export async function runCreateFlow(
   const tree = generate({
     setupType: resolvedOptions.setupType,
     stylingChoice: resolvedOptions.stylingChoice,
-    appVariantAccents: expandLegacyAccentForFixedAppVariants(
-      resolvedOptions.setupType,
-      resolvedOptions.accent,
-    ),
+    appVariantAccents: resolvedOptions.appVariantAccents,
+    appVariantNames: resolvedOptions.appVariantNames,
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     packageManager: resolvedOptions.packageManager,
@@ -74,7 +47,8 @@ export async function runCreateFlow(
       packageName: resolvedOptions.packageName,
       setupType: resolvedOptions.setupType,
       stylingChoice: resolvedOptions.stylingChoice,
-      accent: resolvedOptions.accent,
+      appVariantAccents: resolvedOptions.appVariantAccents,
+      appVariantNames: resolvedOptions.appVariantNames,
       packageManager: resolvedOptions.packageManager,
       installed: false,
       installFailed: false,
@@ -92,8 +66,7 @@ export async function runCreateFlow(
     ? resolvedOptions.targetDir
     : env.cwd;
   const gitSetup = await prepareInitialGitSetup({
-    explicitGitMode: resolvedOptions.git,
-    env,
+    enabled: resolvedOptions.git,
     runCommand,
     probeDir: gitProbeCwd,
   });
@@ -126,7 +99,8 @@ export async function runCreateFlow(
     packageName: resolvedOptions.packageName,
     setupType: resolvedOptions.setupType,
     stylingChoice: resolvedOptions.stylingChoice,
-    accent: resolvedOptions.accent,
+    appVariantAccents: resolvedOptions.appVariantAccents,
+    appVariantNames: resolvedOptions.appVariantNames,
     packageManager: resolvedOptions.packageManager,
     installed,
     installFailed,
