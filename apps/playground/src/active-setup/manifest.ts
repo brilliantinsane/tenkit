@@ -10,8 +10,8 @@ export const activeSetup = defineWhiteLabelAppsSetup({
       name: 'First Tenant',
       version: '1.0.0',
       scheme: 'firsttenant',
-      bundleIdentifier: 'com.brilliantinsane.firsttenant',
-      packageName: 'com.brilliantinsane.firsttenant',
+      bundleIdentifier: 'com.example.firsttenant',
+      packageName: 'com.example.firsttenant',
       theme: {
         accent: '#208AEF',
       },
@@ -25,8 +25,8 @@ export const activeSetup = defineWhiteLabelAppsSetup({
       name: 'Second Tenant',
       version: '1.0.0',
       scheme: 'secondtenant',
-      bundleIdentifier: 'com.brilliantinsane.secondtenant',
-      packageName: 'com.brilliantinsane.secondtenant',
+      bundleIdentifier: 'com.example.secondtenant',
+      packageName: 'com.example.secondtenant',
       theme: {
         accent: '#ef8520',
       },

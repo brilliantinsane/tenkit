@@ -794,6 +794,7 @@ test('Template generation renders selected package manager into generated app ou
 
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {
   const tree = generateProject({ setupType: 'white-label-apps' });
+  const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');
   const generatedSource = tree
     .map((file) => file.contents)
     .filter((contents): contents is string => typeof contents === 'string')
@@ -803,6 +804,11 @@ test('White Label Apps generated tree is standalone and does not import from the
   assert.notMatch(generatedSource, /defineWhiteLabelAppsSetup/);
   assert.notMatch(generatedSource, /single-app-runtime-tenants/);
   assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.firsttenant'/);
+  assert.match(appVariants, /packageName: 'com\.example\.firsttenant'/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.secondtenant'/);
+  assert.match(appVariants, /packageName: 'com\.example\.secondtenant'/);
+  assert.notMatch(generatedSource, /com\.brilliantinsane/);
 });
 
 test('Single App Runtime Tenants Template generates one App Variant with bundled Runtime Tenants', () => {

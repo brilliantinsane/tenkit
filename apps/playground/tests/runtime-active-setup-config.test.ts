@@ -52,8 +52,8 @@ test('dynamic Expo config injects resolved App Variant native identity and Activ
       accent: '#ef8520',
     },
   });
-  assert.equal(config.ios?.bundleIdentifier, 'com.brilliantinsane.secondtenant');
-  assert.equal(config.android?.package, 'com.brilliantinsane.secondtenant');
+  assert.equal(config.ios?.bundleIdentifier, 'com.example.secondtenant');
+  assert.equal(config.android?.package, 'com.example.secondtenant');
 });
 
 test('runtime Active Setup config exposes the public Active Setup bootstrap data', () => {
