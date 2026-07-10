@@ -106,7 +106,8 @@ export async function runGenerationProof(
 ): Promise<RunGenerationProofResult> {
   const tree = generateProject({
     setupType: options.setupType,
-    accent: options.accent,
+    appVariantAccents: options.appVariantAccents,
+    appVariantNames: options.appVariantNames,
     projectName: options.projectName,
     packageName: options.packageName,
     packageManager: options.packageManager,

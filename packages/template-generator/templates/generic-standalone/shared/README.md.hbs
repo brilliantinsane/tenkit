@@ -4,11 +4,11 @@ A Tenkit Generic With Standalone App Variants project generated for Expo SDK 56.
 
 ## Highlights
 
-- Atlas Network is the Generic App Variant.
-- West Studio is a Standalone App Variant.
+- {{appVariants.[0].displayName}} is the Generic App Variant.
+- {{appVariants.[1].displayName}} is a Standalone App Variant.
 - Runtime Tenant records live in generated source data.
-- Atlas Network can select North Studio, South Studio, and East Studio at runtime.
-- West Studio opens West Studio directly and does not show Runtime Tenant selection.
+- {{appVariants.[0].displayName}} can select North Studio, South Studio, and East Studio at runtime.
+- {{appVariants.[1].displayName}} opens West Studio directly and does not show Runtime Tenant selection.
 - `APP_VARIANT_SLUG` selects the App Variant for Expo config and Build Preparation.
 - The Generated App Local CLI is for this project only. It is separate from Tenkit's Public CLI create flow.
 
@@ -23,7 +23,7 @@ Inspect the public Expo runtime config:
 
 ```bash
 {{packageManagerRunCommand}} expo:config
-APP_VARIANT_SLUG=west-studio {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:config
 ```
 
 Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/constants/runtime-tenants.ts`.
@@ -33,8 +33,8 @@ Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/co
 App Variant native identity is selected with `APP_VARIANT_SLUG`:
 
 ```bash
-APP_VARIANT_SLUG=atlas-network {{packageManagerRunCommand}} expo:config
-APP_VARIANT_SLUG=west-studio {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[0].slug}} {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:config
 ```
 
 The generated App Variant data lives in `src/constants/app-variants.ts`.
@@ -42,8 +42,8 @@ The generated App Variant data lives in `src/constants/app-variants.ts`.
 Native assets live per App Variant:
 
 ```text
-assets/atlas-network/
-assets/west-studio/
+assets/{{appVariants.[0].slug}}/
+assets/{{appVariants.[1].slug}}/
 ```
 
 Runtime Tenants do not own native asset folders.
@@ -65,8 +65,12 @@ Before using build preparation:
 1. Set `EXPO_OWNER` in `src/constants/project-config.ts` to your Expo account or organization. It starts blank on purpose, so build preparation fails clearly instead of using Tenkit's Expo account.
 2. Create or link an EAS Project for each App Variant.
 3. Paste each EAS Project ID into `src/constants/app-variants.ts`.
-4. Add `APP_VARIANT_SLUG=atlas-network` to the Atlas Network App Variant's EAS environment.
-5. Add `APP_VARIANT_SLUG=west-studio` to the West Studio App Variant's EAS environment.
+4. Add `APP_VARIANT_SLUG={{appVariants.[0].slug}}` to the Generic App Variant's EAS environment.
+5. Add `APP_VARIANT_SLUG={{appVariants.[1].slug}}` to the Standalone App Variant's EAS environment.
+
+A new App Variant Slug can seed creation of a new EAS Project. This project generates `{{appVariants.[0].slug}}` and `{{appVariants.[1].slug}}` as its ordered App Variant Slugs.
+
+When an App Variant is linked to an existing EAS Project, that linked EAS Project is authoritative for owner and Slug. Run `eas init` to reconcile the generated local values with EAS.
 
 For CI or non-interactive use:
 
@@ -91,10 +95,10 @@ Show local diagnostics:
 
 Runtime Tenant selection is runtime behavior.
 
-- Atlas Network exposes Runtime Tenant Access for North Studio, South Studio, and East Studio.
-- West Studio has a direct Runtime Tenant bootstrap for West Studio.
+- {{appVariants.[0].displayName}} exposes Runtime Tenant Access for North Studio, South Studio, and East Studio.
+- {{appVariants.[1].displayName}} has a direct Runtime Tenant bootstrap for West Studio.
 - West Studio remains a Runtime Tenant record as well as an App Variant name.
-- The Standalone Runtime Tenant is excluded from Atlas Network selection.
+- The Standalone Runtime Tenant is excluded from {{appVariants.[0].displayName}} selection.
 
 The validation logic lives in `src/lib/runtime-tenant-access.ts` and rejects broken local-source relationships such as duplicate Runtime Tenant IDs, missing references, duplicate standalone assignments, and Standalone Runtime Tenants appearing in the Generic App Variant access list.
 

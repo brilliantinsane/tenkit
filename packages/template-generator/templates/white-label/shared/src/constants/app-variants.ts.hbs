@@ -4,38 +4,32 @@ export const defaultAppVariantId = 1;
 
 export const appVariants = [
   {
-    appVariantId: 1,
-    slug: 'first-tenant',
-    name: 'First Tenant',
+    appVariantId: {{appVariants.[0].appVariantId}},
+    // Replace with the actual EAS Project Slug after creating or linking the project.
+    slug: '{{appVariants.[0].slug}}',
+    name: {{{appVariants.[0].displayNameStringLiteral}}},
     version: '1.0.0',
-    scheme: 'firsttenant',
-    bundleIdentifier: 'com.example.firsttenant',
-    packageName: 'com.example.firsttenant',
+    scheme: '{{appVariants.[0].scheme}}',
+    bundleIdentifier: '{{appVariants.[0].bundleIdentifier}}',
+    packageName: '{{appVariants.[0].packageName}}',
     theme: {
-      {{#if hasAccentOverride}}
-      accent: {{{accentOverrideStringLiteral}}},
-      {{else}}
-      accent: '#208AEF',
-      {{/if}}
+      accent: {{{appVariants.[0].accentStringLiteral}}},
     },
     eas: {
       projectId: '',
     },
   },
   {
-    appVariantId: 2,
-    slug: 'second-tenant',
-    name: 'Second Tenant',
+    appVariantId: {{appVariants.[1].appVariantId}},
+    // Replace with the actual EAS Project Slug after creating or linking the project.
+    slug: '{{appVariants.[1].slug}}',
+    name: {{{appVariants.[1].displayNameStringLiteral}}},
     version: '1.0.0',
-    scheme: 'secondtenant',
-    bundleIdentifier: 'com.example.secondtenant',
-    packageName: 'com.example.secondtenant',
+    scheme: '{{appVariants.[1].scheme}}',
+    bundleIdentifier: '{{appVariants.[1].bundleIdentifier}}',
+    packageName: '{{appVariants.[1].packageName}}',
     theme: {
-      {{#if hasAccentOverride}}
-      accent: {{{accentOverrideStringLiteral}}},
-      {{else}}
-      accent: '#ef8520',
-      {{/if}}
+      accent: {{{appVariants.[1].accentStringLiteral}}},
     },
     eas: {
       projectId: '',

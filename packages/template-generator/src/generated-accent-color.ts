@@ -8,7 +8,7 @@ export function normalizeGeneratedAccentColor(
   }
 
   if (/^#[0-9a-f]{6}$/i.test(value)) {
-    return value as GeneratedAccentColor;
+    return value.toUpperCase() as GeneratedAccentColor;
   }
 
   throw new Error(

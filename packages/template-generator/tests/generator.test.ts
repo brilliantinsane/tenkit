@@ -75,14 +75,14 @@ const setupTypeCases = [
     expectedRoute: 'explore',
     appVariantPath: 'src/constants/app-variants.ts',
     appVariantCount: 2,
-    defaultAccents: ['#208AEF', '#ef8520'],
+    defaultAccents: ['#208AEF', '#EF8520'],
   },
   {
     setupType: 'single-app-runtime-tenants',
     expectedRoute: 'settings',
     appVariantPath: 'src/constants/app-variant.ts',
     appVariantCount: 1,
-    defaultAccents: ['#eb2556'],
+    defaultAccents: ['#EB2556'],
   },
   {
     setupType: 'generic-with-standalone-app-variants',
@@ -394,32 +394,184 @@ test('Template generation rejects unsupported Styling Choice values', () => {
   );
 });
 
-test('Accent override updates every App Variant and both Styling Choices', () => {
-  for (const { setupType, appVariantPath, appVariantCount, defaultAccents } of setupTypeCases) {
-    for (const stylingChoice of ['bare', 'uniwind'] as const) {
-      const tree = generateProject({ setupType, stylingChoice, accent: '#123ABC' });
-      const appVariants = readVirtualFile(tree, appVariantPath);
+test('per-App-Variant customization fills unchanged White Label positions from shared defaults', () => {
+  const tree = generateProject({
+    setupType: 'white-label-apps',
+    appVariantNames: ['My Cool App', undefined],
+    appVariantAccents: ['#123abc', undefined],
+  });
+  const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');
 
-      assert.equal(appVariants.match(/accent: "#123ABC"/g)?.length, appVariantCount);
-      for (const defaultAccent of defaultAccents) {
-        assert.notMatch(appVariants, new RegExp(defaultAccent));
+  assert.match(appVariants, /name: "My Cool App"/);
+  assert.match(appVariants, /slug: 'my-cool-app'/);
+  assert.match(appVariants, /scheme: 'mycoolapp'/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.mycoolapp'/);
+  assert.match(appVariants, /packageName: 'com\.example\.mycoolapp'/);
+  assert.match(appVariants, /accent: "#123ABC"/);
+  assert.match(appVariants, /name: "Second Tenant"/);
+  assert.match(appVariants, /accent: "#EF8520"/);
+  assert.ok(hasVirtualFile(tree, 'assets/my-cool-app/icons/icon.png'));
+  assert.ok(hasVirtualFile(tree, 'assets/second-tenant/icons/icon.png'));
+  assert.equal(hasVirtualFile(tree, 'assets/first-tenant/icons/icon.png'), false);
+  assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=my-cool-app/);
+});
+
+test('per-App-Variant names and Accents reach every generated Setup Type and Styling combination', () => {
+  const customizationCases = [
+    {
+      setupType: 'white-label-apps',
+      appVariantNames: ['My Cool App', undefined],
+      appVariantAccents: ['#112233', undefined],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedNames: ['My Cool App', 'Second Tenant'],
+      expectedSlugs: ['my-cool-app', 'second-tenant'],
+      expectedAccents: ['#112233', '#EF8520'],
+    },
+    {
+      setupType: 'single-app-runtime-tenants',
+      appVariantNames: ['Café Central'],
+      appVariantAccents: ['#abcdef'],
+      appVariantPath: 'src/constants/app-variant.ts',
+      expectedNames: ['Café Central'],
+      expectedSlugs: ['cafe-central'],
+      expectedAccents: ['#ABCDEF'],
+    },
+    {
+      setupType: 'generic-with-standalone-app-variants',
+      appVariantNames: [undefined, '123 Studio'],
+      appVariantAccents: [undefined, '#00aa55'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedNames: ['Atlas Network', '123 Studio'],
+      expectedSlugs: ['atlas-network', 'app-123-studio'],
+      expectedAccents: ['#20EF99', '#00AA55'],
+    },
+  ] as const;
+
+  for (const customization of customizationCases) {
+    for (const stylingChoice of ['bare', 'uniwind'] as const) {
+      const tree = generateProject({ ...customization, stylingChoice });
+      const appVariants = readVirtualFile(tree, customization.appVariantPath);
+
+      for (const expectedName of customization.expectedNames) {
+        assert.match(appVariants, new RegExp(`name: ${JSON.stringify(expectedName)}`));
+      }
+
+      for (const expectedSlug of customization.expectedSlugs) {
+        assert.match(appVariants, new RegExp(`slug: '${expectedSlug}'`));
+        assert.ok(hasVirtualFile(tree, `assets/${expectedSlug}/icons/icon.png`));
+      }
+
+      for (const expectedAccent of customization.expectedAccents) {
+        assert.match(appVariants, new RegExp(`accent: ${JSON.stringify(expectedAccent)}`));
+      }
+
+      assert.match(
+        readVirtualFile(tree, '.env.example'),
+        new RegExp(`APP_VARIANT_SLUG=${customization.expectedSlugs[0]}`),
+      );
+
+      if (hasVirtualFile(tree, 'src/constants/runtime-tenants.ts')) {
+        assert.notMatch(readVirtualFile(tree, 'src/constants/runtime-tenants.ts'), /accent/i);
       }
 
       if (stylingChoice === 'uniwind') {
         const globalCss = readVirtualFile(tree, 'src/global.css');
-        assert.equal(globalCss.match(/--color-accent: #123ABC;/g)?.length, 2);
-      }
+        const rootLayout = readVirtualFile(tree, 'src/app/_layout.tsx');
 
-      if (hasVirtualFile(tree, 'src/constants/runtime-tenants.ts')) {
-        assert.notMatch(readVirtualFile(tree, 'src/constants/runtime-tenants.ts'), /accent/);
+        assert.equal(
+          globalCss.match(new RegExp(`--color-accent: ${customization.expectedAccents[0]};`, 'g'))
+            ?.length,
+          2,
+        );
+        assert.match(rootLayout, /Uniwind\.updateCSSVariables\('light'/);
+        assert.match(rootLayout, /Uniwind\.updateCSSVariables\('dark'/);
+        assert.match(rootLayout, /'--color-accent': theme\.accent/);
+        assert.match(rootLayout, /<AppTabs accent=\{theme\.accent\}/);
+      } else {
+        assert.match(readVirtualFile(tree, 'src/app/_layout.tsx'), /primary: theme\.accent/);
       }
     }
   }
 });
 
-test('Template generation rejects invalid accent colors', () => {
+test('generated App Variant Slugs include EAS creation and reconciliation guidance', () => {
+  const guidanceCases = [
+    {
+      setupType: 'white-label-apps',
+      appVariantNames: ['North Star', 'South Star'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedSlugs: ['north-star', 'south-star'],
+    },
+    {
+      setupType: 'single-app-runtime-tenants',
+      appVariantNames: ['Central App'],
+      appVariantPath: 'src/constants/app-variant.ts',
+      expectedSlugs: ['central-app'],
+    },
+    {
+      setupType: 'generic-with-standalone-app-variants',
+      appVariantNames: ['Atlas Group', 'West Place'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedSlugs: ['atlas-group', 'west-place'],
+    },
+  ] as const;
+
+  for (const guidance of guidanceCases) {
+    const tree = generateProject(guidance);
+    const appVariants = readVirtualFile(tree, guidance.appVariantPath);
+    const readme = readVirtualFile(tree, 'README.md');
+
+    assert.equal(
+      appVariants.match(
+        /Replace with the actual EAS Project Slug after creating or linking the project/g,
+      )?.length,
+      guidance.expectedSlugs.length,
+    );
+    assert.match(readme, /new App Variant Slug can seed creation of a new EAS Project/i);
+    assert.match(readme, /linked EAS Project.*authoritative.*eas init.*reconcile/i);
+
+    for (const expectedSlug of guidance.expectedSlugs) {
+      assert.match(readme, new RegExp(expectedSlug));
+    }
+  }
+});
+
+test('Generic generated guidance uses customized App Variant names without changing Runtime Tenants', () => {
+  for (const stylingChoice of ['bare', 'uniwind'] as const) {
+    const tree = generateProject({
+      setupType: 'generic-with-standalone-app-variants',
+      stylingChoice,
+      appVariantNames: ['Atlas Group', 'West App'],
+    });
+    const readme = readVirtualFile(tree, 'README.md');
+    const home = readVirtualFile(tree, 'src/app/index.tsx');
+    const runtimeTenants = readVirtualFile(tree, 'src/constants/runtime-tenants.ts');
+
+    assert.match(readme, /Atlas Group is the Generic App Variant/);
+    assert.match(readme, /West App is a Standalone App Variant/);
+    assert.match(readme, /West App opens West Studio directly/);
+    assert.match(home, /Atlas Group can select North, South, and East Studio/);
+    assert.match(home, /West App opens West Studio directly/);
+    assert.notMatch(readme, /Atlas Network/);
+    assert.match(runtimeTenants, /name: 'West Studio'/);
+  }
+});
+
+test('Template generation validates per-App-Variant cardinality, identity, and Accent', () => {
   assert.throws(
-    () => generateProject({ setupType: 'white-label-apps', accent: 'blue' }),
+    () => generateProject({ setupType: 'white-label-apps', appVariantNames: ['Only One'] }),
+    /Invalid App Variant name count 1.*exactly 2 App Variant values/,
+  );
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        appVariantNames: ['Cool App', 'CoolApp'],
+      }),
+    /Duplicate derived App Variant identity "coolapp"/,
+  );
+  assert.throws(
+    () => generateProject({ setupType: 'runtime-tenants', appVariantAccents: ['blue'] }),
     /Invalid generated accent color "blue".*six-digit hex color.*#208AEF/,
   );
 });
@@ -878,7 +1030,7 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   assert.equal(paths.includes('src/constants/app-variants.ts'), false);
   assert.match(appVariant, /export const appVariant =/);
   assert.match(appVariant, /slug: 'acme-app'/);
-  assert.match(appVariant, /name: 'Acme App'/);
+  assert.match(appVariant, /name: "Acme App"/);
   assert.match(appVariant, /runtimeTenantAccess/);
   assert.match(appVariant, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.notMatch(appVariant, /appVariants|defaultAppVariantId|selectionMode/);
@@ -1000,10 +1152,10 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=atlas-network/);
   assert.match(appVariants, /role: 'generic'/);
   assert.match(appVariants, /slug: 'atlas-network'/);
-  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /name: "Atlas Network"/);
   assert.match(appVariants, /role: 'standalone'/);
   assert.match(appVariants, /slug: 'west-studio'/);
-  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /name: "West Studio"/);
   assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
   assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.match(runtimeTenants, /name: 'North Studio'/);
@@ -1044,8 +1196,8 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.match(readme, /Public CLI create flow/);
   assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
-  assert.match(readme, /Atlas Network App Variant's EAS environment/);
-  assert.match(readme, /West Studio App Variant's EAS environment/);
+  assert.match(readme, /Generic App Variant's EAS environment/);
+  assert.match(readme, /Standalone App Variant's EAS environment/);
   assert.notMatch(readme, /public create entrypoint|web builder|publishing/);
 });
 

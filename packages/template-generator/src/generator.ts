@@ -5,6 +5,7 @@ import {
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
 import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
+import { deriveAppVariantIdentities } from './generated-setup-type-definitions';
 import {
   type GeneratedStylingChoice,
   normalizeGeneratedStylingChoice,
@@ -13,6 +14,7 @@ import {
   GENERATED_PROJECT_PACKAGE_MANAGERS,
   readTemplateTree,
   type GeneratedProjectPackageManager,
+  type TemplateAppVariantContext,
   type TemplateContext,
 } from './template-reader';
 import { mergeVirtualFileTrees, type VirtualFileTree } from './virtual-file-tree';
@@ -37,7 +39,8 @@ export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
   setupType: 'white-label' | 'white-label-apps';
-  accent?: string;
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -46,7 +49,8 @@ export type WhiteLabelAppsProjectConfig = {
 
 export type SingleAppRuntimeTenantsProjectConfig = {
   setupType: 'runtime-tenants' | 'single-app-runtime-tenants';
-  accent?: string;
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -55,7 +59,8 @@ export type SingleAppRuntimeTenantsProjectConfig = {
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
   setupType: 'generic-standalone' | 'generic-with-standalone-app-variants';
-  accent?: string;
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -100,15 +105,71 @@ function normalizePackageManager(
   );
 }
 
+function assertAppVariantValueCount(
+  values: readonly (string | undefined)[] | undefined,
+  expectedCount: number,
+  label: string,
+) {
+  if (values !== undefined && values.length !== expectedCount) {
+    throw new Error(
+      `Invalid ${label} count ${values.length}. Expected exactly ${expectedCount} App Variant values.`,
+    );
+  }
+}
+
+function normalizeAppVariants({
+  appVariantAccents,
+  appVariantNames,
+  setupTypeDefinition,
+}: {
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
+  setupTypeDefinition: GeneratedSetupTypeDefinition;
+}): readonly TemplateAppVariantContext[] {
+  const expectedCount = setupTypeDefinition.appVariants.length;
+  assertAppVariantValueCount(appVariantNames, expectedCount, 'App Variant name');
+  assertAppVariantValueCount(appVariantAccents, expectedCount, 'App Variant Accent');
+
+  const displayNames = setupTypeDefinition.appVariants.map(
+    ({ defaultName }, index) => appVariantNames?.[index] ?? defaultName,
+  );
+  const identities = deriveAppVariantIdentities(displayNames);
+
+  return setupTypeDefinition.appVariants.map((definition, index) => {
+    const identity = identities[index];
+    const accent =
+      normalizeGeneratedAccentColor(appVariantAccents?.[index]) ?? definition.defaultAccent;
+
+    if (!identity) {
+      throw new Error(`Missing resolved App Variant identity at index ${index}.`);
+    }
+
+    return {
+      accent,
+      accentStringLiteral: JSON.stringify(accent),
+      appVariantId: definition.appVariantId,
+      bundleIdentifier: identity.bundleIdentifier,
+      displayName: identity.displayName,
+      displayNameStringLiteral: JSON.stringify(identity.displayName),
+      packageName: identity.packageName,
+      role: definition.role,
+      scheme: identity.scheme,
+      slug: identity.slug,
+    };
+  });
+}
+
 function normalizeTemplateContext({
-  accent: rawAccent,
+  appVariantAccents,
+  appVariantNames,
   projectName: rawProjectName,
   packageName: rawPackageName,
   packageManager: rawPackageManager,
   stylingChoice: rawStylingChoice,
   setupTypeDefinition,
 }: {
-  accent?: string;
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
   projectName?: string;
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
@@ -116,15 +177,15 @@ function normalizeTemplateContext({
   setupTypeDefinition: GeneratedSetupTypeDefinition;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
-  const accentOverride = normalizeGeneratedAccentColor(rawAccent);
   const packageManager = normalizePackageManager(rawPackageManager);
   const stylingChoice = normalizeGeneratedStylingChoice(rawStylingChoice);
 
   return {
-    accentOverride,
-    accentOverrideStringLiteral:
-      accentOverride === undefined ? undefined : JSON.stringify(accentOverride),
-    hasAccentOverride: accentOverride !== undefined,
+    appVariants: normalizeAppVariants({
+      appVariantAccents,
+      appVariantNames,
+      setupTypeDefinition,
+    }),
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -146,11 +207,9 @@ function normalizeTemplateContext({
 function readProjectTemplateTree({
   templatePath,
   context,
-  appVariantSlugs,
 }: {
   templatePath: string;
   context: TemplateContext;
-  appVariantSlugs: readonly string[];
 }): VirtualFileTree {
   const sharedTree = readTemplateTree('shared', context);
   const setupTypeSharedTree = readTemplateTree(`${templatePath}/shared`, context);
@@ -159,7 +218,7 @@ function readProjectTemplateTree({
     context,
   );
   const assetTree = readTemplateTree('assets', context);
-  const appVariantAssets = appVariantSlugs.flatMap((slug) =>
+  const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({
       path: `assets/${slug}/${file.path}`,
       contents: file.contents,
@@ -183,7 +242,8 @@ export function generateWhiteLabelAppsProject(
 
   const setupTypeDefinition = getGeneratedSetupTypeDefinition('white-label-apps');
   const context = normalizeTemplateContext({
-    accent: config.accent,
+    appVariantAccents: config.appVariantAccents,
+    appVariantNames: config.appVariantNames,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -194,7 +254,6 @@ export function generateWhiteLabelAppsProject(
   return readProjectTemplateTree({
     templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 
@@ -207,7 +266,8 @@ export function generateSingleAppRuntimeTenantsProject(
 
   const setupTypeDefinition = getGeneratedSetupTypeDefinition('single-app-runtime-tenants');
   const context = normalizeTemplateContext({
-    accent: config.accent,
+    appVariantAccents: config.appVariantAccents,
+    appVariantNames: config.appVariantNames,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -218,7 +278,6 @@ export function generateSingleAppRuntimeTenantsProject(
   return readProjectTemplateTree({
     templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 
@@ -235,7 +294,8 @@ export function generateGenericWithStandaloneAppVariantsProject(
     'generic-with-standalone-app-variants',
   );
   const context = normalizeTemplateContext({
-    accent: config.accent,
+    appVariantAccents: config.appVariantAccents,
+    appVariantNames: config.appVariantNames,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,
@@ -246,14 +306,14 @@ export function generateGenericWithStandaloneAppVariantsProject(
   return readProjectTemplateTree({
     templatePath: setupTypeDefinition.templatePath,
     context,
-    appVariantSlugs: setupTypeDefinition.appVariantSlugs,
   });
 }
 
 export function generateProject(config: GenerateProjectConfig): VirtualFileTree {
   const setupType = normalizeGeneratedSetupType(config.setupType);
   const baseConfig = {
-    accent: config.accent,
+    appVariantAccents: config.appVariantAccents,
+    appVariantNames: config.appVariantNames,
     projectName: config.projectName,
     packageName: config.packageName,
     packageManager: config.packageManager,

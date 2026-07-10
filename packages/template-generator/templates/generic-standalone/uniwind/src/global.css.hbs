@@ -9,7 +9,7 @@
       --color-surface-raised: #1a1a1a;
       --color-foreground: #f2f2f2;
       --color-muted: #b3b3b3;
-      --color-accent: {{#if hasAccentOverride}}{{accentOverride}}{{else}}#20EF99{{/if}};
+      --color-accent: {{appVariants.[0].accent}};
     }
 
     @variant light {
@@ -18,7 +18,7 @@
       --color-surface-raised: #ffffff;
       --color-foreground: #0d0d0d;
       --color-muted: #4d4d4d;
-      --color-accent: {{#if hasAccentOverride}}{{accentOverride}}{{else}}#20EF99{{/if}};
+      --color-accent: {{appVariants.[0].accent}};
     }
   }
 }

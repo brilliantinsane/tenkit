@@ -243,7 +243,7 @@ test('local proof command boundary selects Uniwind output for every Setup Type',
   }
 });
 
-test('local proof command boundary forwards an accent override', async () => {
+test('local proof command boundary forwards per-App-Variant names and Accents', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
   const targetDir = join(tempRoot, 'generated-app');
   const workspaceRoot = join(tempRoot, 'tenkit-workspace');
@@ -252,7 +252,8 @@ test('local proof command boundary forwards an accent override', async () => {
     await runGenerationProof({
       setupType: 'white-label-apps',
       stylingChoice: 'uniwind',
-      accent: '#123ABC',
+      appVariantNames: ['North App', 'South App'],
+      appVariantAccents: ['#123ABC', '#456DEF'],
       targetDir,
       git: false,
       workspaceRoot,
@@ -261,8 +262,13 @@ test('local proof command boundary forwards an accent override', async () => {
     const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
     const globalCss = await fs.readFile(join(targetDir, 'src/global.css'), 'utf8');
 
-    assert.equal(appVariants.match(/accent: "#123ABC"/g)?.length, 2);
+    assert.match(appVariants, /slug: 'north-app'/);
+    assert.match(appVariants, /slug: 'south-app'/);
+    assert.match(appVariants, /accent: "#123ABC"/);
+    assert.match(appVariants, /accent: "#456DEF"/);
     assert.equal(globalCss.match(/--color-accent: #123ABC;/g)?.length, 2);
+    assert.equal(await fs.pathExists(join(targetDir, 'assets/north-app/icons/icon.png')), true);
+    assert.equal(await fs.pathExists(join(targetDir, 'assets/south-app/icons/icon.png')), true);
   } finally {
     await fs.remove(tempRoot);
   }

@@ -4,19 +4,18 @@ import { resolve } from 'pathe';
 
 import {
   formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedAccentColor,
   normalizeGeneratedStylingChoice,
   normalizeGeneratedSetupType,
   SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
-  type GeneratedAccentColor,
   type GeneratedStylingChoice,
 } from '../src/generator';
 import { verifyGeneratedApp } from '../src/generated-app-verification';
 
 type ParsedArgs = {
-  accent?: GeneratedAccentColor;
+  appVariantAccents?: string[];
+  appVariantNames?: string[];
   setupType?: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
 };
@@ -26,7 +25,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--accent <#RRGGBB>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -59,14 +58,8 @@ function parseStylingChoice(value: string): GeneratedStylingChoice {
   }
 }
 
-function parseAccent(value: string): GeneratedAccentColor {
-  const accent = normalizeGeneratedAccentColor(value);
-
-  if (accent === undefined) {
-    throw new Error('--accent requires a value.');
-  }
-
-  return accent;
+function parseOrderedValues(value: string): string[] {
+  return value.split(',').map((entry) => entry.trim());
 }
 
 function parseArgs(args: string[]): ResolvedArgs {
@@ -87,8 +80,11 @@ function parseArgs(args: string[]): ResolvedArgs {
     } else if (arg === '--styling') {
       parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
       index += 1;
-    } else if (arg === '--accent') {
-      parsed.accent = parseAccent(readValue(args, index, arg));
+    } else if (arg === '--variant-names') {
+      parsed.appVariantNames = parseOrderedValues(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--variant-accents') {
+      parsed.appVariantAccents = parseOrderedValues(readValue(args, index, arg));
       index += 1;
     } else {
       throw new Error(`Unknown argument ${arg}.\n${usage()}`);
@@ -112,7 +108,8 @@ async function main() {
 
   await verifyGeneratedApp({
     setupType: args.setupType,
-    accent: args.accent,
+    appVariantAccents: args.appVariantAccents,
+    appVariantNames: args.appVariantNames,
     stylingChoice: args.stylingChoice,
     workspaceRoot,
   });

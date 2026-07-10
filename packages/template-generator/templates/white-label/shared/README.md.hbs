@@ -47,6 +47,10 @@ Before using build preparation:
 3. Paste each EAS Project ID into `src/constants/app-variants.ts`.
 4. Add `APP_VARIANT_SLUG` to each App Variant's EAS environment.
 
+A new App Variant Slug can seed creation of a new EAS Project. This project generates `{{appVariants.[0].slug}}` and `{{appVariants.[1].slug}}` as its ordered App Variant Slugs.
+
+When an App Variant is linked to an existing EAS Project, that linked EAS Project is authoritative for owner and Slug. Run `eas init` to reconcile the generated local values with EAS.
+
 For non-interactive CI usage, pass the selected values explicitly:
 
 ```bash
@@ -87,7 +91,7 @@ Inspect the resolved public Expo config for the default App Variant:
 Inspect a specific App Variant:
 
 ```bash
-APP_VARIANT_SLUG=second-tenant {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:config
 ```
 
 For repeated local work with one App Variant, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG` there. `.env.local` is ignored by git and may also be rewritten by `{{packageManagerTenkitCommand}} build` after it pulls values from EAS.

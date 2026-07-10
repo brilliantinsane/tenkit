@@ -81,7 +81,7 @@ export type CreateFlowEnvironment = {
   generate?: (config: {
     setupType: GeneratedSetupType;
     stylingChoice: GeneratedStylingChoice;
-    accent?: GeneratedAccentColor;
+    appVariantAccents?: readonly GeneratedAccentColor[];
     projectName: string;
     packageName: string;
     packageManager?: PublicCliPackageManager;

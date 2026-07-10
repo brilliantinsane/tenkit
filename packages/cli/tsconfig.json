@@ -6,7 +6,10 @@
     "strict": true,
     "noEmit": true,
     "paths": {
-      "@tenkit/template-generator": ["../template-generator/src/index.ts"]
+      "@tenkit/template-generator": ["../template-generator/src/index.ts"],
+      "@tenkit/template-generator/setup-type-definitions": [
+        "../template-generator/src/generated-setup-type-definitions.ts"
+      ]
     },
     "types": ["node"],
     "skipLibCheck": true

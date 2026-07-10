@@ -4,19 +4,23 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 
 import { runGeneratedAppCommand } from './generated-app-command-runner';
+import { deriveAppVariantIdentities } from './generated-setup-type-definitions';
+import { getGeneratedSetupTypeDefinition } from './generated-setup-types';
 import { type GeneratedSetupType, type GeneratedStylingChoice } from './generator';
 import { runGenerationProof } from './local-proof';
 
 export type VerifyGeneratedAppOptions = {
   setupType: GeneratedSetupType;
-  accent?: string;
+  appVariantAccents?: readonly (string | undefined)[];
+  appVariantNames?: readonly (string | undefined)[];
   stylingChoice: GeneratedStylingChoice;
   workspaceRoot: string;
 };
 
 export async function verifyGeneratedApp({
   setupType,
-  accent,
+  appVariantAccents,
+  appVariantNames,
   stylingChoice,
   workspaceRoot,
 }: VerifyGeneratedAppOptions): Promise<void> {
@@ -28,7 +32,8 @@ export async function verifyGeneratedApp({
   try {
     await runGenerationProof({
       setupType,
-      accent,
+      appVariantAccents,
+      appVariantNames,
       stylingChoice,
       targetDir,
       git: false,
@@ -40,8 +45,18 @@ export async function verifyGeneratedApp({
     await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config']);
 
     if (setupType === 'generic-with-standalone-app-variants') {
+      const setupTypeDefinition = getGeneratedSetupTypeDefinition(setupType);
+      const resolvedNames = setupTypeDefinition.appVariants.map(
+        ({ defaultName }, index) => appVariantNames?.[index] ?? defaultName,
+      );
+      const standaloneSlug = deriveAppVariantIdentities(resolvedNames)[1]?.slug;
+
+      if (!standaloneSlug) {
+        throw new Error('Missing Standalone App Variant Slug for generated app verification.');
+      }
+
       await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config'], {
-        APP_VARIANT_SLUG: 'west-studio',
+        APP_VARIANT_SLUG: standaloneSlug,
       });
     }
 

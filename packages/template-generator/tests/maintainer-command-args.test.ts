@@ -58,6 +58,30 @@ test('proof accepts --styling and generates the selected Styling output', async 
   assert.match(packageJson, /"uniwind": "\^1\.10\.0"/);
 });
 
+test('proof accepts ordered per-App-Variant names and Accents', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--variant-names',
+    'North App,South App',
+    '--variant-accents',
+    '#112233,#445566',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
+  assert.match(appVariants, /slug: 'north-app'/);
+  assert.match(appVariants, /slug: 'south-app'/);
+  assert.match(appVariants, /accent: "#112233"/);
+  assert.match(appVariants, /accent: "#445566"/);
+});
+
 test('verify accepts --styling before validating the Setup Type', async () => {
   await expectScriptFailure(
     verifyScript,
@@ -73,5 +97,11 @@ test('maintainer commands reject the superseded --styling-choice flag', async ()
       ['--styling-choice', 'uniwind'],
       /Unknown argument --styling-choice/,
     );
+  }
+});
+
+test('maintainer commands reject the superseded global --accent flag', async () => {
+  for (const script of [proofScript, verifyScript]) {
+    await expectScriptFailure(script, ['--accent', '#123ABC'], /Unknown argument --accent/);
   }
 });

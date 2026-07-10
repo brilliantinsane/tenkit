@@ -1,19 +1,16 @@
 import { type AppVariant } from '@/types/app-variant';
 
 export const appVariant = {
-  appVariantId: 1,
-  slug: 'acme-app',
-  name: 'Acme App',
+  appVariantId: {{appVariants.[0].appVariantId}},
+  // Replace with the actual EAS Project Slug after creating or linking the project.
+  slug: '{{appVariants.[0].slug}}',
+  name: {{{appVariants.[0].displayNameStringLiteral}}},
   version: '1.0.0',
-  scheme: 'acmeapp',
-  bundleIdentifier: 'com.example.acmeapp',
-  packageName: 'com.example.acmeapp',
+  scheme: '{{appVariants.[0].scheme}}',
+  bundleIdentifier: '{{appVariants.[0].bundleIdentifier}}',
+  packageName: '{{appVariants.[0].packageName}}',
   theme: {
-    {{#if hasAccentOverride}}
-    accent: {{{accentOverrideStringLiteral}}},
-    {{else}}
-    accent: '#eb2556',
-    {{/if}}
+    accent: {{{appVariants.[0].accentStringLiteral}}},
   },
   eas: {
     projectId: '',

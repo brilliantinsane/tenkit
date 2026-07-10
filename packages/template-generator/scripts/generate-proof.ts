@@ -5,20 +5,19 @@ import { resolve } from 'pathe';
 
 import {
   formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedAccentColor,
   normalizeGeneratedStylingChoice,
   normalizeGeneratedSetupType,
   SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
-  type GeneratedAccentColor,
   type GeneratedStylingChoice,
 } from '../src/generator';
 import { getGeneratedSetupTypeDefinition } from '../src/generated-setup-types';
 import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-proof';
 
 type ParsedArgs = {
-  accent?: GeneratedAccentColor;
+  appVariantAccents?: string[];
+  appVariantNames?: string[];
   setupType?: GeneratedSetupType;
   target?: string;
   force: boolean;
@@ -34,7 +33,7 @@ type ResolvedArgs = ParsedArgs & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--accent <#RRGGBB>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -67,14 +66,8 @@ function parseStylingChoice(value: string): GeneratedStylingChoice {
   }
 }
 
-function parseAccent(value: string): GeneratedAccentColor {
-  const accent = normalizeGeneratedAccentColor(value);
-
-  if (accent === undefined) {
-    throw new Error('--accent requires a value.');
-  }
-
-  return accent;
+function parseOrderedValues(value: string): string[] {
+  return value.split(',').map((entry) => entry.trim());
 }
 
 function parseArgs(args: string[]): ResolvedArgs {
@@ -100,8 +93,11 @@ function parseArgs(args: string[]): ResolvedArgs {
     } else if (arg === '--styling') {
       parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
       index += 1;
-    } else if (arg === '--accent') {
-      parsed.accent = parseAccent(readValue(args, index, arg));
+    } else if (arg === '--variant-names') {
+      parsed.appVariantNames = parseOrderedValues(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--variant-accents') {
+      parsed.appVariantAccents = parseOrderedValues(readValue(args, index, arg));
       index += 1;
     } else if (arg === '--force') {
       parsed.force = true;
@@ -165,7 +161,8 @@ async function main() {
 
   const result = await runGenerationProof({
     setupType: args.setupType,
-    accent: args.accent,
+    appVariantAccents: args.appVariantAccents,
+    appVariantNames: args.appVariantNames,
     targetDir,
     force: args.force,
     git: 'init',

@@ -48,7 +48,11 @@ Before using build preparation:
 1. Set `EXPO_OWNER` in `src/constants/project-config.ts` to your Expo account or organization. It starts blank on purpose, so build preparation fails clearly instead of using Tenkit's Expo account.
 2. Create or link an EAS Project for the App Variant.
 3. Paste the EAS Project ID into `src/constants/app-variant.ts`.
-4. Add `APP_VARIANT_SLUG=acme-app` to the App Variant's EAS environment.
+4. Add `APP_VARIANT_SLUG={{appVariants.[0].slug}}` to the App Variant's EAS environment.
+
+A new App Variant Slug can seed creation of a new EAS Project. This project generates `{{appVariants.[0].slug}}` as its App Variant Slug.
+
+When the App Variant is linked to an existing EAS Project, that linked EAS Project is authoritative for owner and Slug. Run `eas init` to reconcile the generated local values with EAS.
 
 For non-interactive CI usage, pass the selected values explicitly:
 
@@ -90,10 +94,10 @@ Inspect the resolved public Expo config for the default App Variant:
 Inspect the App Variant explicitly:
 
 ```bash
-APP_VARIANT_SLUG=acme-app {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[0].slug}} {{packageManagerRunCommand}} expo:config
 ```
 
-For repeated local work, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG=acme-app` there. `.env.local` is ignored by git and may also be rewritten by `{{packageManagerTenkitCommand}} build` after it pulls values from EAS.
+For repeated local work, copy `.env.example` to `.env.local` and set `APP_VARIANT_SLUG={{appVariants.[0].slug}}` there. `.env.local` is ignored by git and may also be rewritten by `{{packageManagerTenkitCommand}} build` after it pulls values from EAS.
 
 ## Runtime Tenants
 

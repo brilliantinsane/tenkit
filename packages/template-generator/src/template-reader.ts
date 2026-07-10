@@ -7,13 +7,12 @@ import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
 
 import { type GeneratedAccentColor } from './generated-accent-color';
+import { type GeneratedAppVariantRole } from './generated-setup-type-definitions';
 import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
-  accentOverride?: GeneratedAccentColor;
-  accentOverrideStringLiteral?: string;
-  hasAccentOverride: boolean;
+  appVariants: readonly TemplateAppVariantContext[];
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -28,6 +27,19 @@ export type TemplateContext = {
   projectName: string;
   projectNameStringLiteral: string;
   stylingChoice: GeneratedStylingChoice;
+};
+
+export type TemplateAppVariantContext = {
+  accent: GeneratedAccentColor;
+  accentStringLiteral: string;
+  appVariantId: number;
+  bundleIdentifier: string;
+  displayName: string;
+  displayNameStringLiteral: string;
+  packageName: string;
+  role: GeneratedAppVariantRole;
+  scheme: string;
+  slug: string;
 };
 
 export const GENERATED_PROJECT_PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun'] as const;

@@ -272,8 +272,8 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.match(readme, /Generated App Local CLI/);
   assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
-  assert.match(readme, /Atlas Network App Variant's EAS environment/);
-  assert.match(readme, /West Studio App Variant's EAS environment/);
+  assert.match(readme, /Generic App Variant's EAS environment/);
+  assert.match(readme, /Standalone App Variant's EAS environment/);
   assert.match(envExample, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
   assert.match(appConfig, /resolveAppVariantConfig/);
@@ -282,11 +282,11 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.match(runtimeTenantTypes, /export type RuntimeTenant =/);
   assert.match(appVariants, /role: 'generic'/);
   assert.match(appVariants, /slug: 'atlas-network'/);
-  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /name: "Atlas Network"/);
   assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.match(appVariants, /role: 'standalone'/);
   assert.match(appVariants, /slug: 'west-studio'/);
-  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /name: "West Studio"/);
   assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
   assert.match(runtimeTenants, /name: 'North Studio'/);
   assert.match(runtimeTenants, /name: 'South Studio'/);

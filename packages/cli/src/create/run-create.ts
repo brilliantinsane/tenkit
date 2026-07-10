@@ -1,11 +1,36 @@
 import fs from 'fs-extra';
-import { generateProject, preflightWriteProject, writeProject } from '@tenkit/template-generator';
+import {
+  generateProject,
+  preflightWriteProject,
+  writeProject,
+  type GeneratedAccentColor,
+} from '@tenkit/template-generator';
+import { GENERATED_SETUP_TYPE_DEFINITIONS } from '@tenkit/template-generator/setup-type-definitions';
 
 import { defaultRunCommand } from '../adapters/command-runner';
 import { prepareInitialGitSetup } from '../adapters/git';
 import { logFinalOutput } from './create-messages';
 import { resolveCreateOptions } from './resolve-create-options';
 import type { CreateCommandOptions, CreateFlowEnvironment, CreateFlowResult } from './types';
+
+function expandLegacyAccentForFixedAppVariants(
+  setupType: CreateFlowResult['setupType'],
+  accent: CreateFlowResult['accent'],
+): readonly GeneratedAccentColor[] | undefined {
+  if (accent === undefined) {
+    return undefined;
+  }
+
+  const setupTypeDefinition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
+    (definition) => definition.setupType === setupType,
+  );
+
+  if (!setupTypeDefinition) {
+    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
+  }
+
+  return setupTypeDefinition.appVariants.map(() => accent);
+}
 
 export async function runCreateFlow(
   options: CreateCommandOptions,
@@ -25,7 +50,10 @@ export async function runCreateFlow(
   const tree = generate({
     setupType: resolvedOptions.setupType,
     stylingChoice: resolvedOptions.stylingChoice,
-    accent: resolvedOptions.accent,
+    appVariantAccents: expandLegacyAccentForFixedAppVariants(
+      resolvedOptions.setupType,
+      resolvedOptions.accent,
+    ),
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     packageManager: resolvedOptions.packageManager,
