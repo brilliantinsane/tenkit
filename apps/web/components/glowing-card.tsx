@@ -2,8 +2,10 @@
 
 import { AnimatePresence, motion, useMotionValue } from "motion/react"
 import {
+  type ComponentPropsWithoutRef,
   type ElementType,
   type MouseEvent,
+  type MouseEventHandler,
   type ReactNode,
   useRef,
   useState,
@@ -11,29 +13,47 @@ import {
 
 import { cn } from "@/lib/utils"
 
-type GlowingCardProps = {
-  as?: ElementType
+type GlowingCardProps<T extends ElementType = "div"> = {
+  as?: T
   children: ReactNode
   className?: string
   backgroundClassName?: string
   contentClassName?: string
   glowClassName?: string
-}
+  onMouseEnter?: MouseEventHandler<HTMLElement>
+  onMouseLeave?: MouseEventHandler<HTMLElement>
+  onMouseMove?: MouseEventHandler<HTMLElement>
+} & Omit<
+  ComponentPropsWithoutRef<T>,
+  | "as"
+  | "children"
+  | "className"
+  | "onMouseEnter"
+  | "onMouseLeave"
+  | "onMouseMove"
+>
 
-export function GlowingCard({
-  as: Component = "div",
+export function GlowingCard<T extends ElementType = "div">({
+  as,
   children,
   className,
   backgroundClassName,
   contentClassName,
   glowClassName,
-}: GlowingCardProps) {
+  onMouseEnter,
+  onMouseLeave,
+  onMouseMove,
+  ...rest
+}: GlowingCardProps<T>) {
+  const Component = (as ?? "div") as ElementType
   const cardRef = useRef<HTMLElement | null>(null)
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
   const [showGlow, setShowGlow] = useState(false)
 
   function handleMouseMove(event: MouseEvent<HTMLElement>) {
+    onMouseMove?.(event)
+
     const card = cardRef.current
     if (!card) return
 
@@ -47,9 +67,16 @@ export function GlowingCard({
     <Component
       ref={cardRef}
       className={cn("relative overflow-hidden", className)}
-      onMouseEnter={() => setShowGlow(true)}
-      onMouseLeave={() => setShowGlow(false)}
+      onMouseEnter={(event: MouseEvent<HTMLElement>) => {
+        setShowGlow(true)
+        onMouseEnter?.(event)
+      }}
+      onMouseLeave={(event: MouseEvent<HTMLElement>) => {
+        setShowGlow(false)
+        onMouseLeave?.(event)
+      }}
       onMouseMove={handleMouseMove}
+      {...rest}
     >
       <div
         className={cn(

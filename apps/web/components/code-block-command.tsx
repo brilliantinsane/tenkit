@@ -3,7 +3,12 @@
 import { atomWithStorage } from "jotai/utils"
 import { TextAlignStartIcon, TerminalIcon } from "lucide-react"
 import { useAtom } from "jotai"
+import { Suspense } from "react"
 
+import {
+  ConfiguratorDialog,
+  ConfiguratorDialogTrigger,
+} from "@/components/configurator"
 import { CopyButton } from "@/components/copy-button"
 import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
@@ -59,7 +64,7 @@ export function CodeBlockCommand({
           setPackageManager(value as PackageManager)
         }}
       >
-        <div className="w-full overflow-x-auto pr-10 shadow-[inset_0_-1px_0_0] shadow-border">
+        <div className="w-full overflow-x-auto pr-16 shadow-[inset_0_-1px_0_0] shadow-border">
           <TabsList
             className={cn(
               "h-10 max-w-full justify-start rounded-none bg-transparent p-0 pl-4 inset-ring-0 dark:bg-transparent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
@@ -109,24 +114,33 @@ export function CodeBlockCommand({
         })}
       </Tabs>
 
-      <CopyButton
-        className="absolute top-2 right-2 z-10 size-6 rounded-md border-none [&_svg:not([class*='size-'])]:size-3.5"
-        variant="ghost"
-        size="icon-sm"
-        text={tabs[packageManager] || ""}
-        onCopySuccess={(copiedCommand) => {
-          trackDatabuddyEvent("create_command_copied", {
-            packageManager,
-            command: copiedCommand,
-          })
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <Suspense fallback={null}>
+          <ConfiguratorDialogTrigger />
+        </Suspense>
+        <CopyButton
+          className="size-6 rounded-md border-none [&_svg:not([class*='size-'])]:size-3.5"
+          variant="ghost"
+          size="icon-sm"
+          text={tabs[packageManager] || ""}
+          onCopySuccess={(copiedCommand) => {
+            trackDatabuddyEvent("create_command_copied", {
+              packageManager,
+              command: copiedCommand,
+            })
 
-          onCopySuccess?.({
-            packageManager,
-            command: copiedCommand,
-          })
-        }}
-        onCopyError={onCopyError}
-      />
+            onCopySuccess?.({
+              packageManager,
+              command: copiedCommand,
+            })
+          }}
+          onCopyError={onCopyError}
+        />
+      </div>
+
+      <Suspense fallback={null}>
+        <ConfiguratorDialog />
+      </Suspense>
     </div>
   )
 }
