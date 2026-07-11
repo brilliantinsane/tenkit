@@ -7,19 +7,19 @@ import type { HTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 interface CursorClickIconProps extends HTMLAttributes<HTMLDivElement> {
+  animation?: "idle" | "click"
   size?: number
 }
 
 const CURSOR_VARIANTS: Variants = {
   initial: { x: 0, y: 0 },
   animate: {
-    x: [0, 0, -3, 0, 0],
-    y: [0, -4, 0, 0, 0],
+    x: [0, 0, -3, 0],
+    y: [0, -4, 0, 0],
     transition: {
-      duration: 2.6,
-      ease: "easeInOut",
-      repeat: Infinity,
-      times: [0, 0.12, 0.25, 0.38, 1],
+      duration: 0.65,
+      ease: "easeOut",
+      times: [0, 0.2, 0.55, 1],
     },
   },
 }
@@ -27,25 +27,27 @@ const CURSOR_VARIANTS: Variants = {
 const LINE_VARIANTS: Variants = {
   initial: { opacity: 1, x: 0, y: 0 },
   animate: (custom: { x: number; y: number }) => ({
-    opacity: [1, 1, 0, 1, 1],
-    x: [0, 0, custom.x, 0, 0],
-    y: [0, 0, custom.y, 0, 0],
+    opacity: [1, 0, 1],
+    x: [0, custom.x, 0],
+    y: [0, custom.y, 0],
     transition: {
-      duration: 2.6,
-      ease: "easeInOut",
-      repeat: Infinity,
-      times: [0, 0.18, 0.28, 0.38, 1],
+      delay: 0.16,
+      duration: 0.42,
+      ease: "easeOut",
+      times: [0, 0.45, 1],
     },
   }),
 }
 
 export function CursorClickIcon({
+  animation = "idle",
   className,
   size = 28,
   ...props
 }: CursorClickIconProps) {
   const shouldReduceMotion = useReducedMotion()
-  const animation = shouldReduceMotion ? "initial" : "animate"
+  const motionState =
+    shouldReduceMotion || animation === "idle" ? "initial" : "animate"
 
   return (
     <div className={cn(className)} {...props}>
@@ -61,30 +63,30 @@ export function CursorClickIcon({
         xmlns="http://www.w3.org/2000/svg"
       >
         <motion.path
-          animate={animation}
+          animate={motionState}
           d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"
           variants={CURSOR_VARIANTS}
         />
         <motion.path
-          animate={animation}
+          animate={motionState}
           custom={{ x: 1, y: -1 }}
           d="M14 4.1 12 6"
           variants={LINE_VARIANTS}
         />
         <motion.path
-          animate={animation}
+          animate={motionState}
           custom={{ x: -1, y: 0 }}
           d="m5.1 8-2.9-.8"
           variants={LINE_VARIANTS}
         />
         <motion.path
-          animate={animation}
+          animate={motionState}
           custom={{ x: -1, y: 1 }}
           d="m6 12-1.9 2"
           variants={LINE_VARIANTS}
         />
         <motion.path
-          animate={animation}
+          animate={motionState}
           custom={{ x: 0, y: -1 }}
           d="M7.2 2.2 8 5.1"
           variants={LINE_VARIANTS}

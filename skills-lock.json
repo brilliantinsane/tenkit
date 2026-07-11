@@ -85,6 +85,12 @@
       "skillPath": "plugins/expo/skills/native-data-fetching/SKILL.md",
       "computedHash": "21253dd72e2afa0cc0a6693295f043af3b149fa250c7aedef4d33144e69258ff"
     },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "d81caa0f86aabab65b25e302d454f23a3328760386ed9078345584c0d5c8058e"
+    },
     "upgrading-expo": {
       "source": "expo/skills",
       "sourceType": "github",

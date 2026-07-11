@@ -11,6 +11,7 @@ import {
 } from "@/lib/configurator"
 
 const withDefaultClearing = { clearOnDefault: true } as const
+export const CONFIGURATOR_OPEN_URL_KEY = "cfg"
 
 export const configuratorSearchParams = {
   open: parseAsBoolean.withDefault(false).withOptions(withDefaultClearing),
@@ -41,7 +42,7 @@ export const configuratorSearchParams = {
 }
 
 export const configuratorUrlKeys: UrlKeys<typeof configuratorSearchParams> = {
-  open: "cfg",
+  open: CONFIGURATOR_OPEN_URL_KEY,
   projectName: "name",
   setupType: "setup",
   styling: "styling",
@@ -50,4 +51,17 @@ export const configuratorUrlKeys: UrlKeys<typeof configuratorSearchParams> = {
   appVariantAccentsSerialized: "vacc",
   git: "git",
   install: "i",
+}
+
+export function getConfiguratorDefaultsReset() {
+  return {
+    projectName: null,
+    setupType: null,
+    styling: null,
+    packageManager: null,
+    appVariantNamesSerialized: null,
+    appVariantAccentsSerialized: null,
+    git: null,
+    install: null,
+  } as const
 }

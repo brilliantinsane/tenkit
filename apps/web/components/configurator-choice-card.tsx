@@ -10,57 +10,26 @@ type ConfiguratorChoiceCardProps = {
   onSelect: () => void
   label: string
   detail?: string
-  icon?: ReactNode
   className?: string
 }
 
-export function ConfiguratorChoiceCard({
+type ConfiguratorChoiceCardSurfaceProps = Pick<
+  ConfiguratorChoiceCardProps,
+  "selected" | "onSelect" | "className"
+> & {
+  children: ReactNode
+  contentClassName: string
+}
+
+function ConfiguratorChoiceCardSurface({
   selected,
   onSelect,
-  label,
-  detail,
-  icon,
   className,
-}: ConfiguratorChoiceCardProps) {
-  const content = (
-    <span
-      className={cn(
-        "flex h-full w-full flex-col items-center justify-center gap-2 text-center",
-        icon ? "pt-1" : "px-2"
-      )}
-    >
-      {icon ? (
-        <span
-          className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-full border transition-colors",
-            selected
-              ? "border-primary/25 bg-primary/10 text-primary"
-              : "bg-muted/45 text-foreground"
-          )}
-        >
-          {icon}
-        </span>
-      ) : null}
-      <span className="flex w-full flex-col items-center justify-center">
-        <span className="block text-sm font-medium text-foreground">
-          {label}
-        </span>
-        {detail ? (
-          <span
-            className={cn(
-              "mt-1 block max-w-[14rem] text-xs leading-5",
-              selected ? "text-foreground/70" : "text-muted-foreground"
-            )}
-          >
-            {detail}
-          </span>
-        ) : null}
-      </span>
-    </span>
-  )
-
+  children,
+  contentClassName,
+}: ConfiguratorChoiceCardSurfaceProps) {
   const choiceClassName = cn(
-    "relative h-36 w-full cursor-pointer overflow-hidden rounded-lg border text-center shadow-sm transition-[border-color,background-color,box-shadow,transform] active:translate-y-px",
+    "relative h-20 w-full cursor-pointer overflow-hidden rounded-lg border text-center shadow-sm transition-[border-color,background-color,box-shadow,transform] active:translate-y-px",
     className
   )
 
@@ -76,8 +45,8 @@ export function ConfiguratorChoiceCard({
         )}
       >
         <span className="pointer-events-none absolute inset-px rounded-[calc(var(--radius-lg)-1px)] bg-primary/5" />
-        <span className="relative grid h-full place-items-center p-4">
-          {content}
+        <span className={cn("relative h-full", contentClassName)}>
+          {children}
         </span>
       </button>
     )
@@ -94,10 +63,87 @@ export function ConfiguratorChoiceCard({
         "border-border bg-card/65 hover:bg-card/80"
       )}
       backgroundClassName="bg-card/80"
-      contentClassName="grid h-full place-items-center p-4"
+      contentClassName={contentClassName}
       glowClassName="bg-primary/25"
     >
-      {content}
+      {children}
     </GlowingCard>
+  )
+}
+
+export function ConfiguratorChoiceCard({
+  selected,
+  onSelect,
+  label,
+  detail,
+  className,
+}: ConfiguratorChoiceCardProps) {
+  return (
+    <ConfiguratorChoiceCardSurface
+      selected={selected}
+      onSelect={onSelect}
+      className={className}
+      contentClassName="grid h-full place-items-center p-3"
+    >
+      <span className="flex w-full flex-col items-center justify-center px-2 text-center">
+        <ChoiceCardCopy selected={selected} label={label} detail={detail} />
+      </span>
+    </ConfiguratorChoiceCardSurface>
+  )
+}
+
+export function ConfiguratorIconChoiceCard({
+  selected,
+  onSelect,
+  label,
+  detail,
+  icon,
+  className,
+}: ConfiguratorChoiceCardProps & { icon: ReactNode }) {
+  return (
+    <ConfiguratorChoiceCardSurface
+      selected={selected}
+      onSelect={onSelect}
+      className={className}
+      contentClassName="flex h-full items-center p-3"
+    >
+      <span className="flex min-w-0 gap-3 text-left">
+        <span
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-full transition-colors",
+            selected
+              ? "bg-primary/10 text-primary"
+              : "bg-muted/45 text-foreground"
+          )}
+        >
+          {icon}
+        </span>
+        <span className="min-w-0">
+          <ChoiceCardCopy selected={selected} label={label} detail={detail} />
+        </span>
+      </span>
+    </ConfiguratorChoiceCardSurface>
+  )
+}
+
+function ChoiceCardCopy({
+  selected,
+  label,
+  detail,
+}: Pick<ConfiguratorChoiceCardProps, "selected" | "label" | "detail">) {
+  return (
+    <>
+      <span className="block text-sm font-medium text-foreground">{label}</span>
+      {detail ? (
+        <span
+          className={cn(
+            "mt-1 block text-xs leading-4",
+            selected ? "text-foreground/70" : "text-muted-foreground"
+          )}
+        >
+          {detail}
+        </span>
+      ) : null}
+    </>
   )
 }

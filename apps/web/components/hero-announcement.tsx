@@ -1,6 +1,7 @@
 "use client"
 
 import { useSetAtom } from "jotai"
+import { useState } from "react"
 
 import {
   Announcement,
@@ -8,28 +9,53 @@ import {
   AnnouncementTitle,
 } from "@/components/kibo-ui/announcement"
 import { CursorClickIcon } from "@/components/ui/cursor-click"
+import { useConfiguratorOpen } from "@/hooks/use-configurator-open"
 import {
   bumpConfiguratorNudge,
   configuratorNudgeAtom,
+  dismissConfiguratorNudge,
 } from "@/lib/configurator-nudge"
 import { cn } from "@/lib/utils"
 
 export function HeroAnnouncement() {
   const setNudge = useSetAtom(configuratorNudgeAtom)
+  const [, setConfiguratorOpen] = useConfiguratorOpen()
+  const [cursorAnimation, setCursorAnimation] = useState<"idle" | "click">(
+    "idle"
+  )
+
+  function nudgeConfiguratorTrigger() {
+    bumpConfiguratorNudge(setNudge)
+  }
 
   return (
     <Announcement
       asChild
       className={cn(
-        "mx-auto rounded-full bg-card p-1 pr-2",
-        "animate-in transition-all delay-500 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
+        "mx-auto rounded-full bg-card p-1 pr-2 transition-[translate,background-color,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "hover:-translate-y-px hover:border-foreground/10 hover:bg-muted/60",
+        "focus-visible:-translate-y-px focus-visible:border-foreground/10 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-[#208AEF]/25 focus-visible:outline-none",
+        "animate-in fill-mode-backwards [animation-delay:500ms] [animation-duration:500ms] fade-in slide-in-from-bottom-3"
       )}
       tone="themed"
     >
       <button
         type="button"
         className="group"
-        onClick={() => bumpConfiguratorNudge(setNudge)}
+        onMouseEnter={() => {
+          setCursorAnimation("click")
+          nudgeConfiguratorTrigger()
+        }}
+        onMouseLeave={() => setCursorAnimation("idle")}
+        onFocus={() => {
+          setCursorAnimation("click")
+          nudgeConfiguratorTrigger()
+        }}
+        onBlur={() => setCursorAnimation("idle")}
+        onClick={() => {
+          dismissConfiguratorNudge(setNudge)
+          void setConfiguratorOpen(true)
+        }}
       >
         <AnnouncementTag className="ml-0 flex h-6 items-center rounded-full border border-[#208AEF]/35 bg-[#208AEF]/10 px-2 py-0 font-mono leading-none text-[#208AEF]">
           New
@@ -38,8 +64,9 @@ export function HeroAnnouncement() {
           Configure your create command
           <CursorClickIcon
             aria-hidden="true"
-            className="inline-flex text-[#208AEF]/70"
-            size={12}
+            animation={cursorAnimation}
+            className="inline-flex text-[#208AEF]/70 transition-colors duration-200 group-hover:text-[#208AEF] group-focus-visible:text-[#208AEF]"
+            size={14}
           />
         </AnnouncementTitle>
       </button>

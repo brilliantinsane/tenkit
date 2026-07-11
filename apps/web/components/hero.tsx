@@ -1,4 +1,5 @@
 import { Layers3Icon } from "lucide-react"
+import { Suspense } from "react"
 import { preload } from "react-dom"
 
 import { CodeBlockCommand } from "@/components/code-block-command"
@@ -11,6 +12,13 @@ import { GITHUB_REPO_URL } from "@/constants/globals"
 import { HERO_POSTER_PATH } from "@/lib/hero-media"
 import { cn } from "@/lib/utils"
 
+const heroAnnouncementFallback = (
+  <div
+    aria-hidden="true"
+    className="h-[34px] w-[265px] rounded-full border bg-card"
+  />
+)
+
 export function HeroSection() {
   preload(HERO_POSTER_PATH, { as: "image" })
 
@@ -21,7 +29,9 @@ export function HeroSection() {
           aria-hidden="true"
           className="absolute inset-0 -z-1 size-full overflow-hidden"
         />
-        <HeroAnnouncement />
+        <Suspense fallback={heroAnnouncementFallback}>
+          <HeroAnnouncement />
+        </Suspense>
 
         <h1
           className={cn(

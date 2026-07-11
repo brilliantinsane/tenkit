@@ -1,10 +1,9 @@
 "use client"
 
 import { useTheme } from "next-themes"
+import { MoonIcon, SunIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { MoonIcon } from "@/components/ui/moon"
-import { SunIcon } from "@/components/ui/sun"
 import {
   Tooltip,
   TooltipContent,
@@ -47,13 +46,11 @@ export function ThemeSwitcher({
           <SunIcon
             data-icon="inline-start"
             className="hidden dark:block"
-            size={16}
             aria-hidden="true"
           />
           <MoonIcon
             data-icon="inline-start"
             className="dark:hidden"
-            size={16}
             aria-hidden="true"
           />
           <span className="sr-only">Toggle theme</span>

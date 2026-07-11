@@ -6,13 +6,18 @@ import {
   BoxesIcon,
   GitForkIcon,
   Layers3Icon,
+  RotateCcwIcon,
+  SettingsIcon,
 } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 import { useQueryStates } from "nuqs"
 import { useEffect, useState, type MouseEvent } from "react"
 
 import { ConfiguratorAccentField } from "@/components/configurator-accent-field"
-import { ConfiguratorChoiceCard } from "@/components/configurator-choice-card"
+import {
+  ConfiguratorChoiceCard,
+  ConfiguratorIconChoiceCard,
+} from "@/components/configurator-choice-card"
 import { ConfiguratorCommandFooter } from "@/components/configurator-command-footer"
 import { ConfiguratorToggleRow } from "@/components/configurator-toggle-row"
 import { Button } from "@/components/ui/button"
@@ -31,12 +36,12 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { SettingsIcon } from "@/components/ui/settings"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useConfiguratorOpen } from "@/hooks/use-configurator-open"
 import {
   buildConfiguratorCommand,
   createDefaultConfiguratorState,
@@ -56,6 +61,7 @@ import {
 import {
   configuratorSearchParams,
   configuratorUrlKeys,
+  getConfiguratorDefaultsReset,
 } from "@/lib/configurator-search-params"
 import { cn } from "@/lib/utils"
 
@@ -84,7 +90,7 @@ const stylingOptions = [
   {
     value: "bare" as const,
     label: "Bare",
-    detail: "Clean Expo starter",
+    detail: "Expo with StyleSheet",
   },
   {
     value: "uniwind" as const,
@@ -122,6 +128,7 @@ function useConfiguratorQuery() {
   })
 }
 
+const INITIAL_CONFIGURATOR_DEFAULTS = createDefaultConfiguratorState()
 const CONFIGURATOR_NUDGE_DURATION = 1.2
 const configuratorNudgeBounceY = [0, -5, 0, -4, 0, -2.5, 0]
 const configuratorNudgeRotation = [0, -20, 55, 120, 190, 280, 360]
@@ -134,7 +141,7 @@ export function ConfiguratorDialogTrigger({
 }: {
   className?: string
 }) {
-  const [query, setQuery] = useConfiguratorQuery()
+  const [configuratorOpen, setConfiguratorOpen] = useConfiguratorOpen()
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const [nudge, setNudge] = useAtom(configuratorNudgeAtom)
   const shouldReduceMotion = useReducedMotion()
@@ -159,14 +166,14 @@ export function ConfiguratorDialogTrigger({
   function openConfigurator(event: MouseEvent<HTMLButtonElement>) {
     closeTooltip()
     event.currentTarget.blur()
-    void setQuery({ open: true })
+    void setConfiguratorOpen(true)
   }
 
   return (
     <Tooltip
-      open={!query.open && (nudge.active || tooltipOpen)}
+      open={!configuratorOpen && (nudge.active || tooltipOpen)}
       onOpenChange={(open) => {
-        if (!query.open) {
+        if (!configuratorOpen) {
           setTooltipOpen(open)
         }
       }}
@@ -201,11 +208,7 @@ export function ConfiguratorDialogTrigger({
             }}
             className="relative inline-flex size-3.5 items-center justify-center"
           >
-            <motion.span
-              className="relative inline-flex size-3.5"
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              whileHover={shouldReduceMotion ? undefined : { rotate: 180 }}
-            >
+            <span className="relative inline-flex size-3.5">
               <motion.span
                 aria-hidden="true"
                 animate={
@@ -220,10 +223,7 @@ export function ConfiguratorDialogTrigger({
                 }}
                 className="absolute inset-0"
               >
-                <SettingsIcon
-                  className="pointer-events-none size-3.5"
-                  size={14}
-                />
+                <SettingsIcon className="pointer-events-none size-3.5" />
               </motion.span>
               <motion.span
                 aria-hidden="true"
@@ -240,12 +240,9 @@ export function ConfiguratorDialogTrigger({
                 }}
                 className="absolute inset-0 text-[#208AEF]/50"
               >
-                <SettingsIcon
-                  className="pointer-events-none size-3.5"
-                  size={14}
-                />
+                <SettingsIcon className="pointer-events-none size-3.5" />
               </motion.span>
-            </motion.span>
+            </span>
           </motion.span>
         </Button>
       </TooltipTrigger>
@@ -271,6 +268,15 @@ export function ConfiguratorDialog() {
     query.appVariantAccentsSerialized,
     defaults.appVariantAccents
   )
+  const hasChanges =
+    query.projectName !== INITIAL_CONFIGURATOR_DEFAULTS.projectName ||
+    query.setupType !== INITIAL_CONFIGURATOR_DEFAULTS.setupType ||
+    query.styling !== INITIAL_CONFIGURATOR_DEFAULTS.styling ||
+    query.packageManager !== INITIAL_CONFIGURATOR_DEFAULTS.packageManager ||
+    query.appVariantNamesSerialized !== "" ||
+    query.appVariantAccentsSerialized !== "" ||
+    query.git !== INITIAL_CONFIGURATOR_DEFAULTS.git ||
+    query.install !== INITIAL_CONFIGURATOR_DEFAULTS.install
   const nameErrors = validateConfiguratorAppVariantNames(appVariantNames)
   const accentErrors = appVariantAccents.map((accent) =>
     isConfiguratorAccentHex(accent)
@@ -325,14 +331,37 @@ export function ConfiguratorDialog() {
         className="flex max-h-[calc(100svh-2rem)] flex-col"
       >
         <DialogHeader
+          className="border-b bg-muted/48"
           title="Configure create command"
           description="Shape the generated project before you open a terminal. Tenkit keeps project creation policy in the Public CLI and shows the exact reproducible command here."
-        />
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute top-2 right-11"
+                aria-label="Reset to defaults"
+                disabled={!hasChanges}
+                onClick={() => {
+                  setCommandExpanded(false)
+                  void setQuery(getConfiguratorDefaultsReset())
+                }}
+              >
+                <RotateCcwIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>
+              Reset to defaults
+            </TooltipContent>
+          </Tooltip>
+        </DialogHeader>
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <DialogBody
             className={cn(
-              "min-h-0 flex-1",
+              "min-h-0 flex-1 pt-(--space)!",
               commandExpanded && "pointer-events-none"
             )}
             scrollFade
@@ -359,7 +388,7 @@ export function ConfiguratorDialog() {
                 <FieldLabel>Setup Type</FieldLabel>
                 <div className="grid items-stretch gap-2 sm:grid-cols-3">
                   {setupTypeOptions.map((option) => (
-                    <ConfiguratorChoiceCard
+                    <ConfiguratorIconChoiceCard
                       key={option.value}
                       selected={query.setupType === option.value}
                       label={option.label}
