@@ -179,6 +179,7 @@ function assertBareStylingOutput(tree: VirtualFileTree) {
     devDependencies: Record<string, string>;
   };
   const gitignore = readVirtualFile(tree, '.gitignore');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
 
   assert.ok(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'));
   assert.ok(hasVirtualFile(tree, 'src/theme/colors.ts'));
@@ -197,6 +198,8 @@ function assertBareStylingOutput(tree: VirtualFileTree) {
   assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
   assert.equal(packageJson.dependencies.clsx, undefined);
   assert.equal(packageJson.devDependencies.tailwindcss, undefined);
+  assert.match(home, /<ThemedText themeColor="accent">\s+Tenkit\s+<\/ThemedText>/);
+  assert.notMatch(home, /<ThemedText type="smallBold" themeColor="accent">/);
 }
 
 function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: string) {
@@ -271,7 +274,9 @@ function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: strin
   assert.match(home, /bg-background/);
   assert.match(home, /text-foreground/);
   assert.match(home, /text-muted/);
-  assert.match(home, /style=\{\{ color: theme\.accent \}\}/);
+  assert.match(home, /className="text-base text-accent font-semibold tracking-normal"/);
+  assert.notMatch(home, /style=\{\{ color: theme\.accent \}\}/);
+  assert.notMatch(home, /\{ appVariant, theme \} = useAppVariantConfig\(\)/);
   assert.notMatch(home, /appVariant\.theme/);
   assert.match(webTabs, /className=/);
   assert.match(webTabs, /bg-surface-raised/);
@@ -292,7 +297,7 @@ function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: strin
   assert.notMatch(globalCss, /--color-bg(?:-|:)|--color-text(?:-|:)/);
   assert.notMatch(
     uniwindComponentSource,
-    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])text-accent(?:[\s'"]|$)|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
   );
 }
 

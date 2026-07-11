@@ -416,7 +416,9 @@ async function verifyUniwindGeneratedApp(setupType: GeneratedSetupType, targetDi
   assert.match(app, /bg-background/);
   assert.match(app, /text-foreground/);
   assert.match(app, /text-muted/);
-  assert.match(app, /theme\.accent/);
+  assert.match(app, /className="text-base text-accent font-semibold tracking-normal"/);
+  assert.notMatch(app, /theme\.accent/);
+  assert.notMatch(app, /\{ appVariant, theme \} = useAppVariantConfig\(\)/);
   assert.notMatch(app, /appVariant\.theme/);
   assert.match(nativeTabs, /useCSSVariable/);
   assert.match(nativeTabs, /'--color-surface'/);

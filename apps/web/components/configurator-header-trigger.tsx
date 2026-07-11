@@ -14,7 +14,7 @@ const configuratorHeaderTriggerFallback = (
     className="pointer-events-none"
     tabIndex={-1}
   >
-    Configure
+    Configurator
   </Button>
 )
 
@@ -31,7 +31,7 @@ function ConfiguratorHeaderTriggerClient() {
         void setConfiguratorOpen(true)
       }}
     >
-      Configure
+      Configurator
     </Button>
   )
 }

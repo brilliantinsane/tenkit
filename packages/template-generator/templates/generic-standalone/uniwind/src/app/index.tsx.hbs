@@ -4,12 +4,12 @@ import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 export default function HomeScreen() {
-  const { appVariant, theme } = useAppVariantConfig();
+  const { appVariant } = useAppVariantConfig();
   const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-      <Text className="text-sm font-semibold uppercase tracking-normal" style=\{{ color: theme.accent }}>
+      <Text className="text-base text-accent font-semibold tracking-normal">
         Tenkit
       </Text>
       <Text className="text-center text-4xl font-bold text-foreground">
