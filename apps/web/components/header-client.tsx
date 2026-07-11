@@ -1,10 +1,10 @@
 "use client"
 
-import type { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import type { ReactNode } from "react"
 
-import { MobileNav } from "@/components/mobile-nav"
+import { ConfiguratorHeaderTrigger } from "@/components/configurator-header-trigger"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Button } from "@/components/ui/button"
 import { navLinks } from "@/constants/navigation"
@@ -18,10 +18,8 @@ export type HeaderStatsSlots = {
 
 export function HeaderClient({
   desktopStats,
-  mobileStats,
 }: {
   desktopStats: HeaderStatsSlots
-  mobileStats: HeaderStatsSlots
 }) {
   const scrolled = useScroll(72, 28)
 
@@ -58,7 +56,6 @@ export function HeaderClient({
         )}
       >
         <div className="flex items-center gap-2">
-          <MobileNav stats={mobileStats} />
           <Link
             className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
             href="/#top"
@@ -84,14 +81,20 @@ export function HeaderClient({
               </Button>
             ))}
           </nav>
+          <div className="flex items-center border-l pl-2">
+            <ConfiguratorHeaderTrigger />
+          </div>
           <div className="flex items-center gap-1.5 border-l pl-2">
             {desktopStats.github}
             {desktopStats.npm}
             <ThemeSwitcher buttonSize="icon-sm" />
           </div>
         </div>
-        <div className="md:hidden">
-          <ThemeSwitcher buttonSize="icon" />
+        <div className="flex items-center md:hidden">
+          <ConfiguratorHeaderTrigger />
+          <div className="ml-2 border-l pl-2">
+            <ThemeSwitcher buttonSize="icon-sm" />
+          </div>
         </div>
       </nav>
     </header>
