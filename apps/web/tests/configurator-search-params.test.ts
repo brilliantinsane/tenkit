@@ -4,6 +4,7 @@ import { createLoader, createSerializer } from "nuqs/server"
 import {
   configuratorSearchParams,
   configuratorUrlKeys,
+  getConfiguratorCloseReset,
   getConfiguratorDefaultsReset,
 } from "@/lib/configurator-search-params"
 
@@ -74,5 +75,19 @@ describe("Configurator search params", () => {
       install: null,
     })
     expect(getConfiguratorDefaultsReset()).not.toHaveProperty("open")
+  })
+
+  test("clears every Configurator query param when the dialog closes", () => {
+    expect(getConfiguratorCloseReset()).toEqual({
+      open: null,
+      projectName: null,
+      setupType: null,
+      styling: null,
+      packageManager: null,
+      appVariantNamesSerialized: null,
+      appVariantAccentsSerialized: null,
+      git: null,
+      install: null,
+    })
   })
 })

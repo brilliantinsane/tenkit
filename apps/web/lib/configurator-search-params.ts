@@ -65,3 +65,10 @@ export function getConfiguratorDefaultsReset() {
     install: null,
   } as const
 }
+
+export function getConfiguratorCloseReset() {
+  return {
+    open: null,
+    ...getConfiguratorDefaultsReset(),
+  } as const
+}

@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useConfiguratorOpen } from "@/hooks/use-configurator-open"
+import { useHydrated } from "@/hooks/use-hydrated"
 import {
   buildConfiguratorCommand,
   createDefaultConfiguratorState,
@@ -61,6 +62,7 @@ import {
 import {
   configuratorSearchParams,
   configuratorUrlKeys,
+  getConfiguratorCloseReset,
   getConfiguratorDefaultsReset,
 } from "@/lib/configurator-search-params"
 import { cn } from "@/lib/utils"
@@ -256,6 +258,9 @@ export function ConfiguratorDialogTrigger({
 export function ConfiguratorDialog() {
   const [query, setQuery] = useConfiguratorQuery()
   const [commandExpanded, setCommandExpanded] = useState(false)
+  const [dialogClosing, setDialogClosing] = useState(false)
+  const [resetTooltipOpen, setResetTooltipOpen] = useState(false)
+  const hydrated = useHydrated()
   const defaults = createDefaultConfiguratorState(query.setupType)
   const appVariantSection = getConfiguratorAppVariantSectionCopy(
     query.setupType
@@ -315,7 +320,7 @@ export function ConfiguratorDialog() {
 
   return (
     <Dialog
-      open={query.open}
+      open={hydrated && query.open && !dialogClosing}
       onOpenChange={(details) => {
         if (details.open) {
           void setQuery({ open: true })
@@ -323,7 +328,13 @@ export function ConfiguratorDialog() {
         }
 
         setCommandExpanded(false)
-        void setQuery({ open: null })
+        setResetTooltipOpen(false)
+        setDialogClosing(true)
+      }}
+      onExitComplete={() => {
+        void setQuery(getConfiguratorCloseReset()).then(() => {
+          setDialogClosing(false)
+        })
       }}
     >
       <DialogContent
@@ -335,7 +346,7 @@ export function ConfiguratorDialog() {
           title="Configure create command"
           description="Shape the generated project before you open a terminal. Tenkit keeps project creation policy in the Public CLI and shows the exact reproducible command here."
         >
-          <Tooltip>
+          <Tooltip open={resetTooltipOpen}>
             <TooltipTrigger asChild>
               <Button
                 type="button"
@@ -344,8 +355,17 @@ export function ConfiguratorDialog() {
                 className="absolute top-2 right-11"
                 aria-label="Reset to defaults"
                 disabled={!hasChanges}
+                onPointerEnter={() => {
+                  if (hasChanges) {
+                    setResetTooltipOpen(true)
+                  }
+                }}
+                onPointerLeave={() => setResetTooltipOpen(false)}
+                onPointerDown={() => setResetTooltipOpen(false)}
+                onBlur={() => setResetTooltipOpen(false)}
                 onClick={() => {
                   setCommandExpanded(false)
+                  setResetTooltipOpen(false)
                   void setQuery(getConfiguratorDefaultsReset())
                 }}
               >
