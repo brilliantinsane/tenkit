@@ -71,24 +71,28 @@ export function CursorClickIcon({
           animate={motionState}
           custom={{ x: 1, y: -1 }}
           d="M14 4.1 12 6"
+          initial="initial"
           variants={LINE_VARIANTS}
         />
         <motion.path
           animate={motionState}
           custom={{ x: -1, y: 0 }}
           d="m5.1 8-2.9-.8"
+          initial="initial"
           variants={LINE_VARIANTS}
         />
         <motion.path
           animate={motionState}
           custom={{ x: -1, y: 1 }}
           d="m6 12-1.9 2"
+          initial="initial"
           variants={LINE_VARIANTS}
         />
         <motion.path
           animate={motionState}
           custom={{ x: 0, y: -1 }}
           d="M7.2 2.2 8 5.1"
+          initial="initial"
           variants={LINE_VARIANTS}
         />
       </svg>

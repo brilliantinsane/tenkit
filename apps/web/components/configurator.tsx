@@ -256,11 +256,17 @@ export function ConfiguratorDialogTrigger({
 }
 
 export function ConfiguratorDialog() {
+  const [configuratorOpen] = useConfiguratorOpen()
+  const hydrated = useHydrated()
+
+  return hydrated && configuratorOpen ? <ActiveConfiguratorDialog /> : null
+}
+
+function ActiveConfiguratorDialog() {
   const [query, setQuery] = useConfiguratorQuery()
   const [commandExpanded, setCommandExpanded] = useState(false)
   const [dialogClosing, setDialogClosing] = useState(false)
   const [resetTooltipOpen, setResetTooltipOpen] = useState(false)
-  const hydrated = useHydrated()
   const defaults = createDefaultConfiguratorState(query.setupType)
   const appVariantSection = getConfiguratorAppVariantSectionCopy(
     query.setupType
@@ -320,10 +326,9 @@ export function ConfiguratorDialog() {
 
   return (
     <Dialog
-      open={hydrated && query.open && !dialogClosing}
+      open={!dialogClosing}
       onOpenChange={(details) => {
         if (details.open) {
-          void setQuery({ open: true })
           return
         }
 
@@ -331,11 +336,7 @@ export function ConfiguratorDialog() {
         setResetTooltipOpen(false)
         setDialogClosing(true)
       }}
-      onExitComplete={() => {
-        void setQuery(getConfiguratorCloseReset()).then(() => {
-          setDialogClosing(false)
-        })
-      }}
+      onExitComplete={() => void setQuery(getConfiguratorCloseReset())}
     >
       <DialogContent
         size="xl"

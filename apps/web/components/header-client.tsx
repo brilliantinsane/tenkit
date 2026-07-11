@@ -63,12 +63,12 @@ export function HeaderClient({
           >
             <Image
               alt="logo"
-              className="invert-0 dark:invert"
-              height={18}
+              className="h-[30px] w-auto invert-0 dark:invert"
+              height={157}
               loading="eager"
               priority
               src="/tenkit-logo-long.svg"
-              width={75}
+              width={374}
             />
             <h2 className="sr-only">tenkit</h2>
           </Link>
