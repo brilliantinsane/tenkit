@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "pnpm -F @tenkit/template-generator build",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
