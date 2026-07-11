@@ -27,6 +27,7 @@
     "smoke": "pnpm -F create-tenkit smoke",
     "proof": "pnpm -F @tenkit/template-generator proof",
     "verify": "pnpm -F @tenkit/template-generator verify",
+    "verify:matrix": "pnpm -F @tenkit/cli verify:matrix",
     "pack:dry-run": "pnpm -F @tenkit/template-generator pack:dry-run && pnpm -F @tenkit/cli pack:dry-run && pnpm -F create-tenkit pack:dry-run",
     "release:notes": "node scripts/generate-release-notes.mjs",
     "release:smoke": "node scripts/release-smoke.mjs",

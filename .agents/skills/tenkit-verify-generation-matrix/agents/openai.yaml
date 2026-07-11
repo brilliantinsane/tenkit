@@ -1,0 +1,6 @@
+interface:
+  display_name: 'Verify Tenkit Generation Matrix'
+  short_description: 'Verify every generated Tenkit project combination'
+  default_prompt: 'Use $tenkit-verify-generation-matrix to verify the complete Tenkit generated-project matrix.'
+policy:
+  allow_implicit_invocation: false
