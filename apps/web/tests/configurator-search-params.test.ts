@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest"
 import { createLoader, createSerializer } from "nuqs/server"
 
 import {
+  configuratorCloseOptions,
   configuratorSearchParams,
   configuratorUrlKeys,
   getConfiguratorCloseReset,
@@ -88,6 +89,13 @@ describe("Configurator search params", () => {
       appVariantAccentsSerialized: null,
       git: null,
       install: null,
+    })
+  })
+
+  test("closes with a shallow history replacement", () => {
+    expect(configuratorCloseOptions).toEqual({
+      history: "replace",
+      shallow: true,
     })
   })
 })

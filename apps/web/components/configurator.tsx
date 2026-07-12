@@ -60,6 +60,7 @@ import {
   dismissConfiguratorNudge,
 } from "@/lib/configurator-nudge"
 import {
+  configuratorCloseOptions,
   configuratorSearchParams,
   configuratorUrlKeys,
   getConfiguratorCloseReset,
@@ -332,11 +333,12 @@ export function ConfiguratorDialog() {
         setCommandExpanded(false)
         setResetTooltipOpen(false)
         setClosingQuery(query)
-        void setQuery(getConfiguratorCloseReset(), { shallow: false }).then(
-          () => {
-            setDialogClosing(true)
-          }
-        )
+        void setQuery(
+          getConfiguratorCloseReset(),
+          configuratorCloseOptions
+        ).then(() => {
+          setDialogClosing(true)
+        })
       }}
       onExitComplete={() => {
         setClosingQuery(null)

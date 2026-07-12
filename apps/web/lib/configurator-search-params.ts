@@ -11,6 +11,10 @@ import {
 } from "@/lib/configurator"
 
 const withDefaultClearing = { clearOnDefault: true } as const
+export const configuratorCloseOptions = {
+  history: "replace",
+  shallow: true,
+} as const
 export const CONFIGURATOR_OPEN_URL_KEY = "cfg"
 
 export const configuratorSearchParams = {

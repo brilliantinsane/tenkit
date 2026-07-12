@@ -77,7 +77,7 @@ export function HeaderClient({
           <nav aria-label="Primary" className="flex items-center gap-1">
             {navLinks.map((link) => (
               <Button asChild key={link.label} size="sm" variant="ghost">
-                <Link href={link.href}>{link.label}</Link>
+                <a href={link.href}>{link.label}</a>
               </Button>
             ))}
           </nav>
