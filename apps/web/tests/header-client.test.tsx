@@ -30,15 +30,15 @@ import { HeaderClient } from "@/components/header-client"
 describe("HeaderClient", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  test("uses native anchors for same-page section navigation", () => {
+  test("uses native anchors for every same-page navigation link", () => {
     const markup = renderToStaticMarkup(
       <HeaderClient desktopStats={{ github: null, npm: null }} />
     )
 
-    expect(markup).toMatch(/<a data-next-link="true"[^>]+href="\/#top"/)
-    expect(markup).toContain('href="/#proof"')
-    expect(markup).toContain('href="/#setup-types"')
-    expect(markup).toContain('href="/#generated"')
-    expect(markup.match(/data-next-link="true"/g)).toHaveLength(1)
+    expect(markup).toContain('href="#top"')
+    expect(markup).toContain('href="#proof"')
+    expect(markup).toContain('href="#setup-types"')
+    expect(markup).toContain('href="#generated"')
+    expect(markup).not.toContain('data-next-link="true"')
   })
 })

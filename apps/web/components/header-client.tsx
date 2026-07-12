@@ -1,7 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
 import type { ReactNode } from "react"
 
 import { ConfiguratorHeaderTrigger } from "@/components/configurator-header-trigger"
@@ -56,9 +55,9 @@ export function HeaderClient({
         )}
       >
         <div className="flex items-center gap-2">
-          <Link
+          <a
             className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
-            href="/#top"
+            href="#top"
             aria-label="Tenkit home"
           >
             <Image
@@ -71,7 +70,7 @@ export function HeaderClient({
               width={374}
             />
             <h2 className="sr-only">tenkit</h2>
-          </Link>
+          </a>
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <nav aria-label="Primary" className="flex items-center gap-1">
