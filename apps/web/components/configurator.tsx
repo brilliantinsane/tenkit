@@ -260,10 +260,9 @@ export function ConfiguratorDialog() {
   const [query, setQuery] = useConfiguratorQuery()
   const [commandExpanded, setCommandExpanded] = useState(false)
   const [closingQuery, setClosingQuery] = useState<typeof query | null>(null)
-  const [dialogClosing, setDialogClosing] = useState(false)
   const [resetTooltipOpen, setResetTooltipOpen] = useState(false)
   const hydrated = useHydrated()
-  const displayedQuery = closingQuery ?? query
+  const displayedQuery = query.open ? query : (closingQuery ?? query)
   const defaults = createDefaultConfiguratorState(displayedQuery.setupType)
   const appVariantSection = getConfiguratorAppVariantSectionCopy(
     displayedQuery.setupType
@@ -324,25 +323,19 @@ export function ConfiguratorDialog() {
 
   return (
     <Dialog
-      open={hydrated && (query.open || closingQuery !== null) && !dialogClosing}
+      open={hydrated && query.open}
       onOpenChange={(details) => {
-        if (details.open || !hydrated || !query.open || closingQuery !== null) {
+        if (details.open || !hydrated || !query.open) {
           return
         }
 
         setCommandExpanded(false)
         setResetTooltipOpen(false)
         setClosingQuery(query)
-        void setQuery(
-          getConfiguratorCloseReset(),
-          configuratorCloseOptions
-        ).then(() => {
-          setDialogClosing(true)
-        })
+        void setQuery(getConfiguratorCloseReset(), configuratorCloseOptions)
       }}
       onExitComplete={() => {
         setClosingQuery(null)
-        setDialogClosing(false)
       }}
     >
       <DialogContent

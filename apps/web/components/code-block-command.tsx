@@ -5,10 +5,7 @@ import { TextAlignStartIcon, TerminalIcon } from "lucide-react"
 import { useAtom } from "jotai"
 import { Suspense } from "react"
 
-import {
-  ConfiguratorDialog,
-  ConfiguratorDialogTrigger,
-} from "@/components/configurator"
+import { ConfiguratorDialogTrigger } from "@/components/configurator"
 import { CopyButton } from "@/components/copy-button"
 import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
@@ -137,10 +134,6 @@ export function CodeBlockCommand({
           onCopyError={onCopyError}
         />
       </div>
-
-      <Suspense fallback={null}>
-        <ConfiguratorDialog />
-      </Suspense>
     </div>
   )
 }

@@ -1,6 +1,8 @@
 import { Dosis, Geist_Mono, Inter, Space_Grotesk } from "next/font/google"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
+import { Suspense } from "react"
 
+import { ConfiguratorDialog } from "@/components/configurator"
 import { DatabuddyAnalytics } from "@/components/databuddy-analytics"
 import { Header } from "@/components/header"
 import { JotaiProvider } from "@/components/jotai-provider"
@@ -62,15 +64,20 @@ export default function RootLayout({
           <JotaiProvider>
             <ThemeProvider>
               <TooltipProvider>
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none fixed inset-x-4 inset-y-0 z-40 mx-auto max-w-6xl"
-                >
-                  <span className="absolute inset-y-0 left-0 w-px bg-border" />
-                  <span className="absolute inset-y-0 right-0 w-px bg-border" />
+                <div className="contents" data-slot="app-content">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none fixed inset-x-4 inset-y-0 z-40 mx-auto max-w-6xl"
+                  >
+                    <span className="absolute inset-y-0 left-0 w-px bg-border" />
+                    <span className="absolute inset-y-0 right-0 w-px bg-border" />
+                  </div>
+                  <Header />
+                  {children}
                 </div>
-                <Header />
-                {children}
+                <Suspense fallback={null}>
+                  <ConfiguratorDialog />
+                </Suspense>
               </TooltipProvider>
             </ThemeProvider>
           </JotaiProvider>

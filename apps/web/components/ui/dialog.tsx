@@ -52,6 +52,7 @@ export const dialogOverlayVariants = tv({
     "fixed inset-0 z-50",
     "bg-black/32 backdrop-blur-xs",
     "duration-200",
+    "data-[state=closed]:pointer-events-none",
     "peer peer-data-[slot=dialog-overlay]:hidden",
     "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
     "data-[state=closed]:fade-out-0 data-[state=closed]:animate-out",
