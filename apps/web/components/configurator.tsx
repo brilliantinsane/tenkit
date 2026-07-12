@@ -259,6 +259,7 @@ export function ConfiguratorDialog() {
   const [query, setQuery] = useConfiguratorQuery()
   const [commandExpanded, setCommandExpanded] = useState(false)
   const [closingQuery, setClosingQuery] = useState<typeof query | null>(null)
+  const [dialogClosing, setDialogClosing] = useState(false)
   const [resetTooltipOpen, setResetTooltipOpen] = useState(false)
   const hydrated = useHydrated()
   const displayedQuery = closingQuery ?? query
@@ -322,7 +323,7 @@ export function ConfiguratorDialog() {
 
   return (
     <Dialog
-      open={hydrated && query.open && closingQuery === null}
+      open={hydrated && (query.open || closingQuery !== null) && !dialogClosing}
       onOpenChange={(details) => {
         if (details.open || !hydrated || !query.open || closingQuery !== null) {
           return
@@ -331,9 +332,14 @@ export function ConfiguratorDialog() {
         setCommandExpanded(false)
         setResetTooltipOpen(false)
         setClosingQuery(query)
-        void setQuery(getConfiguratorCloseReset())
+        void setQuery(getConfiguratorCloseReset()).then(() => {
+          setDialogClosing(true)
+        })
       }}
-      onExitComplete={() => setClosingQuery(null)}
+      onExitComplete={() => {
+        setClosingQuery(null)
+        setDialogClosing(false)
+      }}
     >
       <DialogContent
         size="xl"
