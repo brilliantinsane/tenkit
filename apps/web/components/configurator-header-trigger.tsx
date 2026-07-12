@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Suspense } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -19,6 +21,20 @@ const configuratorHeaderTriggerFallback = (
 )
 
 function ConfiguratorHeaderTriggerClient() {
+  const pathname = usePathname()
+
+  if (pathname !== "/") {
+    return (
+      <Button asChild variant="ghost" size="sm">
+        <Link href="/?cfg=true">Configurator</Link>
+      </Button>
+    )
+  }
+
+  return <HomeConfiguratorHeaderTrigger />
+}
+
+function HomeConfiguratorHeaderTrigger() {
   const [, setConfiguratorOpen] = useConfiguratorOpen()
 
   return (
