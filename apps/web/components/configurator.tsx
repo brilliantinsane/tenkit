@@ -332,9 +332,11 @@ export function ConfiguratorDialog() {
         setCommandExpanded(false)
         setResetTooltipOpen(false)
         setClosingQuery(query)
-        void setQuery(getConfiguratorCloseReset()).then(() => {
-          setDialogClosing(true)
-        })
+        void setQuery(getConfiguratorCloseReset(), { shallow: false }).then(
+          () => {
+            setDialogClosing(true)
+          }
+        )
       }}
       onExitComplete={() => {
         setClosingQuery(null)
