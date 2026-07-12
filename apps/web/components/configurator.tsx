@@ -256,38 +256,34 @@ export function ConfiguratorDialogTrigger({
 }
 
 export function ConfiguratorDialog() {
-  const [configuratorOpen] = useConfiguratorOpen()
-  const hydrated = useHydrated()
-
-  return hydrated && configuratorOpen ? <ActiveConfiguratorDialog /> : null
-}
-
-function ActiveConfiguratorDialog() {
   const [query, setQuery] = useConfiguratorQuery()
   const [commandExpanded, setCommandExpanded] = useState(false)
-  const [dialogClosing, setDialogClosing] = useState(false)
+  const [closingQuery, setClosingQuery] = useState<typeof query | null>(null)
   const [resetTooltipOpen, setResetTooltipOpen] = useState(false)
-  const defaults = createDefaultConfiguratorState(query.setupType)
+  const hydrated = useHydrated()
+  const displayedQuery = closingQuery ?? query
+  const defaults = createDefaultConfiguratorState(displayedQuery.setupType)
   const appVariantSection = getConfiguratorAppVariantSectionCopy(
-    query.setupType
+    displayedQuery.setupType
   )
   const appVariantNames = splitOrDefault(
-    query.appVariantNamesSerialized,
+    displayedQuery.appVariantNamesSerialized,
     defaults.appVariantNames
   )
   const appVariantAccents = parseSerializedAppVariantAccents(
-    query.appVariantAccentsSerialized,
+    displayedQuery.appVariantAccentsSerialized,
     defaults.appVariantAccents
   )
   const hasChanges =
-    query.projectName !== INITIAL_CONFIGURATOR_DEFAULTS.projectName ||
-    query.setupType !== INITIAL_CONFIGURATOR_DEFAULTS.setupType ||
-    query.styling !== INITIAL_CONFIGURATOR_DEFAULTS.styling ||
-    query.packageManager !== INITIAL_CONFIGURATOR_DEFAULTS.packageManager ||
-    query.appVariantNamesSerialized !== "" ||
-    query.appVariantAccentsSerialized !== "" ||
-    query.git !== INITIAL_CONFIGURATOR_DEFAULTS.git ||
-    query.install !== INITIAL_CONFIGURATOR_DEFAULTS.install
+    displayedQuery.projectName !== INITIAL_CONFIGURATOR_DEFAULTS.projectName ||
+    displayedQuery.setupType !== INITIAL_CONFIGURATOR_DEFAULTS.setupType ||
+    displayedQuery.styling !== INITIAL_CONFIGURATOR_DEFAULTS.styling ||
+    displayedQuery.packageManager !==
+      INITIAL_CONFIGURATOR_DEFAULTS.packageManager ||
+    displayedQuery.appVariantNamesSerialized !== "" ||
+    displayedQuery.appVariantAccentsSerialized !== "" ||
+    displayedQuery.git !== INITIAL_CONFIGURATOR_DEFAULTS.git ||
+    displayedQuery.install !== INITIAL_CONFIGURATOR_DEFAULTS.install
   const nameErrors = validateConfiguratorAppVariantNames(appVariantNames)
   const accentErrors = appVariantAccents.map((accent) =>
     isConfiguratorAccentHex(accent)
@@ -309,14 +305,14 @@ function ActiveConfiguratorDialog() {
   if (!hasErrors) {
     try {
       command = buildConfiguratorCommand({
-        projectName: query.projectName,
-        setupType: query.setupType,
-        styling: query.styling,
-        packageManager: query.packageManager,
+        projectName: displayedQuery.projectName,
+        setupType: displayedQuery.setupType,
+        styling: displayedQuery.styling,
+        packageManager: displayedQuery.packageManager,
         appVariantNames,
         appVariantAccents,
-        git: query.git,
-        install: query.install,
+        git: displayedQuery.git,
+        install: displayedQuery.install,
       })
       commandIsCopyable = true
     } catch {
@@ -326,17 +322,18 @@ function ActiveConfiguratorDialog() {
 
   return (
     <Dialog
-      open={!dialogClosing}
+      open={hydrated && query.open && closingQuery === null}
       onOpenChange={(details) => {
-        if (details.open) {
+        if (details.open || !hydrated || !query.open || closingQuery !== null) {
           return
         }
 
         setCommandExpanded(false)
         setResetTooltipOpen(false)
-        setDialogClosing(true)
+        setClosingQuery(query)
+        void setQuery(getConfiguratorCloseReset())
       }}
-      onExitComplete={() => void setQuery(getConfiguratorCloseReset())}
+      onExitComplete={() => setClosingQuery(null)}
     >
       <DialogContent
         size="xl"
@@ -394,7 +391,7 @@ function ActiveConfiguratorDialog() {
                 </FieldLabel>
                 <Input
                   id="configurator-project-name"
-                  value={query.projectName}
+                  value={displayedQuery.projectName}
                   onChange={(event) =>
                     setQuery({ projectName: event.target.value })
                   }
@@ -411,7 +408,7 @@ function ActiveConfiguratorDialog() {
                   {setupTypeOptions.map((option) => (
                     <ConfiguratorIconChoiceCard
                       key={option.value}
-                      selected={query.setupType === option.value}
+                      selected={displayedQuery.setupType === option.value}
                       label={option.label}
                       detail={option.detail}
                       icon={option.icon}
@@ -433,7 +430,7 @@ function ActiveConfiguratorDialog() {
                   {stylingOptions.map((option) => (
                     <ConfiguratorChoiceCard
                       key={option.value}
-                      selected={query.styling === option.value}
+                      selected={displayedQuery.styling === option.value}
                       label={option.label}
                       detail={option.detail}
                       onSelect={() => {
@@ -488,7 +485,7 @@ function ActiveConfiguratorDialog() {
                                 appVariantNamesSerialized:
                                   serializeAppVariantNames(
                                     nextNames,
-                                    query.setupType
+                                    displayedQuery.setupType
                                   ),
                               })
                             }}
@@ -514,7 +511,7 @@ function ActiveConfiguratorDialog() {
                               appVariantAccentsSerialized:
                                 serializeAppVariantAccents(
                                   nextAccents,
-                                  query.setupType
+                                  displayedQuery.setupType
                                 ),
                             })
                           }}
@@ -546,7 +543,7 @@ function ActiveConfiguratorDialog() {
                   {packageManagerOptions.map((option) => (
                     <ConfiguratorChoiceCard
                       key={option.value}
-                      selected={query.packageManager === option.value}
+                      selected={displayedQuery.packageManager === option.value}
                       label={option.label}
                       detail={option.detail}
                       onSelect={() => {
@@ -564,7 +561,7 @@ function ActiveConfiguratorDialog() {
                   id="configurator-install"
                   label="Install dependencies"
                   description="Run the package manager install step after generation."
-                  checked={query.install}
+                  checked={displayedQuery.install}
                   onCheckedChange={(checked) => {
                     void setQuery({ install: checked })
                   }}
@@ -574,7 +571,7 @@ function ActiveConfiguratorDialog() {
                   id="configurator-git"
                   label="Initialize Git"
                   description="Create an initial Git snapshot in the generated project."
-                  checked={query.git}
+                  checked={displayedQuery.git}
                   onCheckedChange={(checked) => {
                     void setQuery({ git: checked })
                   }}
