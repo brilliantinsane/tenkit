@@ -1,6 +1,8 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 
 import { ConfiguratorHeaderTrigger } from "@/components/configurator-header-trigger"
@@ -21,6 +23,21 @@ export function HeaderClient({
   desktopStats: HeaderStatsSlots
 }) {
   const scrolled = useScroll(72, 28)
+  const isHomePage = usePathname() === "/"
+  const logo = (
+    <>
+      <Image
+        alt="logo"
+        className="h-[30px] w-auto invert-0 dark:invert"
+        height={157}
+        loading="eager"
+        priority
+        src="/tenkit-logo-long.svg"
+        width={374}
+      />
+      <h2 className="sr-only">tenkit</h2>
+    </>
+  )
 
   return (
     <header
@@ -55,28 +72,33 @@ export function HeaderClient({
         )}
       >
         <div className="flex items-center gap-2">
-          <a
-            className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
-            href="#top"
-            aria-label="Tenkit home"
-          >
-            <Image
-              alt="logo"
-              className="h-[30px] w-auto invert-0 dark:invert"
-              height={157}
-              loading="eager"
-              priority
-              src="/tenkit-logo-long.svg"
-              width={374}
-            />
-            <h2 className="sr-only">tenkit</h2>
-          </a>
+          {isHomePage ? (
+            <a
+              className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
+              href="#top"
+              aria-label="Tenkit home"
+            >
+              {logo}
+            </a>
+          ) : (
+            <Link
+              className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
+              href="/#top"
+              aria-label="Tenkit home"
+            >
+              {logo}
+            </Link>
+          )}
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <nav aria-label="Primary" className="flex items-center gap-1">
             {navLinks.map((link) => (
               <Button asChild key={link.label} size="sm" variant="ghost">
-                <a href={link.href}>{link.label}</a>
+                {isHomePage ? (
+                  <a href={link.href}>{link.label}</a>
+                ) : (
+                  <Link href={`/${link.href}`}>{link.label}</Link>
+                )}
               </Button>
             ))}
           </nav>
