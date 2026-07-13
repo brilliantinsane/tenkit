@@ -53,6 +53,40 @@ describe("ConfigurePageContent", () => {
     expect(markup.match(/data-position="top"/g)).toHaveLength(1)
   })
 
+  test("uses one responsive gutter for outer padding, columns, and section rows", () => {
+    const markup = renderConfigurator()
+    const layoutClasses = markup
+      .match(/data-slot="configurator-layout" class="([^"]+)"/)?.[1]
+      ?.split(" ")
+
+    expect(layoutClasses).toEqual(
+      expect.arrayContaining([
+        "grid",
+        "gap-4",
+        "p-4",
+        "sm:gap-8",
+        "sm:p-8",
+        "lg:grid-cols-2",
+      ])
+    )
+    const sectionStackClasses = markup
+      .match(/data-slot="configurator-section-stack" class="([^"]+)"/)?.[1]
+      ?.split(" ")
+
+    expect(sectionStackClasses).toEqual(
+      expect.arrayContaining([
+        "flex",
+        "min-w-0",
+        "flex-col",
+        "gap-4",
+        "sm:gap-8",
+      ])
+    )
+    expect(markup.match(/data-slot="configurator-section"/g)).toHaveLength(4)
+    expect(markup).not.toContain("lg:col-start-2")
+    expect(markup).not.toContain("px-4 py-12")
+  })
+
   test("derives the full Configurator state from route query params", () => {
     const markup = renderConfigurator(
       "?name=Shared%20App&setup=runtime-tenants&styling=uniwind&pm=npm&vn=Tenkit%20Network&vacc=%23123ABC&git=false&i=false"

@@ -88,7 +88,7 @@ function ConfiguratorSection({
   className?: string
 }) {
   return (
-    <section className="relative px-4 py-12 sm:px-8">
+    <section data-slot="configurator-section" className="relative">
       <div
         className={cn(
           "flex flex-col justify-between gap-6 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
@@ -128,7 +128,7 @@ function ConfiguratorCommandPanel() {
   const { state, actions, meta } = useConfigurator()
 
   return (
-    <aside className="z-10 min-w-0 px-4 py-12 sm:px-8 lg:sticky lg:top-16 lg:self-start">
+    <aside className="z-10 min-w-0 lg:sticky lg:top-16 lg:self-start">
       <div
         className={cn(
           "flex flex-col gap-5 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
@@ -390,9 +390,15 @@ function ConfiguratorPageFrame() {
     <main className="relative overflow-hidden supports-[overflow:clip]:overflow-clip">
       <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl">
         <Configurator.Hero />
-        <div className="grid lg:grid-cols-2">
+        <div
+          data-slot="configurator-layout"
+          className="grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:items-start"
+        >
           <Configurator.CommandPanel />
-          <div className="min-w-0">
+          <div
+            data-slot="configurator-section-stack"
+            className="flex min-w-0 flex-col gap-4 sm:gap-8"
+          >
             <Configurator.SetupTypeSection />
             <Configurator.StylingSection />
             <Configurator.AppVariantsSection />
