@@ -4,8 +4,10 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 
 import { runGeneratedAppCommand } from './generated-app-command-runner';
-import { deriveAppVariantIdentities } from './generated-setup-type-definitions';
-import { getGeneratedSetupTypeDefinition } from './generated-setup-types';
+import {
+  deriveAppVariantIdentities,
+  getGeneratedSetupTypeDefinition,
+} from './generated-setup-type-definitions';
 import { type GeneratedSetupType, type GeneratedStylingChoice } from './generator';
 import { runGenerationProof } from './local-proof';
 

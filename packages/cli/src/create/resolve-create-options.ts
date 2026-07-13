@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
 import { normalizeGeneratedSetupType, type GeneratedSetupType } from '@tenkit/template-generator';
-import { GENERATED_SETUP_TYPE_DEFINITIONS } from '@tenkit/template-generator/setup-type-definitions';
+import { getGeneratedSetupTypeDefinition } from '@tenkit/template-generator/setup-type-definitions';
 
 import {
   DEFAULT_PROJECT_NAME,
@@ -99,13 +99,7 @@ async function readAppVariantCustomization(
     return normalizeAppVariantCustomization(setupType, undefined, undefined);
   }
 
-  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
-    (candidate) => candidate.setupType === setupType,
-  );
-
-  if (!definition) {
-    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
-  }
+  const definition = getGeneratedSetupTypeDefinition(setupType);
 
   const appVariantNames: string[] = [];
   const appVariantAccents: string[] = [];

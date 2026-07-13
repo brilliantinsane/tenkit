@@ -12,7 +12,7 @@ import {
   type GeneratedSetupType,
   type GeneratedStylingChoice,
 } from '../src/generator';
-import { getGeneratedSetupTypeDefinition } from '../src/generated-setup-types';
+import { getGeneratedSetupTypeMetadata } from '../src/generated-setup-types';
 import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-proof';
 
 type ParsedArgs = {
@@ -198,7 +198,7 @@ async function main() {
   }
 
   console.log('');
-  console.log(getGeneratedSetupTypeDefinition(args.setupType).readyMessage);
+  console.log(getGeneratedSetupTypeMetadata(args.setupType).readyMessage);
   console.log('');
   console.log('To run your project:');
   console.log(`- cd ${displayTargetDir}`);

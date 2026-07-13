@@ -4,6 +4,8 @@ import {
   deriveAppVariantIdentities,
   deriveAppVariantIdentity,
   GENERATED_SETUP_TYPE_DEFINITIONS,
+  getGeneratedSetupTypeDefinition,
+  getGeneratedSetupTypeDefinitionByPublicSlug,
   normalizeProjectName,
 } from '../src/generated-setup-type-definitions';
 
@@ -67,6 +69,13 @@ test('exposes ordered fixed App Variant defaults for every Setup Type', () => {
       ],
     },
   ]);
+});
+
+test('resolves shared Setup Type definitions by canonical ID and public slug', () => {
+  const whiteLabelDefinition = GENERATED_SETUP_TYPE_DEFINITIONS[0];
+
+  assert.equal(getGeneratedSetupTypeDefinition('white-label-apps'), whiteLabelDefinition);
+  assert.equal(getGeneratedSetupTypeDefinitionByPublicSlug('white-label'), whiteLabelDefinition);
 });
 
 test('normalizes a human project name for folder, package, and CLI use', () => {

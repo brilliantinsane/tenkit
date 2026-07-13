@@ -93,6 +93,34 @@ export const GENERATED_SETUP_TYPE_DEFINITIONS = [
   },
 ] as const satisfies readonly GeneratedSetupTypeDefinition[];
 
+export function getGeneratedSetupTypeDefinition(
+  setupType: GeneratedSetupType,
+): GeneratedSetupTypeDefinition {
+  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
+    (candidate) => candidate.setupType === setupType,
+  );
+
+  if (!definition) {
+    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
+  }
+
+  return definition;
+}
+
+export function getGeneratedSetupTypeDefinitionByPublicSlug(
+  publicSlug: PublicSetupSlug,
+): GeneratedSetupTypeDefinition {
+  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
+    (candidate) => candidate.publicSlug === publicSlug,
+  );
+
+  if (!definition) {
+    throw new Error(`Missing Setup Type definition for ${JSON.stringify(publicSlug)}.`);
+  }
+
+  return definition;
+}
+
 export type AppVariantIdentity = {
   displayName: string;
   slug: string;

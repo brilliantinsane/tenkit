@@ -3,7 +3,7 @@ import { join } from 'pathe';
 import { assert } from 'vitest';
 
 import {
-  getGeneratedSetupTypeDefinition,
+  getGeneratedSetupTypeMetadata,
   type GeneratedSetupType,
 } from '../src/generated-setup-types';
 import { type GeneratedStylingChoice } from '../src/generated-styling-choices';
@@ -38,7 +38,7 @@ function assertNoStandaloneGeneratedSourceLeaks(generatedSource: string) {
 }
 
 async function verifyWhiteLabelApps(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('white-label-apps');
+  const definition = getGeneratedSetupTypeMetadata('white-label-apps');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
   const designTokens = await readText(join(targetDir, 'src/constants/design-tokens.ts'));
@@ -93,7 +93,7 @@ async function verifyWhiteLabelApps(targetDir: string) {
 }
 
 async function verifySingleAppRuntimeTenants(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('single-app-runtime-tenants');
+  const definition = getGeneratedSetupTypeMetadata('single-app-runtime-tenants');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const readme = await readText(join(targetDir, 'README.md'));
   const envExample = await readText(join(targetDir, '.env.example'));
@@ -237,7 +237,7 @@ async function verifySingleAppRuntimeTenants(targetDir: string) {
 }
 
 async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('generic-with-standalone-app-variants');
+  const definition = getGeneratedSetupTypeMetadata('generic-with-standalone-app-variants');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const readme = await readText(join(targetDir, 'README.md'));
   const envExample = await readText(join(targetDir, '.env.example'));
@@ -375,7 +375,7 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
 }
 
 async function verifyUniwindGeneratedApp(setupType: GeneratedSetupType, targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition(setupType);
+  const definition = getGeneratedSetupTypeMetadata(setupType);
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const tsconfig = await readText(join(targetDir, 'tsconfig.json'));
   const metroConfig = await readText(join(targetDir, 'metro.config.js'));

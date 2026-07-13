@@ -10,7 +10,7 @@ import {
 import {
   deriveAppVariantIdentity,
   deriveAppVariantIdentities,
-  GENERATED_SETUP_TYPE_DEFINITIONS,
+  getGeneratedSetupTypeDefinition,
   normalizeProjectName,
 } from '@tenkit/template-generator/setup-type-definitions';
 
@@ -134,13 +134,7 @@ export function normalizeAppVariantCustomization(
   appVariantNames: readonly string[];
   appVariantAccents: readonly GeneratedAccentColor[];
 } {
-  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
-    (candidate) => candidate.setupType === setupType,
-  );
-
-  if (!definition) {
-    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
-  }
+  const definition = getGeneratedSetupTypeDefinition(setupType);
 
   const appVariantNames =
     appVariantNamesInput === undefined

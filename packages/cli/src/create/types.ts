@@ -52,6 +52,7 @@ export type CommandResult = {
 };
 
 export type RunCommandOptions = {
+  env?: NodeJS.ProcessEnv;
   stdio?: 'inherit' | 'ignore';
 };
 

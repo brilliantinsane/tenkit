@@ -119,7 +119,7 @@ function ResponsiveIconChoiceCardContent({
     <span className="flex min-w-0 gap-3 text-left lg:h-full lg:w-full lg:flex-col lg:items-center lg:justify-start lg:gap-1 lg:text-center">
       <span
         className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-full transition-colors",
+          "mb-2 grid size-9 shrink-0 place-items-center rounded-full transition-colors",
           selected
             ? "bg-primary/10 text-primary"
             : "bg-muted/45 text-foreground"

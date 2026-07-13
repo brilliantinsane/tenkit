@@ -354,9 +354,6 @@ export const ColorPickerValueSwatch = (
 interface ColorPickerAreaProps extends React.ComponentProps<
   typeof ArkColorPicker.Area
 > {
-  /**
-   *
-   */
   showDots?: boolean
 }
 

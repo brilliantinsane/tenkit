@@ -36,7 +36,7 @@ export const CONFIGURATOR_SETUP_TYPE_OPTIONS = [
   {
     value: "generic-standalone",
     label: "Generic",
-    detail: "Generic + standalone App Variants",
+    detail: "Generic + standalone",
   },
 ] as const satisfies readonly {
   value: PublicSetupSlug

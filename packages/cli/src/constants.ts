@@ -1,8 +1,8 @@
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
-  type GeneratedStylingChoice,
   type GeneratedSetupTypeInput,
+  type GeneratedStylingChoice,
   type PublicSetupSlug,
 } from '@tenkit/template-generator';
 

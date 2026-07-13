@@ -91,7 +91,7 @@ function ConfiguratorSection({
     <section className="relative px-4 py-12 sm:px-8">
       <div
         className={cn(
-          "flex flex-col gap-6 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
+          "flex flex-col justify-between gap-6 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
           className
         )}
       >

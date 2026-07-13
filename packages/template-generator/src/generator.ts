@@ -1,11 +1,13 @@
 import {
   formatSupportedGeneratedSetupTypes,
-  type GeneratedSetupTypeDefinition,
-  getGeneratedSetupTypeDefinition,
   normalizeGeneratedSetupType,
 } from './generated-setup-types';
 import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
-import { deriveAppVariantIdentities } from './generated-setup-type-definitions';
+import {
+  deriveAppVariantIdentities,
+  getGeneratedSetupTypeDefinition,
+  type GeneratedSetupTypeDefinition,
+} from './generated-setup-type-definitions';
 import {
   type GeneratedStylingChoice,
   normalizeGeneratedStylingChoice,
@@ -320,28 +322,21 @@ export function generateProject(config: GenerateProjectConfig): VirtualFileTree 
     stylingChoice: config.stylingChoice,
   };
 
-  if (setupType === 'white-label-apps') {
-    return generateWhiteLabelAppsProject({
-      ...baseConfig,
-      setupType,
-    });
+  switch (setupType) {
+    case 'white-label-apps':
+      return generateWhiteLabelAppsProject({
+        ...baseConfig,
+        setupType,
+      });
+    case 'single-app-runtime-tenants':
+      return generateSingleAppRuntimeTenantsProject({
+        ...baseConfig,
+        setupType,
+      });
+    case 'generic-with-standalone-app-variants':
+      return generateGenericWithStandaloneAppVariantsProject({
+        ...baseConfig,
+        setupType,
+      });
   }
-
-  if (setupType === 'single-app-runtime-tenants') {
-    return generateSingleAppRuntimeTenantsProject({
-      ...baseConfig,
-      setupType,
-    });
-  }
-
-  if (setupType === 'generic-with-standalone-app-variants') {
-    return generateGenericWithStandaloneAppVariantsProject({
-      ...baseConfig,
-      setupType,
-    });
-  }
-
-  throw new Error(
-    `Unsupported generated Setup Type ${JSON.stringify((config as { setupType?: unknown }).setupType)}. Expected ${formatSupportedGeneratedSetupTypes()}.`,
-  );
 }

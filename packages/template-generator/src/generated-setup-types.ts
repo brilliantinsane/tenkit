@@ -1,6 +1,6 @@
 import {
   deriveAppVariantIdentity,
-  GENERATED_SETUP_TYPE_DEFINITIONS,
+  getGeneratedSetupTypeDefinition,
   SUPPORTED_GENERATED_SETUP_TYPE_IDS,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
@@ -29,14 +29,6 @@ const READY_MESSAGES = {
     'Your Tenkit Generic With Standalone App Variants app is ready!',
 } as const satisfies Record<GeneratedSetupType, string>;
 
-export const GENERATED_SETUP_TYPES = GENERATED_SETUP_TYPE_DEFINITIONS.map((definition) => ({
-  ...definition,
-  appVariantSlugs: definition.appVariants.map(
-    ({ defaultName }) => deriveAppVariantIdentity(defaultName).slug,
-  ),
-  readyMessage: READY_MESSAGES[definition.setupType],
-})) satisfies readonly GeneratedSetupTypeDefinition[];
-
 const PUBLIC_SETUP_SLUG_TO_SETUP_TYPE = {
   'white-label': 'white-label-apps',
   'runtime-tenants': 'single-app-runtime-tenants',
@@ -61,14 +53,16 @@ export function normalizeGeneratedSetupType(setupType: string): GeneratedSetupTy
   );
 }
 
-export function getGeneratedSetupTypeDefinition(
+export function getGeneratedSetupTypeMetadata(
   setupType: GeneratedSetupType,
 ): GeneratedSetupTypeDefinition {
-  const definition = GENERATED_SETUP_TYPES.find((candidate) => candidate.setupType === setupType);
+  const definition = getGeneratedSetupTypeDefinition(setupType);
 
-  if (!definition) {
-    throw new Error(`Missing generated Setup Type definition for ${JSON.stringify(setupType)}.`);
-  }
-
-  return definition;
+  return {
+    ...definition,
+    appVariantSlugs: definition.appVariants.map(
+      ({ defaultName }) => deriveAppVariantIdentity(defaultName).slug,
+    ),
+    readyMessage: READY_MESSAGES[setupType],
+  };
 }

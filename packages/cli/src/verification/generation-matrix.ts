@@ -6,26 +6,36 @@ import { promisify } from 'node:util';
 
 import {
   generateProject,
+  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedSetupType,
   type GeneratedStylingChoice,
   type VirtualFileTree,
 } from '@tenkit/template-generator';
 import {
   deriveAppVariantIdentities,
-  GENERATED_SETUP_TYPE_DEFINITIONS,
+  getGeneratedSetupTypeDefinition,
 } from '@tenkit/template-generator/setup-type-definitions';
 import fs from 'fs-extra';
 import { basename, join, relative, resolve, sep } from 'pathe';
 
 import { runCreateFlow } from '../create/run-create';
 import type { CreateFlowEnvironment } from '../create/types';
-import type { PublicCliPackageManager } from '../create/package-manager';
+import { defaultRunCommand } from '../adapters/command-runner';
+import {
+  SUPPORTED_PACKAGE_MANAGERS,
+  type PublicCliPackageManager,
+} from '../create/package-manager';
 
 const execFileAsync = promisify(execFile);
-const STYLING_CHOICES = ['bare', 'uniwind'] as const;
-const PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun'] as const;
 const VALUE_PROFILES = ['default', 'custom'] as const;
 const LOCKFILES = ['pnpm-lock.yaml', 'package-lock.json', 'bun.lock', 'bun.lockb'] as const;
+const MATRIX_GIT_ENV = {
+  GIT_AUTHOR_NAME: 'Tenkit Matrix',
+  GIT_AUTHOR_EMAIL: 'matrix@tenkit.dev',
+  GIT_COMMITTER_NAME: 'Tenkit Matrix',
+  GIT_COMMITTER_EMAIL: 'matrix@tenkit.dev',
+} as const;
 
 export const GENERATION_MATRIX_ROOT = '/tmp/tenkit-test';
 
@@ -117,13 +127,7 @@ function createMatrixCase({
   GenerationMatrixCase,
   'phase' | 'setupType' | 'stylingChoice' | 'packageManager' | 'valueProfile' | 'install' | 'git'
 >): GenerationMatrixCase {
-  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
-    (candidate) => candidate.setupType === setupType,
-  );
-
-  if (!definition) {
-    throw new Error(`Missing Setup Type definition for ${JSON.stringify(setupType)}.`);
-  }
+  const definition = getGeneratedSetupTypeDefinition(setupType);
 
   const appVariantValues =
     valueProfile === 'custom'
@@ -153,9 +157,9 @@ function createMatrixCase({
 }
 
 export function createExhaustiveGenerationCases(): readonly GenerationMatrixCase[] {
-  return GENERATED_SETUP_TYPE_DEFINITIONS.flatMap(({ setupType }) =>
-    STYLING_CHOICES.flatMap((stylingChoice) =>
-      PACKAGE_MANAGERS.flatMap((packageManager) =>
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.flatMap((setupType) =>
+    SUPPORTED_GENERATED_STYLING_CHOICES.flatMap((stylingChoice) =>
+      SUPPORTED_PACKAGE_MANAGERS.flatMap((packageManager) =>
         VALUE_PROFILES.map((valueProfile) =>
           createMatrixCase({
             phase: 'generation',
@@ -357,6 +361,12 @@ function createFlowEnvironment(rootDir: string, workspaceRoot: string): CreateFl
     output: {
       log() {},
       error() {},
+    },
+    runCommand(command, args, cwd, options) {
+      return defaultRunCommand(command, args, cwd, {
+        ...options,
+        env: MATRIX_GIT_ENV,
+      });
     },
     prompts: {
       text: unexpectedPrompt,
@@ -573,7 +583,7 @@ async function verifyMatrixCase(
 async function readToolVersions(): Promise<Record<string, string>> {
   const versions: Record<string, string> = {};
 
-  for (const command of [...PACKAGE_MANAGERS, 'git']) {
+  for (const command of [...SUPPORTED_PACKAGE_MANAGERS, 'git']) {
     versions[command] = await runExternalCommand({
       command,
       args: ['--version'],
@@ -599,11 +609,6 @@ export async function runGenerationMatrix({
     cases: [],
     toolVersions: {},
   };
-
-  process.env.GIT_AUTHOR_NAME ??= 'Tenkit Matrix';
-  process.env.GIT_AUTHOR_EMAIL ??= 'matrix@tenkit.dev';
-  process.env.GIT_COMMITTER_NAME ??= 'Tenkit Matrix';
-  process.env.GIT_COMMITTER_EMAIL ??= 'matrix@tenkit.dev';
 
   try {
     report.toolVersions = await readToolVersions();
