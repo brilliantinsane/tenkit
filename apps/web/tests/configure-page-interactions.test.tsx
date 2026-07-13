@@ -143,12 +143,17 @@ describe("ConfigurePageContent interactions", () => {
       expect(
         selectedChoice.querySelector("[data-selected-indicator]")
       ).not.toBeNull()
+      expect(selectedChoice.classList.contains("border-foreground")).toBe(true)
+      expect(selectedChoice.classList.contains("ring-2")).toBe(false)
     }
 
     for (const unselectedChoice of unselectedChoices) {
       expect(
         unselectedChoice.querySelector("[data-selected-indicator]")
       ).toBeNull()
+      expect(unselectedChoice.classList.contains("border-foreground")).toBe(
+        false
+      )
     }
   })
 })

@@ -56,8 +56,7 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
       onClick={onSelect}
       className={cn(
         "relative w-full cursor-pointer overflow-hidden rounded-xl border bg-card/80 text-center shadow-sm transition-[border-color,box-shadow,transform] active:translate-y-px",
-        selected &&
-          "border-primary/70 ring-2 ring-primary/25 ring-offset-1 ring-offset-background",
+        selected && "border-foreground",
         className
       )}
       backgroundClassName="rounded-[calc(var(--radius-xl)-1px)] bg-card/80"
