@@ -88,6 +88,33 @@ describe("ConfigurePageContent", () => {
     expect(markup).not.toContain("px-4 py-12")
   })
 
+  test("uses the homepage entrance motion with a reduced-motion fallback", () => {
+    const markup = renderConfigurator()
+    const classesForSlot = (slot: string) =>
+      markup
+        .match(new RegExp(`data-slot="${slot}" class="([^"]+)"`))?.[1]
+        ?.split(" ")
+    const sharedMotionClasses = [
+      "animate-in",
+      "duration-500",
+      "ease-out",
+      "fill-mode-backwards",
+      "fade-in",
+      "slide-in-from-bottom-3",
+      "motion-reduce:animate-none",
+    ]
+
+    expect(classesForSlot("configurator-hero-title")).toEqual(
+      expect.arrayContaining([...sharedMotionClasses, "delay-100"])
+    )
+    expect(classesForSlot("configurator-hero-description")).toEqual(
+      expect.arrayContaining([...sharedMotionClasses, "delay-200"])
+    )
+    expect(classesForSlot("configurator-layout")).toEqual(
+      expect.arrayContaining([...sharedMotionClasses, "delay-300"])
+    )
+  })
+
   test("derives the full Configurator state from route query params", () => {
     const markup = renderConfigurator(
       "?name=Shared%20App&setup=runtime-tenants&styling=uniwind&pm=npm&vn=Tenkit%20Network&vacc=%23123ABC&git=false&i=false"

@@ -45,6 +45,8 @@ import {
 import { cn } from "@/lib/utils"
 
 const COMPACT_CONFIGURATOR_CARD_CLASS_NAME = "min-h-[18.125rem]"
+const CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME =
+  "animate-in duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3 motion-reduce:animate-none"
 
 const SETUP_TYPE_ICONS = {
   "white-label": <Layers3Icon className="size-4" aria-hidden="true" />,
@@ -112,10 +114,24 @@ function ConfiguratorSection({
 function ConfiguratorHero() {
   return (
     <section className="relative px-4 py-16 text-center sm:px-8 sm:py-24">
-      <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+      <h1
+        data-slot="configurator-hero-title"
+        className={cn(
+          "font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl",
+          CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
+          "delay-100"
+        )}
+      >
         Project configurator
       </h1>
-      <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+      <p
+        data-slot="configurator-hero-description"
+        className={cn(
+          "mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg",
+          CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
+          "delay-200"
+        )}
+      >
         Shape the generated project, inspect the exact command, then copy it
         into your terminal.
       </p>
@@ -392,7 +408,11 @@ function ConfiguratorPageFrame() {
         <Configurator.Hero />
         <div
           data-slot="configurator-layout"
-          className="grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:items-start"
+          className={cn(
+            "grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:items-start",
+            CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
+            "delay-300"
+          )}
         >
           <Configurator.CommandPanel />
           <div
