@@ -128,7 +128,7 @@ function ConfiguratorCommandPanel() {
   const { state, actions, meta } = useConfigurator()
 
   return (
-    <aside className="z-10 min-w-0 lg:sticky lg:top-16 lg:self-start">
+    <aside className="z-10 min-w-0 lg:sticky lg:top-24 lg:self-start">
       <div
         className={cn(
           "flex flex-col gap-5 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
