@@ -21,10 +21,6 @@ vi.mock("next/navigation", () => ({
   usePathname: mockUsePathname,
 }))
 
-vi.mock("@/components/configurator-header-trigger", () => ({
-  ConfiguratorHeaderTrigger: () => <button>Configurator</button>,
-}))
-
 vi.mock("@/components/theme-switcher", () => ({
   ThemeSwitcher: () => <button>Theme</button>,
 }))
@@ -50,7 +46,9 @@ describe("HeaderClient", () => {
     expect(markup).toContain('href="#proof"')
     expect(markup).toContain('href="#setup-types"')
     expect(markup).toContain('href="#generated"')
-    expect(markup).not.toContain('data-next-link="true"')
+    expect(
+      markup.match(/data-next-link="true" href="\/configure"/g)
+    ).toHaveLength(2)
   })
 
   test("uses Next links to return home from another route", () => {
@@ -66,6 +64,19 @@ describe("HeaderClient", () => {
     expect(markup).toContain('data-next-link="true" href="/#proof"')
     expect(markup).toContain('data-next-link="true" href="/#setup-types"')
     expect(markup).toContain('data-next-link="true" href="/#generated"')
-    expect(markup.match(/data-next-link="true"/g)).toHaveLength(4)
+    expect(
+      markup.match(/data-next-link="true" href="\/configure"/g)
+    ).toHaveLength(2)
+    expect(markup.match(/data-next-link="true"/g)).toHaveLength(6)
+  })
+
+  test("leaves horizontal separators to the configure route content", () => {
+    mockUsePathname.mockReturnValue("/configure")
+
+    const markup = renderToStaticMarkup(
+      <HeaderClient desktopStats={{ github: null, npm: null }} />
+    )
+
+    expect(markup).not.toContain("after:bg-border")
   })
 })

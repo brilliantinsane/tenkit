@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 
-import { ConfiguratorHeaderTrigger } from "@/components/configurator-header-trigger"
+import { ConfigureHeaderLink } from "@/components/configure-header-link"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Button } from "@/components/ui/button"
 import { navLinks } from "@/constants/navigation"
@@ -23,7 +23,9 @@ export function HeaderClient({
   desktopStats: HeaderStatsSlots
 }) {
   const scrolled = useScroll(72, 28)
-  const isHomePage = usePathname() === "/"
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
+  const showViewportDivider = pathname !== "/configure"
   const logo = (
     <>
       <Image
@@ -48,9 +50,9 @@ export function HeaderClient({
           "bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/50":
             scrolled,
           "after:pointer-events-none after:absolute after:right-[calc(50%_-_50dvw)] after:bottom-0 after:left-[calc(50%_-_50dvw)] after:h-px after:bg-border":
-            !scrolled,
+            !scrolled && showViewportDivider,
           "after:pointer-events-none after:absolute after:right-[calc(50%_-_50dvw)] after:bottom-0 after:left-[calc(50%_-_50dvw)] after:h-px after:bg-border md:after:hidden":
-            scrolled,
+            scrolled && showViewportDivider,
         }
       )}
     >
@@ -103,7 +105,7 @@ export function HeaderClient({
             ))}
           </nav>
           <div className="flex items-center border-l pl-2">
-            <ConfiguratorHeaderTrigger />
+            <ConfigureHeaderLink />
           </div>
           <div className="flex items-center gap-1.5 border-l pl-2">
             {desktopStats.github}
@@ -112,7 +114,7 @@ export function HeaderClient({
           </div>
         </div>
         <div className="flex items-center md:hidden">
-          <ConfiguratorHeaderTrigger />
+          <ConfigureHeaderLink />
           <div className="ml-2 border-l pl-2">
             <ThemeSwitcher buttonSize="icon-sm" />
           </div>

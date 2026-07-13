@@ -3,7 +3,7 @@ import { parseColor } from "@ark-ui/react/color-picker"
 import {
   deriveAppVariantIdentities,
   deriveAppVariantIdentity,
-  GENERATED_SETUP_TYPE_DEFINITIONS,
+  getGeneratedSetupTypeDefinitionByPublicSlug,
   normalizeProjectName,
   type AppVariantIdentity,
   type PublicSetupSlug,
@@ -14,8 +14,74 @@ const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
 export const DEFAULT_CONFIGURATOR_PROJECT_NAME = "tenkit-app"
 export const DEFAULT_CONFIGURATOR_SETUP_TYPE: PublicSetupSlug = "white-label"
 
-export type ConfiguratorStyling = "bare" | "uniwind"
-export type ConfiguratorPackageManager = "pnpm" | "npm" | "bun"
+export const CONFIGURATOR_SETUP_TYPE_OPTIONS = [
+  {
+    value: "white-label",
+    label: "White label",
+    detail: "Separate App Variant per brand",
+  },
+  {
+    value: "runtime-tenants",
+    label: "Runtime",
+    detail: "One App Variant, many Runtime Tenants",
+  },
+  {
+    value: "generic-standalone",
+    label: "Generic",
+    detail: "Generic and standalone App Variants",
+  },
+] as const satisfies readonly {
+  value: PublicSetupSlug
+  label: string
+  detail: string
+}[]
+
+export const CONFIGURATOR_SETUP_TYPE_VALUES =
+  CONFIGURATOR_SETUP_TYPE_OPTIONS.map(({ value }) => value)
+
+export const CONFIGURATOR_STYLING_OPTIONS = [
+  {
+    value: "bare",
+    label: "Bare",
+    detail: "Expo with StyleSheet",
+  },
+  {
+    value: "uniwind",
+    label: "Uniwind",
+    detail: "Tailwind on native",
+  },
+] as const
+
+export type ConfiguratorStyling =
+  (typeof CONFIGURATOR_STYLING_OPTIONS)[number]["value"]
+
+export const CONFIGURATOR_STYLING_VALUES = CONFIGURATOR_STYLING_OPTIONS.map(
+  ({ value }) => value
+)
+
+export const CONFIGURATOR_PACKAGE_MANAGER_OPTIONS = [
+  {
+    value: "pnpm",
+    label: "pnpm",
+    detail: "Default package manager",
+  },
+  {
+    value: "npm",
+    label: "npm",
+    detail: "Ships with Node.js",
+  },
+  {
+    value: "bun",
+    label: "bun",
+    detail: "Fast Bun toolchain",
+  },
+] as const
+
+export type ConfiguratorPackageManager =
+  (typeof CONFIGURATOR_PACKAGE_MANAGER_OPTIONS)[number]["value"]
+
+export const CONFIGURATOR_PACKAGE_MANAGER_VALUES =
+  CONFIGURATOR_PACKAGE_MANAGER_OPTIONS.map(({ value }) => value)
 
 export type ConfiguratorState = {
   projectName: string
@@ -32,22 +98,8 @@ export type ConfiguratorAppVariantPreview = AppVariantIdentity & {
   warning?: string
 }
 
-function getSetupTypeDefinition(setupType: PublicSetupSlug) {
-  const definition = GENERATED_SETUP_TYPE_DEFINITIONS.find(
-    (candidate) => candidate.publicSlug === setupType
-  )
-
-  if (!definition) {
-    throw new Error(
-      `Missing Setup Type definition for ${JSON.stringify(setupType)}.`
-    )
-  }
-
-  return definition
-}
-
 function getDefaultAppVariantValues(setupType: PublicSetupSlug) {
-  const definition = getSetupTypeDefinition(setupType)
+  const definition = getGeneratedSetupTypeDefinitionByPublicSlug(setupType)
 
   return {
     appVariantNames: definition.appVariants.map(
@@ -128,6 +180,45 @@ export function buildConfiguratorCommand(state: ConfiguratorState): string {
   ].join(" ")
 }
 
+export function deriveConfiguratorState(state: ConfiguratorState) {
+  const nameErrors = validateConfiguratorAppVariantNames(state.appVariantNames)
+  const accentErrors = state.appVariantAccents.map((accent) =>
+    isConfiguratorAccentHex(accent)
+      ? undefined
+      : "Use a six-digit hex color such as #208AEF."
+  )
+  let projectNameError: string | undefined
+
+  try {
+    normalizeProjectName(state.projectName)
+  } catch {
+    projectNameError =
+      "Enter a project name with a usable Latin letter or number."
+  }
+
+  const previews = state.appVariantNames.map((name) => {
+    try {
+      return deriveConfiguratorAppVariantPreviews([name])[0]
+    } catch {
+      return undefined
+    }
+  })
+  const hasErrors =
+    projectNameError !== undefined ||
+    [...nameErrors, ...accentErrors].some(Boolean)
+
+  return {
+    projectNameError,
+    nameErrors,
+    accentErrors,
+    previews,
+    command: hasErrors
+      ? (projectNameError ?? "Fix validation errors to copy a create command.")
+      : buildConfiguratorCommand(state),
+    commandIsCopyable: !hasErrors,
+  }
+}
+
 export function updateAppVariantValue(
   values: readonly string[],
   index: number,
@@ -148,6 +239,18 @@ export function serializeAppVariantNames(
 ): string {
   const defaults = getDefaultAppVariantValues(setupType).appVariantNames
   return arraysEqual(appVariantNames, defaults) ? "" : appVariantNames.join(",")
+}
+
+export function parseSerializedAppVariantNames(
+  serialized: string,
+  defaults: readonly string[]
+): readonly string[] {
+  if (!serialized) {
+    return defaults
+  }
+
+  const appVariantNames = serialized.split(",")
+  return appVariantNames.length === defaults.length ? appVariantNames : defaults
 }
 
 function sanitizeConfiguratorAccentInput(value: string): string {
@@ -251,7 +354,7 @@ export type ConfiguratorAppVariantSectionCopy = {
 export function getConfiguratorAppVariantSectionCopy(
   setupType: PublicSetupSlug
 ): ConfiguratorAppVariantSectionCopy {
-  const definition = getSetupTypeDefinition(setupType)
+  const definition = getGeneratedSetupTypeDefinitionByPublicSlug(setupType)
 
   if (setupType === "runtime-tenants") {
     return {

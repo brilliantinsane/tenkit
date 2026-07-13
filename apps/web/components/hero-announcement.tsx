@@ -1,6 +1,6 @@
 "use client"
 
-import { useSetAtom } from "jotai"
+import Link from "next/link"
 import { useState } from "react"
 
 import {
@@ -9,24 +9,12 @@ import {
   AnnouncementTitle,
 } from "@/components/kibo-ui/announcement"
 import { CursorClickIcon } from "@/components/ui/cursor-click"
-import { useConfiguratorOpen } from "@/hooks/use-configurator-open"
-import {
-  bumpConfiguratorNudge,
-  configuratorNudgeAtom,
-  dismissConfiguratorNudge,
-} from "@/lib/configurator-nudge"
 import { cn } from "@/lib/utils"
 
 export function HeroAnnouncement() {
-  const setNudge = useSetAtom(configuratorNudgeAtom)
-  const [, setConfiguratorOpen] = useConfiguratorOpen()
   const [cursorAnimation, setCursorAnimation] = useState<"idle" | "click">(
     "idle"
   )
-
-  function nudgeConfiguratorTrigger() {
-    bumpConfiguratorNudge(setNudge)
-  }
 
   return (
     <Announcement
@@ -39,23 +27,17 @@ export function HeroAnnouncement() {
       )}
       tone="themed"
     >
-      <button
-        type="button"
+      <Link
+        href="/configure"
         className="group"
         onMouseEnter={() => {
           setCursorAnimation("click")
-          nudgeConfiguratorTrigger()
         }}
         onMouseLeave={() => setCursorAnimation("idle")}
         onFocus={() => {
           setCursorAnimation("click")
-          nudgeConfiguratorTrigger()
         }}
         onBlur={() => setCursorAnimation("idle")}
-        onClick={() => {
-          dismissConfiguratorNudge(setNudge)
-          void setConfiguratorOpen(true)
-        }}
       >
         <AnnouncementTag className="ml-0 flex h-6 items-center rounded-full border border-[#208AEF]/35 bg-[#208AEF]/10 px-2 py-0 font-mono leading-none text-[#208AEF]">
           New
@@ -69,7 +51,7 @@ export function HeroAnnouncement() {
             size={14}
           />
         </AnnouncementTitle>
-      </button>
+      </Link>
     </Announcement>
   )
 }

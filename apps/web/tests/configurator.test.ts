@@ -4,11 +4,13 @@ import {
   buildConfiguratorCommand,
   createDefaultConfiguratorState,
   deriveConfiguratorAppVariantPreviews,
+  deriveConfiguratorState,
   formatConfiguratorCommandMultiline,
   getConfiguratorAppVariantSectionCopy,
   isConfiguratorAccentHex,
   normalizeConfiguratorAccentHex,
   parseSerializedAppVariantAccents,
+  parseSerializedAppVariantNames,
   serializeAppVariantAccents,
   serializeAppVariantNames,
   updateAppVariantValue,
@@ -42,6 +44,17 @@ describe("Configurator command state", () => {
     expect(
       buildConfiguratorCommand(createDefaultConfiguratorState())
     ).toContain("--yes")
+  })
+
+  test("keeps invalid values out of the copyable command", () => {
+    const derivedState = deriveConfiguratorState({
+      ...createDefaultConfiguratorState(),
+      projectName: "???",
+    })
+
+    expect(derivedState.projectNameError).toMatch(/usable Latin letter/)
+    expect(derivedState.commandIsCopyable).toBe(false)
+    expect(derivedState.command).toBe(derivedState.projectNameError)
   })
 
   test.each([
@@ -90,6 +103,15 @@ describe("Configurator App Variant state", () => {
     expect(
       serializeAppVariantAccents(defaults.appVariantAccents, defaults.setupType)
     ).toBe("")
+  })
+
+  test("parses complete ordered App Variant names and rejects the wrong shape", () => {
+    const defaults = ["First Tenant", "Second Tenant"]
+
+    expect(
+      parseSerializedAppVariantNames("North Studio,South Studio", defaults)
+    ).toEqual(["North Studio", "South Studio"])
+    expect(parseSerializedAppVariantNames("Only One", defaults)).toBe(defaults)
   })
 
   test("previews numeric-leading identities with a non-blocking warning", () => {

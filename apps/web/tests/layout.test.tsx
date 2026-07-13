@@ -12,10 +12,6 @@ vi.mock("nuqs/adapters/next/app", () => ({
   NuqsAdapter: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock("@/components/configurator", () => ({
-  ConfiguratorDialog: () => <div data-configurator-dialog="true" />,
-}))
-
 vi.mock("@/components/databuddy-analytics", () => ({
   DatabuddyAnalytics: () => null,
 }))
@@ -39,7 +35,7 @@ vi.mock("@/components/ui/tooltip", () => ({
 import RootLayout from "@/app/layout"
 
 describe("RootLayout", () => {
-  test("groups route content under one modal isolation boundary", () => {
+  test("renders route content without a global Configurator modal", () => {
     const markup = renderToStaticMarkup(
       <RootLayout>
         <main>Route content</main>
@@ -47,15 +43,6 @@ describe("RootLayout", () => {
     )
 
     expect(markup).toContain('data-slot="app-content"')
-  })
-
-  test("owns one shared Configurator dialog for every route", () => {
-    const markup = renderToStaticMarkup(
-      <RootLayout>
-        <main>Route content</main>
-      </RootLayout>
-    )
-
-    expect(markup.match(/data-configurator-dialog="true"/g)).toHaveLength(1)
+    expect(markup).not.toContain("configurator-dialog")
   })
 })

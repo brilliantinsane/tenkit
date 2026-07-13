@@ -2,10 +2,8 @@ import { describe, expect, test } from "vitest"
 import { createLoader, createSerializer } from "nuqs/server"
 
 import {
-  configuratorCloseOptions,
   configuratorSearchParams,
   configuratorUrlKeys,
-  getConfiguratorCloseReset,
   getConfiguratorDefaultsReset,
 } from "@/lib/configurator-search-params"
 
@@ -64,7 +62,7 @@ describe("Configurator search params", () => {
     ).toBe("")
   })
 
-  test("resets every choice without closing the Configurator", () => {
+  test("resets every route Choice", () => {
     expect(getConfiguratorDefaultsReset()).toEqual({
       projectName: null,
       setupType: null,
@@ -74,28 +72,6 @@ describe("Configurator search params", () => {
       appVariantAccentsSerialized: null,
       git: null,
       install: null,
-    })
-    expect(getConfiguratorDefaultsReset()).not.toHaveProperty("open")
-  })
-
-  test("clears every Configurator query param when the dialog closes", () => {
-    expect(getConfiguratorCloseReset()).toEqual({
-      open: null,
-      projectName: null,
-      setupType: null,
-      styling: null,
-      packageManager: null,
-      appVariantNamesSerialized: null,
-      appVariantAccentsSerialized: null,
-      git: null,
-      install: null,
-    })
-  })
-
-  test("closes with a shallow history replacement", () => {
-    expect(configuratorCloseOptions).toEqual({
-      history: "replace",
-      shallow: true,
     })
   })
 })

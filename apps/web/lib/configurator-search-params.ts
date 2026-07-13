@@ -6,33 +6,26 @@ import {
 } from "nuqs/server"
 
 import {
+  CONFIGURATOR_PACKAGE_MANAGER_VALUES,
+  CONFIGURATOR_SETUP_TYPE_VALUES,
+  CONFIGURATOR_STYLING_VALUES,
   DEFAULT_CONFIGURATOR_PROJECT_NAME,
   DEFAULT_CONFIGURATOR_SETUP_TYPE,
 } from "@/lib/configurator"
 
 const withDefaultClearing = { clearOnDefault: true } as const
-export const configuratorCloseOptions = {
-  history: "replace",
-  shallow: true,
-} as const
-export const CONFIGURATOR_OPEN_URL_KEY = "cfg"
 
 export const configuratorSearchParams = {
-  open: parseAsBoolean.withDefault(false).withOptions(withDefaultClearing),
   projectName: parseAsString
     .withDefault(DEFAULT_CONFIGURATOR_PROJECT_NAME)
     .withOptions(withDefaultClearing),
-  setupType: parseAsStringLiteral([
-    "white-label",
-    "runtime-tenants",
-    "generic-standalone",
-  ] as const)
+  setupType: parseAsStringLiteral(CONFIGURATOR_SETUP_TYPE_VALUES)
     .withDefault(DEFAULT_CONFIGURATOR_SETUP_TYPE)
     .withOptions(withDefaultClearing),
-  styling: parseAsStringLiteral(["bare", "uniwind"] as const)
+  styling: parseAsStringLiteral(CONFIGURATOR_STYLING_VALUES)
     .withDefault("bare")
     .withOptions(withDefaultClearing),
-  packageManager: parseAsStringLiteral(["pnpm", "npm", "bun"] as const)
+  packageManager: parseAsStringLiteral(CONFIGURATOR_PACKAGE_MANAGER_VALUES)
     .withDefault("pnpm")
     .withOptions(withDefaultClearing),
   appVariantNamesSerialized: parseAsString
@@ -46,7 +39,6 @@ export const configuratorSearchParams = {
 }
 
 export const configuratorUrlKeys: UrlKeys<typeof configuratorSearchParams> = {
-  open: CONFIGURATOR_OPEN_URL_KEY,
   projectName: "name",
   setupType: "setup",
   styling: "styling",
@@ -67,12 +59,5 @@ export function getConfiguratorDefaultsReset() {
     appVariantAccentsSerialized: null,
     git: null,
     install: null,
-  } as const
-}
-
-export function getConfiguratorCloseReset() {
-  return {
-    open: null,
-    ...getConfiguratorDefaultsReset(),
   } as const
 }

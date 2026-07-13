@@ -55,6 +55,24 @@ pnpm -F @tenkit/web format
 `typecheck` runs `next typegen` before `tsc --noEmit` so a clean checkout has
 the generated Next route and layout declarations it needs.
 
+## Configurator Architecture
+
+- `/configure` owns the interactive project configurator. The root layout and
+  homepage do not mount a global configurator modal or duplicate its state.
+- `nuqs` query parameters are the configurator's shareable source of truth.
+  Parsers, URL keys, and reset behavior live in
+  `lib/configurator-search-params.ts`; command and validation derivation live in
+  `lib/configurator.ts`.
+- `ConfiguratorProvider` is the only component that adapts `nuqs` into the
+  configurator's `state`, `actions`, and `meta` context contract. Compound page
+  sections consume that contract without importing query-state implementation
+  details.
+- Configurator UI derives validation, previews, and commands during render. Do
+  not mirror query state into effects or a second client store.
+- Homepage and header entry points link to `/configure`. Configurator-only
+  interactive variants and dependencies stay outside the homepage command
+  component boundary.
+
 ## Project Structure
 
 ```text

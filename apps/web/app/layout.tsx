@@ -1,8 +1,6 @@
 import { Dosis, Geist_Mono, Inter, Space_Grotesk } from "next/font/google"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
-import { Suspense } from "react"
 
-import { ConfiguratorDialog } from "@/components/configurator"
 import { DatabuddyAnalytics } from "@/components/databuddy-analytics"
 import { Header } from "@/components/header"
 import { JotaiProvider } from "@/components/jotai-provider"
@@ -75,9 +73,6 @@ export default function RootLayout({
                   <Header />
                   {children}
                 </div>
-                <Suspense fallback={null}>
-                  <ConfiguratorDialog />
-                </Suspense>
               </TooltipProvider>
             </ThemeProvider>
           </JotaiProvider>
