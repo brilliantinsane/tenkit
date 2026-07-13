@@ -10,6 +10,14 @@ import {
 } from "@tenkit/template-generator/setup-type-definitions"
 
 const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
+const RANDOM_APP_VARIANT_NAMES = [
+  "Atlas App",
+  "Beacon App",
+  "Cedar App",
+  "Harbor App",
+  "Summit App",
+  "Willow App",
+] as const
 
 export const DEFAULT_CONFIGURATOR_PROJECT_NAME = "tenkit-app"
 export const DEFAULT_CONFIGURATOR_SETUP_TYPE: PublicSetupSlug = "white-label"
@@ -18,17 +26,17 @@ export const CONFIGURATOR_SETUP_TYPE_OPTIONS = [
   {
     value: "white-label",
     label: "White label",
-    detail: "Separate App Variant per brand",
+    detail: "Branded App Variants",
   },
   {
     value: "runtime-tenants",
     label: "Runtime",
-    detail: "One App Variant, many Runtime Tenants",
+    detail: "One shared App Variant",
   },
   {
     value: "generic-standalone",
     label: "Generic",
-    detail: "Generic and standalone App Variants",
+    detail: "Generic + standalone App Variants",
   },
 ] as const satisfies readonly {
   value: PublicSetupSlug
@@ -43,12 +51,12 @@ export const CONFIGURATOR_STYLING_OPTIONS = [
   {
     value: "bare",
     label: "Bare",
-    detail: "Expo with StyleSheet",
+    detail: "React Native StyleSheet",
   },
   {
     value: "uniwind",
     label: "Uniwind",
-    detail: "Tailwind on native",
+    detail: "Tailwind for React Native",
   },
 ] as const
 
@@ -63,17 +71,17 @@ export const CONFIGURATOR_PACKAGE_MANAGER_OPTIONS = [
   {
     value: "pnpm",
     label: "pnpm",
-    detail: "Default package manager",
+    detail: "Fast, disk-efficient installs",
   },
   {
     value: "npm",
     label: "npm",
-    detail: "Ships with Node.js",
+    detail: "Largest software registry",
   },
   {
     value: "bun",
     label: "bun",
-    detail: "Fast Bun toolchain",
+    detail: "All-in-one JS toolkit",
   },
 ] as const
 
@@ -122,6 +130,93 @@ export function createDefaultConfiguratorState(
     ...getDefaultAppVariantValues(setupType),
     git: true,
     install: true,
+  }
+}
+
+function chooseDifferentValue<T>(
+  values: readonly T[],
+  currentValue: T,
+  random: () => number
+): T {
+  if (values.length < 2) {
+    throw new Error("Randomized Configurator Choices need at least two values.")
+  }
+
+  const currentIndex = values.indexOf(currentValue)
+
+  if (currentIndex === -1) {
+    throw new Error("The current Configurator Choice cannot be randomized.")
+  }
+
+  const possibleOffsets = values.length - 1
+  const offset =
+    1 + Math.min(Math.floor(random() * possibleOffsets), possibleOffsets - 1)
+  const nextValue = values[(currentIndex + offset) % values.length]
+
+  if (nextValue === undefined) {
+    throw new Error("The randomized Configurator Choice is missing.")
+  }
+
+  return nextValue
+}
+
+function createRandomAccent(random: () => number): string {
+  const colorValue = Math.min(Math.floor(random() * 0x1000000), 0xffffff)
+
+  return `#${colorValue.toString(16).padStart(6, "0").toUpperCase()}`
+}
+
+function createRandomAppVariantNames(
+  count: number,
+  random: () => number
+): readonly string[] {
+  const startIndex = Math.min(
+    Math.floor(random() * RANDOM_APP_VARIANT_NAMES.length),
+    RANDOM_APP_VARIANT_NAMES.length - 1
+  )
+
+  return Array.from(
+    { length: count },
+    (_, index) =>
+      RANDOM_APP_VARIANT_NAMES[
+        (startIndex + index) % RANDOM_APP_VARIANT_NAMES.length
+      ]
+  )
+}
+
+export function randomizeConfiguratorState(
+  state: ConfiguratorState,
+  random: () => number = Math.random
+): ConfiguratorState {
+  const setupType = chooseDifferentValue(
+    CONFIGURATOR_SETUP_TYPE_VALUES,
+    state.setupType,
+    random
+  )
+  const setupDefaults = createDefaultConfiguratorState(setupType)
+
+  return {
+    ...setupDefaults,
+    projectName: state.projectName,
+    styling: chooseDifferentValue(
+      CONFIGURATOR_STYLING_VALUES,
+      state.styling,
+      random
+    ),
+    packageManager: chooseDifferentValue(
+      CONFIGURATOR_PACKAGE_MANAGER_VALUES,
+      state.packageManager,
+      random
+    ),
+    appVariantNames: createRandomAppVariantNames(
+      setupDefaults.appVariantNames.length,
+      random
+    ),
+    appVariantAccents: setupDefaults.appVariantAccents.map(() =>
+      createRandomAccent(random)
+    ),
+    git: !state.git,
+    install: !state.install,
   }
 }
 

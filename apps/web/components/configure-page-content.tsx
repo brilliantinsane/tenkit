@@ -4,6 +4,7 @@ import {
   AlertTriangleIcon,
   BoxesIcon,
   BracesIcon,
+  DicesIcon,
   GitForkIcon,
   Layers3Icon,
   RotateCcwIcon,
@@ -72,6 +73,8 @@ const PACKAGE_MANAGER_ICONS = {
 >
 
 const UNISTYLES_ICON = <SwatchBookIcon className="size-4" aria-hidden="true" />
+const RANDOMIZE_ICON = <DicesIcon data-icon="inline-start" />
+const RESET_ICON = <RotateCcwIcon data-icon="inline-start" />
 
 function ConfiguratorSection({
   title,
@@ -107,30 +110,15 @@ function ConfiguratorSection({
 }
 
 function ConfiguratorHero() {
-  const { actions } = useConfigurator()
-
   return (
-    <section className="relative px-4 py-12 text-center sm:px-8 sm:py-16">
-      <p className="font-mono text-xs tracking-[0.18em] text-muted-foreground uppercase">
-        Create command
-      </p>
-      <h1 className="mt-3 font-heading text-3xl font-semibold tracking-normal text-balance sm:text-4xl">
+    <section className="relative px-4 py-16 text-center sm:px-8 sm:py-24">
+      <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
         Project configurator
       </h1>
-      <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+      <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
         Shape the generated project, inspect the exact command, then copy it
         into your terminal.
       </p>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="mt-4"
-        onClick={actions.reset}
-      >
-        <RotateCcwIcon data-icon="inline-start" />
-        Reset to defaults
-      </Button>
       <FullWidthDivider position="bottom" />
     </section>
   )
@@ -178,6 +166,27 @@ function ConfiguratorCommandPanel() {
             onValueChange={actions.selectPackageManager}
           />
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-label="Randomize configuration"
+            onClick={actions.randomize}
+          >
+            {RANDOMIZE_ICON}
+            Randomize
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={actions.reset}
+          >
+            {RESET_ICON}
+            Reset defaults
+          </Button>
+        </div>
       </div>
     </aside>
   )
@@ -192,7 +201,7 @@ function ConfiguratorSetupTypeSection() {
       description="Choose the relationship between native App Variants and Runtime Tenants."
       className={COMPACT_CONFIGURATOR_CARD_CLASS_NAME}
     >
-      <div className="grid items-stretch gap-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-3 lg:grid-cols-3">
         {CONFIGURATOR_SETUP_TYPE_OPTIONS.map((option) => (
           <ConfiguratorCodeResponsiveIconChoiceCard
             key={option.value}
@@ -217,7 +226,7 @@ function ConfiguratorStylingSection() {
       description="Pick the styling foundation generated with the Expo project."
       className={COMPACT_CONFIGURATOR_CARD_CLASS_NAME}
     >
-      <div className="grid items-stretch gap-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-3 lg:grid-cols-3">
         {CONFIGURATOR_STYLING_OPTIONS.map((option) => (
           <ConfiguratorCodeResponsiveIconChoiceCard
             key={option.value}
@@ -245,7 +254,7 @@ function ConfiguratorAppVariantsSection() {
       title={meta.appVariantSectionTitle}
       description={meta.appVariantSectionDescription}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-6">
         {meta.appVariantFields.map((appVariantField) => (
           <div
             key={appVariantField.position}
@@ -332,7 +341,7 @@ function ConfiguratorPackageManagerSection() {
       title="Package manager"
       description="Choose the launcher, dependency install command, and generated lockfile format."
     >
-      <div className="grid items-stretch gap-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-3 lg:grid-cols-3">
         {CONFIGURATOR_PACKAGE_MANAGER_OPTIONS.map((option) => (
           <ConfiguratorCodeResponsiveIconChoiceCard
             key={option.value}

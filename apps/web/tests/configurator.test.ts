@@ -11,6 +11,7 @@ import {
   normalizeConfiguratorAccentHex,
   parseSerializedAppVariantAccents,
   parseSerializedAppVariantNames,
+  randomizeConfiguratorState,
   serializeAppVariantAccents,
   serializeAppVariantNames,
   updateAppVariantValue,
@@ -75,6 +76,29 @@ describe("Configurator command state", () => {
       expect(command).not.toContain("--yes")
     }
   )
+})
+
+describe("Configurator randomization", () => {
+  test("changes every setup Choice while preserving the project name", () => {
+    const randomizedState = randomizeConfiguratorState(
+      {
+        ...createDefaultConfiguratorState(),
+        projectName: "Keep This Name",
+      },
+      () => 0
+    )
+
+    expect(randomizedState).toMatchObject({
+      projectName: "Keep This Name",
+      setupType: "runtime-tenants",
+      styling: "uniwind",
+      packageManager: "npm",
+      appVariantNames: ["Atlas App"],
+      appVariantAccents: ["#000000"],
+      git: false,
+      install: false,
+    })
+  })
 })
 
 describe("Configurator App Variant state", () => {

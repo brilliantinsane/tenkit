@@ -10,6 +10,7 @@ import {
   getConfiguratorAppVariantSectionCopy,
   parseSerializedAppVariantAccents,
   parseSerializedAppVariantNames,
+  randomizeConfiguratorState,
   serializeAppVariantAccents,
   serializeAppVariantNames,
   updateAppVariantValue,
@@ -36,6 +37,7 @@ type ConfiguratorAppVariantField = {
 }
 
 type ConfiguratorActions = {
+  randomize: () => void
   reset: () => void
   setProjectName: (projectName: string) => void
   selectSetupType: (setupType: ConfiguratorState["setupType"]) => void
@@ -113,6 +115,25 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       : derivedState.command,
   } satisfies Record<ConfiguratorPackageManager, string>
   const actions: ConfiguratorActions = {
+    randomize: () => {
+      const randomizedState = randomizeConfiguratorState(state)
+
+      void setQuery({
+        setupType: randomizedState.setupType,
+        styling: randomizedState.styling,
+        packageManager: randomizedState.packageManager,
+        appVariantNamesSerialized: serializeAppVariantNames(
+          randomizedState.appVariantNames,
+          randomizedState.setupType
+        ),
+        appVariantAccentsSerialized: serializeAppVariantAccents(
+          randomizedState.appVariantAccents,
+          randomizedState.setupType
+        ),
+        git: randomizedState.git,
+        install: randomizedState.install,
+      })
+    },
     reset: () => {
       void setQuery(getConfiguratorDefaultsReset())
     },

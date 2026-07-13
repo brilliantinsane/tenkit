@@ -1,5 +1,6 @@
 "use client"
 
+import { CheckIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
 import { GlowingCard } from "@/components/glowing-card"
@@ -12,6 +13,16 @@ type ConfiguratorChoiceCardProps = {
   detail?: string
   className?: string
 }
+
+const selectedChoiceIndicator = (
+  <span
+    aria-hidden="true"
+    data-selected-indicator=""
+    className="absolute top-2 right-2 z-30 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm"
+  >
+    <CheckIcon className="size-3" />
+  </span>
+)
 
 function ChoiceCardContent({
   className,
@@ -45,22 +56,14 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
       onClick={onSelect}
       className={cn(
         "relative w-full cursor-pointer overflow-hidden rounded-xl border bg-card/80 text-center shadow-sm transition-[border-color,box-shadow,transform] active:translate-y-px",
-        selected && "border-primary/30",
+        selected &&
+          "border-primary/70 ring-2 ring-primary/25 ring-offset-1 ring-offset-background",
         className
       )}
-      backgroundClassName={cn(
-        "rounded-[calc(var(--radius-xl)-1px)]",
-        selected ? "bg-primary/5" : "bg-card/80"
-      )}
-      glowClassName="bg-primary/25"
+      backgroundClassName="rounded-[calc(var(--radius-xl)-1px)] bg-card/80"
     >
-      <ChoiceCardContent
-        className={cn(
-          "flex h-20 items-center p-3 lg:h-32 lg:justify-center",
-          selected &&
-            "bg-[color-mix(in_oklab,var(--code)_96%,var(--primary)_4%)]"
-        )}
-      >
+      {selected ? selectedChoiceIndicator : null}
+      <ChoiceCardContent className="flex h-20 items-center p-3 lg:h-32 lg:justify-center">
         <ResponsiveIconChoiceCardContent
           selected={selected}
           label={label}
@@ -114,7 +117,7 @@ function ResponsiveIconChoiceCardContent({
   icon: ReactNode
 }) {
   return (
-    <span className="flex min-w-0 gap-3 text-left lg:flex-col lg:items-center lg:gap-2 lg:text-center">
+    <span className="flex min-w-0 gap-3 text-left lg:h-full lg:w-full lg:flex-col lg:items-center lg:justify-start lg:gap-1 lg:text-center">
       <span
         className={cn(
           "grid size-9 shrink-0 place-items-center rounded-full transition-colors",
@@ -125,32 +128,19 @@ function ResponsiveIconChoiceCardContent({
       >
         {icon}
       </span>
-      <span className="min-w-0">
-        <ChoiceCardCopy selected={selected} label={label} detail={detail} />
+      <span className="min-w-0 lg:contents">
+        <ChoiceCardCopy label={label} detail={detail} />
       </span>
     </span>
   )
 }
 
-function ChoiceCardCopy({
-  selected,
-  label,
-  detail,
-}: {
-  selected: boolean
-  label: string
-  detail?: string
-}) {
+function ChoiceCardCopy({ label, detail }: { label: string; detail?: string }) {
   return (
     <>
       <span className="block text-sm font-medium text-foreground">{label}</span>
       {detail ? (
-        <span
-          className={cn(
-            "mt-1 block text-xs leading-4",
-            selected ? "text-foreground/70" : "text-muted-foreground"
-          )}
-        >
+        <span className="mt-1 block text-xs leading-4 text-muted-foreground lg:mt-0 lg:flex lg:min-h-8 lg:max-w-32 lg:items-start lg:justify-center">
           {detail}
         </span>
       ) : null}
