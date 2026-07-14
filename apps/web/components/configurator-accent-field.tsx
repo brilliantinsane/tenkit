@@ -58,10 +58,10 @@ export function ConfiguratorAccentField({
           </ColorPickerTrigger>
           <Input
             id={id}
-            value={normalizedHex}
+            value={value}
             aria-invalid={invalid}
             className="min-w-0 flex-1"
-            onChange={(event) => commitAccent(event.target.value)}
+            onChange={(event) => onChange(event.target.value.toUpperCase())}
           />
         </ColorPickerControl>
         <ColorPickerContent>

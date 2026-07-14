@@ -74,6 +74,37 @@ describe("ConfigurePageContent interactions", () => {
     })
   })
 
+  test("keeps partial Accent text editable until a complete hex value is entered", async () => {
+    const user = userEvent.setup()
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+
+    render(
+      <NuqsTestingAdapter
+        hasMemory
+        resetUrlUpdateQueueOnMount={false}
+        onUrlUpdate={onUrlUpdate}
+      >
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const accentInput = screen.getAllByLabelText("Accent")[0]
+
+    if (!(accentInput instanceof HTMLInputElement)) {
+      throw new Error(
+        "Expected the first App Variant Accent control to be an input."
+      )
+    }
+
+    await user.clear(accentInput)
+    await user.type(accentInput, "#123ABC")
+
+    expect(accentInput.value).toBe("#123ABC")
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("vacc")).toBe(
+      "#123ABC,#EF8520"
+    )
+  })
+
   test("reset clears every non-default query parameter", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()

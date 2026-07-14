@@ -1,6 +1,7 @@
 import {
   deriveAppVariantIdentity,
   getGeneratedSetupTypeDefinition,
+  getGeneratedSetupTypeDefinitionByPublicSlug,
   SUPPORTED_GENERATED_SETUP_TYPE_IDS,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
@@ -29,19 +30,13 @@ const READY_MESSAGES = {
     'Your Tenkit Generic With Standalone App Variants app is ready!',
 } as const satisfies Record<GeneratedSetupType, string>;
 
-const PUBLIC_SETUP_SLUG_TO_SETUP_TYPE = {
-  'white-label': 'white-label-apps',
-  'runtime-tenants': 'single-app-runtime-tenants',
-  'generic-standalone': 'generic-with-standalone-app-variants',
-} as const satisfies Record<PublicSetupSlug, GeneratedSetupType>;
-
 export function formatSupportedGeneratedSetupTypes(): string {
   return `public Setup slugs: ${SUPPORTED_PUBLIC_SETUP_SLUGS.join(', ')}; canonical Setup Type IDs: ${SUPPORTED_GENERATED_SETUP_TYPE_IDS.join(', ')}`;
 }
 
 export function normalizeGeneratedSetupType(setupType: string): GeneratedSetupType {
   if (SUPPORTED_PUBLIC_SETUP_SLUGS.includes(setupType as PublicSetupSlug)) {
-    return PUBLIC_SETUP_SLUG_TO_SETUP_TYPE[setupType as PublicSetupSlug];
+    return getGeneratedSetupTypeDefinitionByPublicSlug(setupType as PublicSetupSlug).setupType;
   }
 
   if (SUPPORTED_GENERATED_SETUP_TYPE_IDS.includes(setupType as GeneratedSetupType)) {

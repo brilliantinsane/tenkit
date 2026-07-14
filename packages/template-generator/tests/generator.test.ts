@@ -492,6 +492,11 @@ test('per-App-Variant names and Accents reach every generated Setup Type and Sty
         assert.match(rootLayout, /Uniwind\.updateCSSVariables\('dark'/);
         assert.match(rootLayout, /'--color-accent': theme\.accent/);
         assert.match(rootLayout, /<AppTabs accent=\{theme\.accent\}/);
+        assert.notMatch(rootLayout, /useEffect/);
+        assert.ok(
+          rootLayout.indexOf("Uniwind.updateCSSVariables('light'") <
+            rootLayout.indexOf('export default function RootLayout'),
+        );
       } else {
         assert.match(readVirtualFile(tree, 'src/app/_layout.tsx'), /primary: theme\.accent/);
       }
@@ -506,18 +511,21 @@ test('generated App Variant Slugs include EAS creation and reconciliation guidan
       appVariantNames: ['North Star', 'South Star'],
       appVariantPath: 'src/constants/app-variants.ts',
       expectedSlugs: ['north-star', 'south-star'],
+      expectedBuildPreparationSlugs: ['north-star'],
     },
     {
       setupType: 'single-app-runtime-tenants',
       appVariantNames: ['Central App'],
       appVariantPath: 'src/constants/app-variant.ts',
       expectedSlugs: ['central-app'],
+      expectedBuildPreparationSlugs: [],
     },
     {
       setupType: 'generic-with-standalone-app-variants',
       appVariantNames: ['Atlas Group', 'West Place'],
       appVariantPath: 'src/constants/app-variants.ts',
       expectedSlugs: ['atlas-group', 'west-place'],
+      expectedBuildPreparationSlugs: ['atlas-group', 'west-place'],
     },
   ] as const;
 
@@ -538,6 +546,10 @@ test('generated App Variant Slugs include EAS creation and reconciliation guidan
     for (const expectedSlug of guidance.expectedSlugs) {
       assert.match(readme, new RegExp(expectedSlug));
     }
+
+    for (const expectedSlug of guidance.expectedBuildPreparationSlugs) {
+      assert.match(readme, new RegExp(`build --slug ${expectedSlug}`));
+    }
   }
 });
 
@@ -555,6 +567,10 @@ test('Generic generated guidance uses customized App Variant names without chang
     assert.match(readme, /Atlas Group is the Generic App Variant/);
     assert.match(readme, /West App is a Standalone App Variant/);
     assert.match(readme, /West App opens West Studio directly/);
+    assert.match(
+      readme,
+      /West Studio remains a Runtime Tenant record alongside the West App App Variant/,
+    );
     assert.match(home, /Atlas Group can select North, South, and East Studio/);
     assert.match(home, /West App opens West Studio directly/);
     assert.notMatch(readme, /Atlas Network/);

@@ -92,6 +92,47 @@ async function DesktopWeeklyNpmDownloadsButton() {
   )
 }
 
+async function MobileGitHubStarsButton() {
+  const stars = await getGitHubStarsLabel()
+
+  return (
+    <Button
+      asChild
+      className="w-full justify-center gap-1.5 rounded-full font-medium"
+      variant="outline"
+    >
+      <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+        <GitHubMark data-icon="inline-start" />
+        <span className="tabular-nums" aria-label={`${stars} GitHub stars`}>
+          {stars}
+        </span>
+      </a>
+    </Button>
+  )
+}
+
+async function MobileWeeklyNpmDownloadsButton() {
+  const weeklyDownloads = await getWeeklyNpmDownloadsLabel()
+
+  return (
+    <Button
+      asChild
+      className="w-full justify-center gap-1.5 rounded-full font-medium"
+      variant="outline"
+    >
+      <a href={NPM_PACKAGE_URL} target="_blank" rel="noreferrer">
+        <NpmMark data-icon="inline-start" />
+        <span
+          className="tabular-nums"
+          aria-label={`${weeklyDownloads} weekly npm downloads`}
+        >
+          {weeklyDownloads}/wk
+        </span>
+      </a>
+    </Button>
+  )
+}
+
 function createDesktopStatsSlots(): HeaderStatsSlots {
   return {
     github: (
@@ -121,8 +162,38 @@ function createDesktopStatsSlots(): HeaderStatsSlots {
   }
 }
 
+function createMobileStatsSlots(): HeaderStatsSlots {
+  return {
+    github: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading GitHub stars"
+            className="h-9 w-full"
+          />
+        }
+      >
+        <MobileGitHubStarsButton />
+      </Suspense>
+    ),
+    npm: (
+      <Suspense
+        fallback={
+          <HeaderStatButtonSkeleton
+            label="Loading weekly npm downloads"
+            className="h-9 w-full"
+          />
+        }
+      >
+        <MobileWeeklyNpmDownloadsButton />
+      </Suspense>
+    ),
+  }
+}
+
 export function Header() {
   const desktopStats = createDesktopStatsSlots()
+  const mobileStats = createMobileStatsSlots()
 
-  return <HeaderClient desktopStats={desktopStats} />
+  return <HeaderClient desktopStats={desktopStats} mobileStats={mobileStats} />
 }

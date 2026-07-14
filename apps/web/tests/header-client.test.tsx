@@ -1,5 +1,9 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { renderToStaticMarkup } from "react-dom/server"
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
 const { mockUsePathname } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
@@ -31,7 +35,13 @@ vi.mock("@/hooks/use-scroll", () => ({
 
 import { HeaderClient } from "@/components/header-client"
 
+const emptyStats = { github: null, npm: null }
+
 describe("HeaderClient", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockUsePathname.mockReturnValue("/")
@@ -39,7 +49,7 @@ describe("HeaderClient", () => {
 
   test("uses native anchors for every same-page navigation link", () => {
     const markup = renderToStaticMarkup(
-      <HeaderClient desktopStats={{ github: null, npm: null }} />
+      <HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />
     )
 
     expect(markup).toContain('href="#top"')
@@ -55,7 +65,7 @@ describe("HeaderClient", () => {
     mockUsePathname.mockReturnValue("/missing")
 
     const markup = renderToStaticMarkup(
-      <HeaderClient desktopStats={{ github: null, npm: null }} />
+      <HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />
     )
 
     expect(markup).toMatch(
@@ -70,11 +80,51 @@ describe("HeaderClient", () => {
     expect(markup.match(/data-next-link="true"/g)).toHaveLength(6)
   })
 
+  test("exposes primary navigation from the mobile menu", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <HeaderClient
+        desktopStats={emptyStats}
+        mobileStats={{ github: <a href="/github">GitHub</a>, npm: null }}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Toggle menu" }))
+
+    const mobileMenu = document.querySelector("#mobile-menu")
+
+    if (!(mobileMenu instanceof HTMLElement)) {
+      throw new Error("Expected the mobile navigation portal to be open.")
+    }
+
+    expect(
+      within(mobileMenu)
+        .getByRole("link", { name: "Signals" })
+        .getAttribute("href")
+    ).toBe("#proof")
+    expect(
+      within(mobileMenu)
+        .getByRole("link", { name: "Setup types" })
+        .getAttribute("href")
+    ).toBe("#setup-types")
+    expect(
+      within(mobileMenu)
+        .getByRole("link", { name: "Generated" })
+        .getAttribute("href")
+    ).toBe("#generated")
+    expect(
+      within(mobileMenu)
+        .getByRole("link", { name: "GitHub" })
+        .getAttribute("href")
+    ).toBe("/github")
+  })
+
   test("leaves horizontal separators to the configure route content", () => {
     mockUsePathname.mockReturnValue("/configure")
 
     const markup = renderToStaticMarkup(
-      <HeaderClient desktopStats={{ github: null, npm: null }} />
+      <HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />
     )
 
     expect(markup).not.toContain("after:bg-border")

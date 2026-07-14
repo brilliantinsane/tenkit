@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 
 import { ConfigureHeaderLink } from "@/components/configure-header-link"
+import { MobileNav } from "@/components/mobile-nav"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Button } from "@/components/ui/button"
 import { navLinks } from "@/constants/navigation"
@@ -19,8 +20,10 @@ export type HeaderStatsSlots = {
 
 export function HeaderClient({
   desktopStats,
+  mobileStats,
 }: {
   desktopStats: HeaderStatsSlots
+  mobileStats: HeaderStatsSlots
 }) {
   const scrolled = useScroll(72, 28)
   const pathname = usePathname()
@@ -74,6 +77,7 @@ export function HeaderClient({
         )}
       >
         <div className="flex items-center gap-2">
+          <MobileNav isHomePage={isHomePage} stats={mobileStats} />
           {isHomePage ? (
             <a
               className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"

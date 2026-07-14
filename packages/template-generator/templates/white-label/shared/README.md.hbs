@@ -54,7 +54,7 @@ When an App Variant is linked to an existing EAS Project, that linked EAS Projec
 For non-interactive CI usage, pass the selected values explicitly:
 
 ```bash
-{{packageManagerTenkitCommand}} build --slug first-tenant --env production --platform ios
+{{packageManagerTenkitCommand}} build --slug {{appVariants.[0].slug}} --env production --platform ios
 ```
 
 `{{packageManagerTenkitCommand}} reset` prepares the default App Variant for the development environment on both native platforms.

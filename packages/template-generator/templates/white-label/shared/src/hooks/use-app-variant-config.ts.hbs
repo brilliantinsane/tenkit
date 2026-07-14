@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 
 import { type AppVariantConfigExtra } from '@/types/app-variant';
 
-export function useAppVariantConfig() {
+export function getAppVariantConfig() {
   const extra = Constants.expoConfig?.extra as AppVariantConfigExtra | undefined;
 
   if (!extra) {
@@ -13,4 +13,8 @@ export function useAppVariantConfig() {
     appVariant: extra.appVariant,
     theme: extra.theme,
   };
+}
+
+export function useAppVariantConfig() {
+  return getAppVariantConfig();
 }

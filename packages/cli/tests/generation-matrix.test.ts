@@ -12,6 +12,7 @@ import {
   createInstalledVerificationCases,
   finalizeGenerationMatrix,
   GENERATION_MATRIX_ROOT,
+  runGenerationMatrix,
   type GenerationMatrixReport,
 } from '../src/verification/generation-matrix';
 
@@ -159,5 +160,26 @@ describe('matrix evidence lifecycle', () => {
 
     assert.equal(await fs.pathExists(join(root, 'failing-project/evidence.txt')), true);
     assert.deepEqual(await fs.readJson(join(root, 'verification-report.json')), report);
+  });
+
+  test('persists bounded diagnostics when external tool preflight fails', async () => {
+    const root = await fs.mkdtemp(join(tmpdir(), 'tenkit-matrix-diagnostics-'));
+    tempRoots.push(root);
+    const originalPath = process.env.PATH;
+
+    try {
+      process.env.PATH = '';
+      const report = await runGenerationMatrix({ workspaceRoot: root, rootDir: root });
+      const preflight = report.cases[0];
+
+      assert.equal(report.status, 'failed');
+      assert.equal(preflight?.status, 'failed');
+      const error = preflight && 'error' in preflight ? preflight.error : undefined;
+      assert.equal(error, 'External verification command failed during tool preflight.');
+      assert.notMatch(error ?? '', /pnpm --version|spawn pnpm|stdout|stderr/);
+      assert.equal((error ?? '').includes(tmpdir()), false);
+    } finally {
+      process.env.PATH = originalPath;
+    }
   });
 });

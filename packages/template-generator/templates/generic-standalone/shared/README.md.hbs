@@ -75,8 +75,8 @@ When an App Variant is linked to an existing EAS Project, that linked EAS Projec
 For CI or non-interactive use:
 
 ```bash
-{{packageManagerTenkitCommand}} build --slug atlas-network --env development --platform ios
-{{packageManagerTenkitCommand}} build --slug west-studio --env production --android
+{{packageManagerTenkitCommand}} build --slug {{appVariants.[0].slug}} --env development --platform ios
+{{packageManagerTenkitCommand}} build --slug {{appVariants.[1].slug}} --env production --android
 ```
 
 Reset native build state to the default Generic App Variant:
@@ -97,7 +97,7 @@ Runtime Tenant selection is runtime behavior.
 
 - {{appVariants.[0].displayName}} exposes Runtime Tenant Access for North Studio, South Studio, and East Studio.
 - {{appVariants.[1].displayName}} has a direct Runtime Tenant bootstrap for West Studio.
-- West Studio remains a Runtime Tenant record as well as an App Variant name.
+- West Studio remains a Runtime Tenant record alongside the {{appVariants.[1].displayName}} App Variant.
 - The Standalone Runtime Tenant is excluded from {{appVariants.[0].displayName}} selection.
 
 The validation logic lives in `src/lib/runtime-tenant-access.ts` and rejects broken local-source relationships such as duplicate Runtime Tenant IDs, missing references, duplicate standalone assignments, and Standalone Runtime Tenants appearing in the Generic App Variant access list.

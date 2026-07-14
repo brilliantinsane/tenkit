@@ -101,6 +101,13 @@ type RunGenerationMatrixOptions = {
   rootDir?: string;
 };
 
+class ExternalVerificationCommandError extends Error {
+  constructor() {
+    super('External verification command failed.');
+    this.name = 'ExternalVerificationCommandError';
+  }
+}
+
 function matrixCaseId({
   phase,
   publicSetupSlug,
@@ -395,21 +402,20 @@ async function runExternalCommand({
     });
 
     return `${stdout}${stderr}`.trim();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const stdout =
-      error && typeof error === 'object' && 'stdout' in error && typeof error.stdout === 'string'
-        ? error.stdout
-        : '';
-    const stderr =
-      error && typeof error === 'object' && 'stderr' in error && typeof error.stderr === 'string'
-        ? error.stderr
-        : '';
-
-    throw new Error(
-      `${command} ${args.join(' ')} failed in ${cwd}. ${message}\n${stdout}${stderr}`.trim(),
-    );
+  } catch {
+    throw new ExternalVerificationCommandError();
   }
+}
+
+function describeMatrixFailure(
+  error: unknown,
+  phase: 'tool preflight' | 'case verification',
+): string {
+  if (error instanceof ExternalVerificationCommandError) {
+    return `External verification command failed during ${phase}.`;
+  }
+
+  return error instanceof Error ? error.message : 'Unknown matrix verification failure.';
 }
 
 function selectedLockfile(packageManager: PublicCliPackageManager): string {
@@ -619,7 +625,7 @@ export async function runGenerationMatrix({
       id: 'tool-preflight',
       phase: 'preflight',
       status: 'failed',
-      error: error instanceof Error ? error.message : String(error),
+      error: describeMatrixFailure(error, 'tool preflight'),
     });
     await finalizeGenerationMatrix({ rootDir, report });
     return report;
@@ -637,7 +643,7 @@ export async function runGenerationMatrix({
       report.cases.push({
         ...matrixCase,
         status: 'failed',
-        error: error instanceof Error ? error.message : String(error),
+        error: describeMatrixFailure(error, 'case verification'),
       });
     }
 

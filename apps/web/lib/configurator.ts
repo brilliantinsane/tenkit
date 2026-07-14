@@ -392,7 +392,11 @@ export function parseSerializedAppVariantAccents(
   }
 
   const segments = serialized.split(/,(?=#)/)
-  const normalized = segments.map(normalizeConfiguratorAccentHex)
+  const normalized = segments.map((accent) =>
+    accent.startsWith("#")
+      ? accent.toUpperCase()
+      : normalizeConfiguratorAccentHex(accent)
+  )
 
   if (normalized.length === defaults.length) {
     return normalized
@@ -414,7 +418,11 @@ export function serializeAppVariantAccents(
   setupType: PublicSetupSlug
 ): string {
   const defaults = getDefaultAppVariantValues(setupType).appVariantAccents
-  const normalized = appVariantAccents.map(normalizeConfiguratorAccentHex)
+  const normalized = appVariantAccents.map((accent) =>
+    isConfiguratorAccentHex(accent)
+      ? normalizeConfiguratorAccentHex(accent)
+      : accent.toUpperCase()
+  )
   const normalizedDefaults = defaults.map(normalizeConfiguratorAccentHex)
 
   return arraysEqual(normalized, normalizedDefaults) ? "" : normalized.join(",")
