@@ -4,18 +4,13 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build:workspace-dependencies": "pnpm -F @tenkit/template-generator build",
-    "predev": "pnpm run build:workspace-dependencies",
     "dev": "next dev",
-    "prebuild": "pnpm run build:workspace-dependencies",
+    "prebuild": "pnpm -F @tenkit/template-generator build",
     "build": "next build",
     "start": "next start",
-    "pretest": "pnpm run build:workspace-dependencies",
     "test": "vitest run",
-    "prelint": "pnpm run build:workspace-dependencies",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "pretypecheck": "pnpm run build:workspace-dependencies",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
