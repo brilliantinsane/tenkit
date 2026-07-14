@@ -8,9 +8,11 @@
     "prebuild": "pnpm -F @tenkit/template-generator build",
     "build": "next build",
     "start": "next start",
+    "pretest": "pnpm -F @tenkit/template-generator build",
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "pretypecheck": "pnpm -F @tenkit/template-generator build",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
