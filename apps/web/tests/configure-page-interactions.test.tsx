@@ -105,6 +105,36 @@ describe("ConfigurePageContent interactions", () => {
     )
   })
 
+  test("keeps an invalid comma in an App Variant name visible for validation", async () => {
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const nameInput = screen.getAllByLabelText("Name")[0]
+
+    if (!(nameInput instanceof HTMLInputElement)) {
+      throw new Error(
+        "Expected the first App Variant Name control to be an input."
+      )
+    }
+
+    fireEvent.change(nameInput, { target: { value: "North, Studio" } })
+
+    await waitFor(() => {
+      expect(nameInput.value).toBe("North, Studio")
+      expect(screen.getByText(/must not contain commas/i)).toBeDefined()
+    })
+    const copyButton = screen.getByRole("button", { name: "Copy" })
+
+    if (!(copyButton instanceof HTMLButtonElement)) {
+      throw new Error("Expected the copy control to be a button.")
+    }
+
+    expect(copyButton.disabled).toBe(true)
+  })
+
   test("reset clears every non-default query parameter", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()

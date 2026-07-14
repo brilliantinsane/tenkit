@@ -138,6 +138,15 @@ describe("Configurator App Variant state", () => {
     expect(parseSerializedAppVariantNames("Only One", defaults)).toBe(defaults)
   })
 
+  test("round-trips valid App Variant names that resemble serialized state", () => {
+    const names = ["~json:North", "South\\Brand"]
+    const serialized = serializeAppVariantNames(names, "white-label")
+
+    expect(
+      parseSerializedAppVariantNames(serialized, ["First", "Second"])
+    ).toEqual(names)
+  })
+
   test("previews numeric-leading identities with a non-blocking warning", () => {
     const previews = deriveConfiguratorAppVariantPreviews(["123 Studio"])
 

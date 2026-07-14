@@ -13,10 +13,10 @@ const setupTypeTemplatePaths = ['white-label', 'runtime-tenants', 'generic-stand
 const stylingTemplatePaths = ['bare', 'uniwind'] as const;
 const universalSharedPaths = [
   'app.config.ts.hbs',
-  'pnpm-workspace.yaml.hbs',
   'src/constants/project-config.ts.hbs',
   'tsconfig.json.hbs',
 ] as const;
+const pnpmWorkspaceTemplatePath = 'options/package-manager/pnpm/shared/pnpm-workspace.yaml.hbs';
 
 function readPackageSource(path: string): string {
   return fs.readFileSync(join(packageRoot, path), 'utf8');
@@ -49,6 +49,8 @@ test('Template source paths use ADR 0009 owners', () => {
       assert.notInclude(paths, `${setupType}/shared/${path}`);
     }
   }
+  assert.ok(paths.includes(pnpmWorkspaceTemplatePath));
+  assert.notInclude(paths, 'shared/pnpm-workspace.yaml.hbs');
 
   assert.deepEqual(
     paths.filter((path) => path.endsWith('package.json.hbs')),
@@ -70,6 +72,7 @@ test('generic Template orchestration does not own route or package policy', () =
   const generator = readPackageSource('src/generator.ts');
 
   assert.notMatch(templateReader, /explore\.tsx|settings\.tsx|hasRuntimeTenantRoutes/);
+  assert.notMatch(templateReader, /pnpm-workspace\.yaml|isPnpmPackageManager/);
   assert.notMatch(
     generator,
     /createPackageJson|packageJsonTree|dependencies: Record<string, string>/,

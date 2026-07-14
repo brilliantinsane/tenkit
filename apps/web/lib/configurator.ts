@@ -333,7 +333,14 @@ export function serializeAppVariantNames(
   setupType: PublicSetupSlug
 ): string {
   const defaults = getDefaultAppVariantValues(setupType).appVariantNames
-  return arraysEqual(appVariantNames, defaults) ? "" : appVariantNames.join(",")
+
+  if (arraysEqual(appVariantNames, defaults)) {
+    return ""
+  }
+
+  return appVariantNames
+    .map((name) => name.replaceAll("\\", "\\\\").replaceAll(",", "\\,"))
+    .join(",")
 }
 
 export function parseSerializedAppVariantNames(
@@ -344,7 +351,28 @@ export function parseSerializedAppVariantNames(
     return defaults
   }
 
-  const appVariantNames = serialized.split(",")
+  const appVariantNames = [""]
+  let isEscaped = false
+
+  for (const character of serialized) {
+    const lastIndex = appVariantNames.length - 1
+
+    if (isEscaped) {
+      appVariantNames[lastIndex] += character
+      isEscaped = false
+    } else if (character === "\\") {
+      isEscaped = true
+    } else if (character === ",") {
+      appVariantNames.push("")
+    } else {
+      appVariantNames[lastIndex] += character
+    }
+  }
+
+  if (isEscaped) {
+    appVariantNames[appVariantNames.length - 1] += "\\"
+  }
+
   return appVariantNames.length === defaults.length ? appVariantNames : defaults
 }
 

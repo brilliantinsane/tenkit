@@ -74,7 +74,6 @@ export function CommandActions({
         onCopySuccess={(copiedCommand) => {
           trackDatabuddyEvent("create_command_copied", {
             packageManager,
-            command: copiedCommand,
           })
 
           onCopySuccess?.({

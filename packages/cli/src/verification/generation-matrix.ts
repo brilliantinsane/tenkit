@@ -101,8 +101,23 @@ type RunGenerationMatrixOptions = {
   rootDir?: string;
 };
 
+type ExternalVerificationOperation =
+  | 'Git commit check'
+  | 'generated app typecheck'
+  | 'generated app Expo config'
+  | 'generated app Expo config for non-default App Variant'
+  | `${PublicCliPackageManager | 'git'} version check`;
+
+type ExternalVerificationCommand = {
+  command: string;
+  args: readonly string[];
+  cwd: string;
+  env?: NodeJS.ProcessEnv;
+  operation: ExternalVerificationOperation;
+};
+
 class ExternalVerificationCommandError extends Error {
-  constructor() {
+  constructor(readonly operation: ExternalVerificationOperation) {
     super('External verification command failed.');
     this.name = 'ExternalVerificationCommandError';
   }
@@ -388,12 +403,8 @@ async function runExternalCommand({
   args,
   cwd,
   env,
-}: {
-  command: string;
-  args: readonly string[];
-  cwd: string;
-  env?: NodeJS.ProcessEnv;
-}): Promise<string> {
+  operation,
+}: ExternalVerificationCommand): Promise<string> {
   try {
     const { stdout, stderr } = await execFileAsync(command, [...args], {
       cwd,
@@ -403,7 +414,7 @@ async function runExternalCommand({
 
     return `${stdout}${stderr}`.trim();
   } catch {
-    throw new ExternalVerificationCommandError();
+    throw new ExternalVerificationCommandError(operation);
   }
 }
 
@@ -412,7 +423,7 @@ function describeMatrixFailure(
   phase: 'tool preflight' | 'case verification',
 ): string {
   if (error instanceof ExternalVerificationCommandError) {
-    return `External verification command failed during ${phase}.`;
+    return `External verification command failed during ${phase}: ${error.operation}.`;
   }
 
   return error instanceof Error ? error.message : 'Unknown matrix verification failure.';
@@ -477,8 +488,51 @@ async function assertGitArtifacts(
   }
 
   if (matrixCase.git) {
-    await runExternalCommand({ command: 'git', args: ['rev-parse', 'HEAD'], cwd: targetDir });
+    await runExternalCommand({
+      command: 'git',
+      args: ['rev-parse', 'HEAD'],
+      cwd: targetDir,
+      operation: 'Git commit check',
+    });
   }
+}
+
+export function planInstalledProjectVerificationCommands({
+  packageManager,
+  targetDir,
+  appVariantNames,
+}: {
+  packageManager: PublicCliPackageManager;
+  targetDir: string;
+  appVariantNames: readonly string[];
+}): readonly ExternalVerificationCommand[] {
+  const remainingAppVariantSlugs = deriveAppVariantIdentities(appVariantNames)
+    .slice(1)
+    .map(({ slug }) => slug);
+
+  return [
+    {
+      command: packageManager,
+      args: ['run', 'typecheck'],
+      cwd: targetDir,
+      operation: 'generated app typecheck',
+    },
+    {
+      command: packageManager,
+      args: ['run', 'expo:config'],
+      cwd: targetDir,
+      operation: 'generated app Expo config',
+    },
+    ...remainingAppVariantSlugs.map(
+      (appVariantSlug): ExternalVerificationCommand => ({
+        command: packageManager,
+        args: ['run', 'expo:config'],
+        cwd: targetDir,
+        env: { APP_VARIANT_SLUG: appVariantSlug },
+        operation: 'generated app Expo config for non-default App Variant',
+      }),
+    ),
+  ];
 }
 
 async function verifyInstalledProject(
@@ -486,30 +540,14 @@ async function verifyInstalledProject(
   targetDir: string,
   appVariantNames: readonly string[],
 ): Promise<void> {
-  await runExternalCommand({
-    command: matrixCase.packageManager,
-    args: ['run', 'typecheck'],
-    cwd: targetDir,
-  });
-  await runExternalCommand({
-    command: matrixCase.packageManager,
-    args: ['run', 'expo:config'],
-    cwd: targetDir,
+  const commands = planInstalledProjectVerificationCommands({
+    packageManager: matrixCase.packageManager,
+    targetDir,
+    appVariantNames,
   });
 
-  if (matrixCase.setupType === 'generic-with-standalone-app-variants') {
-    const standaloneSlug = deriveAppVariantIdentities(appVariantNames)[1]?.slug;
-
-    if (!standaloneSlug) {
-      throw new Error(`Missing Standalone App Variant Slug for ${matrixCase.id}.`);
-    }
-
-    await runExternalCommand({
-      command: matrixCase.packageManager,
-      args: ['run', 'expo:config'],
-      cwd: targetDir,
-      env: { APP_VARIANT_SLUG: standaloneSlug },
-    });
+  for (const command of commands) {
+    await runExternalCommand(command);
   }
 }
 
@@ -588,12 +626,17 @@ async function verifyMatrixCase(
 
 async function readToolVersions(): Promise<Record<string, string>> {
   const versions: Record<string, string> = {};
+  const commands: readonly (PublicCliPackageManager | 'git')[] = [
+    ...SUPPORTED_PACKAGE_MANAGERS,
+    'git',
+  ];
 
-  for (const command of [...SUPPORTED_PACKAGE_MANAGERS, 'git']) {
+  for (const command of commands) {
     versions[command] = await runExternalCommand({
       command,
       args: ['--version'],
       cwd: tmpdir(),
+      operation: `${command} version check`,
     });
   }
 

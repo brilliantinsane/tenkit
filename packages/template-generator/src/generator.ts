@@ -192,7 +192,6 @@ function normalizeTemplateContext({
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
     isNpmPackageManager: packageManager === 'npm',
-    isPnpmPackageManager: packageManager === 'pnpm',
     isUniwindStyling: stylingChoice === 'uniwind',
     projectName,
     projectNameStringLiteral: JSON.stringify(projectName),
@@ -219,6 +218,10 @@ function readProjectTemplateTree({
     `${templatePath}/${context.stylingChoice}`,
     context,
   );
+  const packageManagerTree =
+    context.packageManager === 'pnpm'
+      ? readTemplateTree('options/package-manager/pnpm/shared', context)
+      : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({
@@ -231,6 +234,7 @@ function readProjectTemplateTree({
     sharedTree,
     setupTypeSharedTree,
     setupTypeStylingTree,
+    packageManagerTree,
     appVariantAssets,
   );
 }

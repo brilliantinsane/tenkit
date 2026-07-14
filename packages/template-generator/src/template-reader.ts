@@ -17,7 +17,6 @@ export type TemplateContext = {
   isBareStyling: boolean;
   isBunPackageManager: boolean;
   isNpmPackageManager: boolean;
-  isPnpmPackageManager: boolean;
   isUniwindStyling: boolean;
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
@@ -79,14 +78,6 @@ function isIgnoredTemplateArtifact(path: string): boolean {
   return path.split('/').includes('.DS_Store');
 }
 
-function shouldIncludeTemplateFile(path: string, context: TemplateContext): boolean {
-  if (toOutputPath(path) === 'pnpm-workspace.yaml') {
-    return context.isPnpmPackageManager;
-  }
-
-  return true;
-}
-
 export function readTemplateTree(templatePath: string, context: TemplateContext): VirtualFileTree {
   const templateRoot = resolve(templatesRoot, templatePath);
 
@@ -96,7 +87,6 @@ export function readTemplateTree(templatePath: string, context: TemplateContext)
 
   const files = globSync('**/*', { cwd: templateRoot, dot: true, onlyFiles: true })
     .filter((file) => !isIgnoredTemplateArtifact(toVirtualPath(file)))
-    .filter((file) => shouldIncludeTemplateFile(toVirtualPath(file), context))
     .map((file) => join(templateRoot, file));
 
   return sortVirtualFileTree(

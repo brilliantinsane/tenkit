@@ -46,19 +46,17 @@ export async function verifyGeneratedApp({
     await runGeneratedAppCommand(targetDir, 'pnpm', ['run', 'typecheck']);
     await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config']);
 
-    if (setupType === 'generic-with-standalone-app-variants') {
-      const setupTypeDefinition = getGeneratedSetupTypeDefinition(setupType);
-      const resolvedNames = setupTypeDefinition.appVariants.map(
-        ({ defaultName }, index) => appVariantNames?.[index] ?? defaultName,
-      );
-      const standaloneSlug = deriveAppVariantIdentities(resolvedNames)[1]?.slug;
+    const setupTypeDefinition = getGeneratedSetupTypeDefinition(setupType);
+    const resolvedNames = setupTypeDefinition.appVariants.map(
+      ({ defaultName }, index) => appVariantNames?.[index] ?? defaultName,
+    );
+    const remainingAppVariantSlugs = deriveAppVariantIdentities(resolvedNames)
+      .slice(1)
+      .map(({ slug }) => slug);
 
-      if (!standaloneSlug) {
-        throw new Error('Missing Standalone App Variant Slug for generated app verification.');
-      }
-
+    for (const appVariantSlug of remainingAppVariantSlugs) {
       await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config'], {
-        APP_VARIANT_SLUG: standaloneSlug,
+        APP_VARIANT_SLUG: appVariantSlug,
       });
     }
 

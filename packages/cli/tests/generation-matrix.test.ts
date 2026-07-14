@@ -12,6 +12,7 @@ import {
   createInstalledVerificationCases,
   finalizeGenerationMatrix,
   GENERATION_MATRIX_ROOT,
+  planInstalledProjectVerificationCommands,
   runGenerationMatrix,
   type GenerationMatrixReport,
 } from '../src/verification/generation-matrix';
@@ -100,6 +101,37 @@ describe('generation matrix coverage', () => {
 });
 
 describe('generated project inspection', () => {
+  test('plans Expo config verification for every White Label App Variant', () => {
+    assert.deepEqual(
+      planInstalledProjectVerificationCommands({
+        packageManager: 'pnpm',
+        targetDir: '/tmp/white-label',
+        appVariantNames: ['North Brand', 'South Brand'],
+      }),
+      [
+        {
+          command: 'pnpm',
+          args: ['run', 'typecheck'],
+          cwd: '/tmp/white-label',
+          operation: 'generated app typecheck',
+        },
+        {
+          command: 'pnpm',
+          args: ['run', 'expo:config'],
+          cwd: '/tmp/white-label',
+          operation: 'generated app Expo config',
+        },
+        {
+          command: 'pnpm',
+          args: ['run', 'expo:config'],
+          cwd: '/tmp/white-label',
+          env: { APP_VARIANT_SLUG: 'south-brand' },
+          operation: 'generated app Expo config for non-default App Variant',
+        },
+      ],
+    );
+  });
+
   test('compares every expected byte and rejects unexpected files', async () => {
     const root = await fs.mkdtemp(join(tmpdir(), 'tenkit-matrix-inspection-'));
     tempRoots.push(root);
@@ -175,7 +207,10 @@ describe('matrix evidence lifecycle', () => {
       assert.equal(report.status, 'failed');
       assert.equal(preflight?.status, 'failed');
       const error = preflight && 'error' in preflight ? preflight.error : undefined;
-      assert.equal(error, 'External verification command failed during tool preflight.');
+      assert.equal(
+        error,
+        'External verification command failed during tool preflight: pnpm version check.',
+      );
       assert.notMatch(error ?? '', /pnpm --version|spawn pnpm|stdout|stderr/);
       assert.equal((error ?? '').includes(tmpdir()), false);
     } finally {
