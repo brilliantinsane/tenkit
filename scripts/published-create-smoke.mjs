@@ -8,7 +8,6 @@ const distTag =
   process.argv.slice(2).find((arg) => arg !== '--') || process.env.NPM_DIST_TAG || 'next';
 const keepOutput = process.env.TENKIT_KEEP_PUBLISHED_SMOKE === '1';
 const smokeRoot = mkdtempSync(join(tmpdir(), 'tenkit-published-create-smoke-'));
-const cacheDir = join(smokeRoot, 'cache');
 const runnerDir = join(smokeRoot, 'runner');
 const maxAttempts = 5;
 const retryDelayMs = 10_000;
@@ -65,7 +64,7 @@ const smokeCases = [
   },
 ];
 
-function runCreate(smokeCase) {
+function runCreate(smokeCase, cacheDir) {
   const args = [
     'create',
     `tenkit@${distTag}`,
@@ -156,12 +155,15 @@ async function runPublishedCreateSmoke() {
   let lastOutput = '';
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const cacheDir = join(smokeRoot, `cache-${attempt}`);
+
     rmSync(runnerDir, { recursive: true, force: true });
+    mkdirSync(cacheDir, { recursive: true });
     mkdirSync(runnerDir, { recursive: true });
     let attemptPassed = true;
 
     for (const smokeCase of smokeCases) {
-      const result = runCreate(smokeCase);
+      const result = runCreate(smokeCase, cacheDir);
 
       if (result.status !== 0) {
         lastOutput = sanitizeCommandOutput(`${result.stdout || ''}\n${result.stderr || ''}`);
