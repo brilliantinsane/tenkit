@@ -8,7 +8,9 @@ import {
   CommandTabsHeader,
   type PackageManager,
 } from "@/components/command-block-primitives"
+import { PnpmReleaseAgeNotice } from "@/components/pnpm-release-age-notice"
 import { Tabs, TabsContent } from "@/components/tabs"
+import { usePnpmReleaseCommand } from "@/hooks/use-pnpm-release-command"
 
 const packageManagerAtom = atomWithStorage<PackageManager>(
   "tenkit:package-manager:v1",
@@ -50,10 +52,11 @@ export function CodeBlockCommand({
   onCopyError,
 }: CodeBlockCommandProps) {
   const [packageManager, setPackageManager] = useAtom(packageManagerAtom)
+  const pnpmReleaseCommand = usePnpmReleaseCommand(pnpm)
 
   const tabs = {
     prompt,
-    pnpm,
+    pnpm: pnpmReleaseCommand.command,
     yarn,
     npm,
     bun,
@@ -103,6 +106,10 @@ export function CodeBlockCommand({
           )
         })}
       </Tabs>
+
+      {packageManager === "pnpm" && pnpmReleaseCommand.isTemporarilyPinned ? (
+        <PnpmReleaseAgeNotice />
+      ) : null}
 
       <CommandActions
         packageManager={packageManager}
