@@ -1,6 +1,6 @@
 {
   "name": "create-tenkit",
-  "version": "0.2.0-next.0",
+  "version": "0.2.0",
   "description": "Thin package-manager create entrypoint for Tenkit.",
   "license": "MIT",
   "homepage": "https://www.tenkit.dev",
