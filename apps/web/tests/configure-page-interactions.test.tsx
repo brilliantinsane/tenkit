@@ -13,9 +13,16 @@ import { afterEach, describe, expect, test, vi } from "vitest"
 
 import { ConfigurePageContent } from "@/components/configure-page-content"
 
+const { trackDatabuddyEvent } = vi.hoisted(() => ({
+  trackDatabuddyEvent: vi.fn(),
+}))
+
+vi.mock("@/lib/databuddy", () => ({ trackDatabuddyEvent }))
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  trackDatabuddyEvent.mockClear()
 })
 
 describe("ConfigurePageContent interactions", () => {
@@ -185,6 +192,63 @@ describe("ConfigurePageContent interactions", () => {
     expect(searchParams?.get("vacc")).toBe("#000000")
     expect(searchParams?.get("git")).toBe("false")
     expect(searchParams?.get("i")).toBe("false")
+    expect(trackDatabuddyEvent).toHaveBeenCalledOnce()
+    expect(trackDatabuddyEvent).toHaveBeenCalledWith(
+      "configurator_randomized",
+      {
+        setupType: "runtime-tenants",
+        styling: "uniwind",
+        packageManager: "npm",
+      }
+    )
+  })
+
+  test("tracks changed bounded Configurator Choices", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    await user.click(screen.getByRole("button", { name: /^Runtime/ }))
+    await user.click(screen.getByRole("button", { name: /^Unistyles/ }))
+    await user.click(screen.getByRole("button", { name: /^npm/ }))
+    await user.click(
+      screen.getByRole("switch", { name: "Install dependencies" })
+    )
+    await user.click(screen.getByRole("switch", { name: "Initialize Git" }))
+
+    expect(trackDatabuddyEvent.mock.calls).toEqual([
+      [
+        "configurator_choice_changed",
+        { group: "setup_type", value: "runtime-tenants" },
+      ],
+      ["configurator_choice_changed", { group: "styling", value: "unistyles" }],
+      [
+        "configurator_choice_changed",
+        { group: "package_manager", value: "npm" },
+      ],
+      ["configurator_choice_changed", { group: "install", value: false }],
+      ["configurator_choice_changed", { group: "git", value: false }],
+    ])
+  })
+
+  test("does not track already-selected Configurator Choices", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    await user.click(screen.getByRole("button", { name: /^White label/ }))
+    await user.click(screen.getByRole("button", { name: /^Bare/ }))
+    await user.click(screen.getByRole("button", { name: /^pnpm/ }))
+
+    expect(trackDatabuddyEvent).not.toHaveBeenCalled()
   })
 
   test("shows the selected indicator only on pressed Choice cards", () => {

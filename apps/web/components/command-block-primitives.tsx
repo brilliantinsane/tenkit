@@ -3,6 +3,7 @@
 import { TextAlignStartIcon, TerminalIcon } from "lucide-react"
 
 import { CopyButton } from "@/components/copy-button"
+import { useCreateCommandAnalytics } from "@/components/create-command-analytics"
 import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { TabsList, TabsTrigger } from "@/components/tabs"
 import { trackDatabuddyEvent } from "@/lib/databuddy"
@@ -63,6 +64,8 @@ export function CommandActions({
   onCopySuccess?: CopySuccessHandler
   onCopyError?: (error: Error) => void
 }) {
+  const createCommandAnalytics = useCreateCommandAnalytics()
+
   return (
     <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
       <CopyButton
@@ -73,6 +76,7 @@ export function CommandActions({
         disabled={copyDisabled}
         onCopySuccess={(copiedCommand) => {
           trackDatabuddyEvent("create_command_copied", {
+            ...createCommandAnalytics,
             packageManager,
           })
 

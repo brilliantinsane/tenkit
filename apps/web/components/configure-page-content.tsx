@@ -22,6 +22,7 @@ import {
 } from "@/components/configurator-provider"
 import { ConfiguratorToggleRow } from "@/components/configurator-toggle-row"
 import { ExpandableCodeBlockCommand } from "@/components/expandable-code-block-command"
+import { CreateCommandAnalyticsProvider } from "@/components/create-command-analytics"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
@@ -172,21 +173,31 @@ function ConfiguratorCommandPanel() {
           ) : null}
         </Field>
         <Separator />
-        <div
-          id="configure-command"
-          className="overflow-hidden rounded-xl border bg-card/80 p-1.5 shadow-sm"
+        <CreateCommandAnalyticsProvider
+          value={{
+            surface: "configurator",
+            setupType: state.setupType,
+            styling: state.styling,
+            git: state.git,
+            install: state.install,
+          }}
         >
-          <ExpandableCodeBlockCommand
-            pnpm={meta.commands.pnpm}
-            npm={meta.commands.npm}
-            bun={meta.commands.bun}
-            value={state.packageManager}
-            expanded={commandExpanded}
-            copyDisabled={!meta.commandIsCopyable}
-            onValueChange={actions.selectPackageManager}
-            onExpandedChange={setCommandExpanded}
-          />
-        </div>
+          <div
+            id="configure-command"
+            className="overflow-hidden rounded-xl border bg-card/80 p-1.5 shadow-sm"
+          >
+            <ExpandableCodeBlockCommand
+              pnpm={meta.commands.pnpm}
+              npm={meta.commands.npm}
+              bun={meta.commands.bun}
+              value={state.packageManager}
+              expanded={commandExpanded}
+              copyDisabled={!meta.commandIsCopyable}
+              onValueChange={actions.selectPackageManager}
+              onExpandedChange={setCommandExpanded}
+            />
+          </div>
+        </CreateCommandAnalyticsProvider>
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
