@@ -1,6 +1,6 @@
 {
   "name": "@tenkit/template-generator",
-  "version": "0.1.2",
+  "version": "0.2.0-next.0",
   "description": "Template generation package for Tenkit Expo projects.",
   "license": "MIT",
   "homepage": "https://github.com/brilliantinsane/tenkit#readme",

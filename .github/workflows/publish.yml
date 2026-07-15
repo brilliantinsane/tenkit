@@ -25,7 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NPM_CONFIG_REGISTRY: https://registry.npmjs.org
-      NPM_DIST_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.dist_tag || 'next' }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
 
     steps:
@@ -54,15 +53,54 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve release metadata
+        env:
+          REQUESTED_DIST_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.dist_tag || '' }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "NPM_DIST_TAG=$REQUESTED_DIST_TAG" >> "$GITHUB_ENV"
+          elif [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            echo "NPM_DIST_TAG=next" >> "$GITHUB_ENV"
+          else
+            echo "NPM_DIST_TAG=latest" >> "$GITHUB_ENV"
+          fi
+
       - name: Validate publish ref
         run: |
-          if [ "$DRY_RUN" != "true" ] && [[ "$GITHUB_REF" != refs/tags/v* ]]; then
-            echo "Real publishing must run from a v* tag."
-            exit 1
-          fi
-          if [ "$DRY_RUN" != "true" ] && [ "$NPM_DIST_TAG" != "next" ]; then
-            echo "This first-release workflow only publishes the next dist-tag."
-            exit 1
+          release_version="$(node -p "require('./packages/template-generator/package.json').version")"
+
+          for manifest_path in packages/cli/package.json packages/create-tenkit/package.json; do
+            package_version="$(node -p "require('./${manifest_path}').version")"
+
+            if [ "$package_version" != "$release_version" ]; then
+              echo "All public packages must use the same version."
+              exit 1
+            fi
+          done
+
+          if [ "$DRY_RUN" != "true" ]; then
+            if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+              echo "Real publishing must run from a v* tag."
+              exit 1
+            fi
+
+            tag_version="${GITHUB_REF_NAME#v}"
+
+            if [ "$tag_version" != "$release_version" ]; then
+              echo "Tag version $tag_version does not match package version $release_version."
+              exit 1
+            fi
+
+            expected_dist_tag="latest"
+
+            if [[ "$release_version" == *-* ]]; then
+              expected_dist_tag="next"
+            fi
+
+            if [ "$NPM_DIST_TAG" != "$expected_dist_tag" ]; then
+              echo "$release_version must publish with the $expected_dist_tag dist-tag."
+              exit 1
+            fi
           fi
 
       - name: Run release checks
@@ -127,4 +165,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release-artifacts/*.tgz --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+          release_args=(
+            "$GITHUB_REF_NAME"
+            release-artifacts/*.tgz
+            --title "$GITHUB_REF_NAME"
+            --notes-file release-notes.md
+          )
+
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+
+          gh release create "${release_args[@]}"
