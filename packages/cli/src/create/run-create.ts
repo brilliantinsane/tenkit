@@ -24,6 +24,9 @@ export async function runCreateFlow(
 
   const tree = generate({
     setupType: resolvedOptions.setupType,
+    stylingChoice: resolvedOptions.stylingChoice,
+    appVariantAccents: resolvedOptions.appVariantAccents,
+    appVariantNames: resolvedOptions.appVariantNames,
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     packageManager: resolvedOptions.packageManager,
@@ -43,6 +46,9 @@ export async function runCreateFlow(
       projectName: resolvedOptions.projectName,
       packageName: resolvedOptions.packageName,
       setupType: resolvedOptions.setupType,
+      stylingChoice: resolvedOptions.stylingChoice,
+      appVariantAccents: resolvedOptions.appVariantAccents,
+      appVariantNames: resolvedOptions.appVariantNames,
       packageManager: resolvedOptions.packageManager,
       installed: false,
       installFailed: false,
@@ -60,8 +66,7 @@ export async function runCreateFlow(
     ? resolvedOptions.targetDir
     : env.cwd;
   const gitSetup = await prepareInitialGitSetup({
-    explicitGitMode: resolvedOptions.git,
-    env,
+    enabled: resolvedOptions.git,
     runCommand,
     probeDir: gitProbeCwd,
   });
@@ -93,6 +98,9 @@ export async function runCreateFlow(
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     setupType: resolvedOptions.setupType,
+    stylingChoice: resolvedOptions.stylingChoice,
+    appVariantAccents: resolvedOptions.appVariantAccents,
+    appVariantNames: resolvedOptions.appVariantNames,
     packageManager: resolvedOptions.packageManager,
     installed,
     installFailed,

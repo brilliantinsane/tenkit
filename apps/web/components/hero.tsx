@@ -1,19 +1,23 @@
-import { ExternalLinkIcon, Layers3Icon } from "lucide-react"
+import { Layers3Icon } from "lucide-react"
+import { Suspense } from "react"
 import { preload } from "react-dom"
 
 import { CodeBlockCommand } from "@/components/code-block-command"
+import { HeroAnnouncement } from "@/components/hero-announcement"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GitHubMark } from "@/components/github-mark"
 import { HeroDemoVideo } from "@/components/hero-demo-video"
-import {
-  Announcement,
-  AnnouncementTag,
-  AnnouncementTitle,
-} from "@/components/kibo-ui/announcement"
 import { Button } from "@/components/ui/button"
-import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
+import { GITHUB_REPO_URL } from "@/constants/globals"
 import { HERO_POSTER_PATH } from "@/lib/hero-media"
 import { cn } from "@/lib/utils"
+
+const heroAnnouncementFallback = (
+  <div
+    aria-hidden="true"
+    className="h-[34px] w-[265px] rounded-full border bg-card"
+  />
+)
 
 export function HeroSection() {
   preload(HERO_POSTER_PATH, { as: "image" })
@@ -25,24 +29,9 @@ export function HeroSection() {
           aria-hidden="true"
           className="absolute inset-0 -z-1 size-full overflow-hidden"
         />
-        <Announcement
-          asChild
-          className={cn(
-            "mx-auto rounded-full bg-card p-1 pr-2",
-            "animate-in transition-all delay-500 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
-          )}
-          tone="themed"
-        >
-          <a href={NPM_PACKAGE_URL} target="_blank" rel="noreferrer">
-            <AnnouncementTag className="ml-0 flex h-6 items-center rounded-full border border-[#208AEF]/35 bg-[#208AEF]/10 px-2 py-0 font-mono leading-none text-[#208AEF]">
-              CLI
-            </AnnouncementTag>
-            <AnnouncementTitle className="h-6 items-center py-0 text-xs leading-none">
-              create-tenkit is available now
-              <ExternalLinkIcon className="size-3 duration-150 ease-out group-hover:translate-x-0.5" />
-            </AnnouncementTitle>
-          </a>
-        </Announcement>
+        <Suspense fallback={heroAnnouncementFallback}>
+          <HeroAnnouncement />
+        </Suspense>
 
         <h1
           className={cn(
@@ -50,7 +39,7 @@ export function HeroSection() {
             "animate-in delay-100 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          One Codebase Many Branded Apps
+          Build Multi-Tenant Apps with Expo from One Codebase
         </h1>
 
         <p
@@ -59,7 +48,7 @@ export function HeroSection() {
             "animate-in delay-200 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          Create a project built with Expo around the Setup Type you actually
+          Generate a multi-tenant mobile app around the Setup Type you actually
           ship: white-label App Variants, Runtime Tenants, or a hybrid with
           selected standalone breakouts.
         </p>
@@ -68,7 +57,7 @@ export function HeroSection() {
           <Button asChild>
             <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
               <GitHubMark data-icon="inline-start" />
-              Open GitHub
+              View source
             </a>
           </Button>
           <Button asChild variant="outline">

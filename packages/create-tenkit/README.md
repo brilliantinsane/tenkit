@@ -50,6 +50,8 @@ The interactive flow asks for:
 
 - project name
 - Setup Type
+- App Variant names and Accents
+- Styling Choice
 
 Press Return at the project-name prompt to accept `tenkit-app`.
 
@@ -59,6 +61,7 @@ Press Return at the project-name prompt to accept `tenkit-app`.
 pnpm create tenkit@latest --name studio-app --setup white-label --yes
 pnpm create tenkit@latest --name venue-network --setup runtime-tenants --yes
 pnpm create tenkit@latest --name franchise-app --setup generic-standalone --yes
+pnpm create tenkit@latest --name unistyles-app --setup white-label --styling unistyles --yes
 ```
 
 Skip install and git when you only want to inspect generated output:
@@ -82,6 +85,16 @@ pnpm create tenkit@latest --package-manager bun
 | White Label Apps          | `white-label`        | Every brand, customer, or venue ships as its own native app.                                                             |
 | Runtime Tenant App        | `runtime-tenants`    | One native app opens multiple Runtime Tenants.                                                                           |
 | Generic + Standalone Apps | `generic-standalone` | One Generic App Variant opens selected Runtime Tenants, while some Runtime Tenants also ship as Standalone App Variants. |
+
+## Styling Choices
+
+| Styling Choice | Public value | Generated foundation               |
+| -------------- | ------------ | ---------------------------------- |
+| Bare           | `bare`       | React Native StyleSheet. Default.  |
+| Uniwind        | `uniwind`    | Tailwind styling for React Native. |
+| Unistyles      | `unistyles`  | Adaptive styling with Unistyles 3. |
+
+Select a non-default Styling Option Value with `--styling`. Bare remains the default when Styling is omitted or `--yes` accepts defaults.
 
 ## Package Boundary
 

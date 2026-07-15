@@ -1,0 +1,40 @@
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { type ColorValue } from 'react-native';
+import { useCSSVariable } from 'uniwind';
+
+type AppTabsProps = {
+  accent: string;
+};
+
+export default function AppTabs({ accent }: AppTabsProps) {
+  const [surface, surfaceRaised, foreground, muted] = useCSSVariable([
+    '--color-surface',
+    '--color-surface-raised',
+    '--color-foreground',
+    '--color-muted',
+  ]) as ColorValue[];
+
+  return (
+    <NativeTabs
+      backgroundColor={surface}
+      indicatorColor={surfaceRaised}
+      iconColor=\{{
+        default: muted,
+        selected: accent,
+      }}
+      labelStyle=\{{
+        default: { color: foreground },
+        selected: { color: accent },
+      }}
+    >
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}

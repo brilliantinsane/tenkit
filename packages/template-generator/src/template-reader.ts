@@ -6,13 +6,19 @@ import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
 
+import { type GeneratedAccentColor } from './generated-accent-color';
+import { type GeneratedAppVariantRole } from './generated-setup-type-definitions';
+import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
+  appVariants: readonly TemplateAppVariantContext[];
   isSingleAppRuntimeTenants: boolean;
+  isBareStyling: boolean;
   isBunPackageManager: boolean;
   isNpmPackageManager: boolean;
-  isPnpmPackageManager: boolean;
+  isUnistylesStyling: boolean;
+  isUniwindStyling: boolean;
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
@@ -20,6 +26,20 @@ export type TemplateContext = {
   packageManagerTenkitCommand: string;
   projectName: string;
   projectNameStringLiteral: string;
+  stylingChoice: GeneratedStylingChoice;
+};
+
+export type TemplateAppVariantContext = {
+  accent: GeneratedAccentColor;
+  accentStringLiteral: string;
+  appVariantId: number;
+  bundleIdentifier: string;
+  displayName: string;
+  displayNameStringLiteral: string;
+  packageName: string;
+  role: GeneratedAppVariantRole;
+  scheme: string;
+  slug: string;
 };
 
 export const GENERATED_PROJECT_PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun'] as const;
@@ -34,7 +54,9 @@ function toVirtualPath(path: string): string {
 }
 
 function toOutputPath(path: string): string {
-  const mappedPath = path
+  const emittedPath = path.endsWith('.hbs') ? path.slice(0, -'.hbs'.length) : path;
+
+  return emittedPath
     .split('/')
     .map((segment) => {
       if (segment === '_gitignore') return '.gitignore';
@@ -43,8 +65,6 @@ function toOutputPath(path: string): string {
       return segment;
     })
     .join('/');
-
-  return mappedPath.endsWith('.hbs') ? mappedPath.slice(0, -'.hbs'.length) : mappedPath;
 }
 
 function renderTemplateContent(contents: string, context: TemplateContext): string {
@@ -59,14 +79,6 @@ function isIgnoredTemplateArtifact(path: string): boolean {
   return path.split('/').includes('.DS_Store');
 }
 
-function shouldIncludeTemplateFile(path: string, context: TemplateContext): boolean {
-  if (toOutputPath(path) === 'pnpm-workspace.yaml') {
-    return context.isPnpmPackageManager;
-  }
-
-  return true;
-}
-
 export function readTemplateTree(templatePath: string, context: TemplateContext): VirtualFileTree {
   const templateRoot = resolve(templatesRoot, templatePath);
 
@@ -76,7 +88,6 @@ export function readTemplateTree(templatePath: string, context: TemplateContext)
 
   const files = globSync('**/*', { cwd: templateRoot, dot: true, onlyFiles: true })
     .filter((file) => !isIgnoredTemplateArtifact(toVirtualPath(file)))
-    .filter((file) => shouldIncludeTemplateFile(toVirtualPath(file), context))
     .map((file) => join(templateRoot, file));
 
   return sortVirtualFileTree(

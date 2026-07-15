@@ -40,16 +40,6 @@ export function detectPackageManager(userAgent: string | undefined): PublicCliPa
   return 'pnpm';
 }
 
-export function resolvePackageManager({
-  packageManager,
-  userAgent,
-}: {
-  packageManager: string | undefined;
-  userAgent: string | undefined;
-}): PublicCliPackageManager {
-  return normalizePackageManagerInput(packageManager) ?? detectPackageManager(userAgent);
-}
-
 export function formatInstallCommand(packageManager: PublicCliPackageManager): string {
   return `${packageManager} install`;
 }

@@ -1,0 +1,58 @@
+import { Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+
+export default function HomeScreen() {
+  const { appVariant } = useAppVariantConfig();
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.brand}>Tenkit</Text>
+      <Text style={styles.title}>White Label App</Text>
+      <View style={styles.details}>
+        <Text selectable style={styles.code}>
+          App Variant: {appVariant.slug}
+        </Text>
+      </View>
+      <Text style={styles.description}>
+        A generated Expo SDK 56 app with White Label app configuration applied.
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme) => ({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  brand: {
+    ...theme.typography.body,
+    color: theme.colors.accent,
+    fontWeight: '600',
+  },
+  title: {
+    ...theme.typography.hero,
+    color: theme.colors.foreground,
+    textAlign: 'center',
+  },
+  details: {
+    minWidth: 224,
+    gap: theme.spacing.xs,
+  },
+  code: {
+    ...theme.typography.code,
+    color: theme.colors.foreground,
+  },
+  description: {
+    ...theme.typography.body,
+    maxWidth: 384,
+    color: theme.colors.muted,
+    textAlign: 'center',
+  },
+}));

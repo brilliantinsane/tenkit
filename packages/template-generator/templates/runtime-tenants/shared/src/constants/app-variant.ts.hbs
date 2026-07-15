@@ -1,0 +1,22 @@
+import { type AppVariant } from '@/types/app-variant';
+
+export const appVariant = {
+  appVariantId: {{appVariants.[0].appVariantId}},
+  // Replace with the actual EAS Project Slug after creating or linking the project.
+  slug: '{{appVariants.[0].slug}}',
+  name: {{{appVariants.[0].displayNameStringLiteral}}},
+  version: '1.0.0',
+  scheme: '{{appVariants.[0].scheme}}',
+  bundleIdentifier: '{{appVariants.[0].bundleIdentifier}}',
+  packageName: '{{appVariants.[0].packageName}}',
+  theme: {
+    accent: {{{appVariants.[0].accentStringLiteral}}},
+  },
+  eas: {
+    projectId: '',
+  },
+  runtimeTenantAccess: {
+    defaultRuntimeTenantId: 100,
+    allowedRuntimeTenantIds: [100, 101, 102],
+  },
+} as const satisfies AppVariant;

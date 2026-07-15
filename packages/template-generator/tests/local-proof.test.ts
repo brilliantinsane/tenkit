@@ -37,6 +37,38 @@ async function configureTestGitIdentity(cwd: string): Promise<void> {
   await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd });
 }
 
+async function verifyStylingProofForEverySetupType(
+  stylingChoice: 'uniwind' | 'unistyles',
+  verifyStylingOutput: (targetDir: string) => Promise<void>,
+): Promise<void> {
+  const setupTypes = [
+    'white-label-apps',
+    'single-app-runtime-tenants',
+    'generic-with-standalone-app-variants',
+  ] as const;
+
+  for (const setupType of setupTypes) {
+    const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+    const targetDir = join(tempRoot, 'generated-app');
+    const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+    try {
+      await runGenerationProof({
+        setupType,
+        stylingChoice,
+        targetDir,
+        git: false,
+        workspaceRoot,
+      });
+
+      await verifyGeneratedAppShape(setupType, targetDir, stylingChoice);
+      await verifyStylingOutput(targetDir);
+    } finally {
+      await fs.remove(tempRoot);
+    }
+  }
+}
+
 test('local proof command boundary generates a White Label Apps Expo app in a separate folder', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
   const targetDir = join(tempRoot, 'generated-app');
@@ -206,6 +238,56 @@ test('local proof command boundary generates a White Label Apps Expo app in a se
     assert.equal(await exists(join(targetDir, '.git/HEAD')), true);
     assert.equal(await readGitStatus(targetDir), '');
     assert.equal(await exists(join(workspaceRoot, 'package.json')), false);
+  } finally {
+    await fs.remove(tempRoot);
+  }
+});
+
+test('local proof command boundary selects Uniwind output for every Setup Type', async () => {
+  await verifyStylingProofForEverySetupType('uniwind', async (targetDir) => {
+    assert.equal(await exists(join(targetDir, 'src/global.css')), true);
+    assert.equal(await exists(join(targetDir, 'src/uniwind-env.d.ts')), true);
+    assert.equal(await exists(join(targetDir, 'src/uniwind-types.d.ts')), false);
+    assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+  });
+});
+
+test('local proof command boundary selects Unistyles output for every Setup Type', async () => {
+  await verifyStylingProofForEverySetupType('unistyles', async (targetDir) => {
+    assert.equal(await exists(join(targetDir, 'unistyles.ts')), true);
+    assert.equal(await exists(join(targetDir, 'index.ts')), true);
+    assert.equal(await exists(join(targetDir, 'babel.config.js')), true);
+    assert.equal(await exists(join(targetDir, 'src/global.css')), false);
+    assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+  });
+});
+
+test('local proof command boundary forwards per-App-Variant names and Accents', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-template-proof-'));
+  const targetDir = join(tempRoot, 'generated-app');
+  const workspaceRoot = join(tempRoot, 'tenkit-workspace');
+
+  try {
+    await runGenerationProof({
+      setupType: 'white-label-apps',
+      stylingChoice: 'uniwind',
+      appVariantNames: ['North App', 'South App'],
+      appVariantAccents: ['#123ABC', '#456DEF'],
+      targetDir,
+      git: false,
+      workspaceRoot,
+    });
+
+    const appVariants = await fs.readFile(join(targetDir, 'src/constants/app-variants.ts'), 'utf8');
+    const globalCss = await fs.readFile(join(targetDir, 'src/global.css'), 'utf8');
+
+    assert.match(appVariants, /slug: 'north-app'/);
+    assert.match(appVariants, /slug: 'south-app'/);
+    assert.match(appVariants, /accent: "#123ABC"/);
+    assert.match(appVariants, /accent: "#456DEF"/);
+    assert.equal(globalCss.match(/--color-accent: #123ABC;/g)?.length, 2);
+    assert.equal(await fs.pathExists(join(targetDir, 'assets/north-app/icons/icon.png')), true);
+    assert.equal(await fs.pathExists(join(targetDir, 'assets/south-app/icons/icon.png')), true);
   } finally {
     await fs.remove(tempRoot);
   }

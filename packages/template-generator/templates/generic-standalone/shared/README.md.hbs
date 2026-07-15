@@ -1,0 +1,110 @@
+# {{projectName}}
+
+A Tenkit Generic With Standalone App Variants project generated for Expo SDK 56.
+
+## Highlights
+
+- {{appVariants.[0].displayName}} is the Generic App Variant.
+- {{appVariants.[1].displayName}} is a Standalone App Variant.
+- Runtime Tenant records live in generated source data.
+- {{appVariants.[0].displayName}} can select North Studio, South Studio, and East Studio at runtime.
+- {{appVariants.[1].displayName}} opens West Studio directly and does not show Runtime Tenant selection.
+- `APP_VARIANT_SLUG` selects the App Variant for Expo config and Build Preparation.
+- The Generated App Local CLI is for this project only. It is separate from Tenkit's Public CLI create flow.
+{{#if isUnistylesStyling}}
+- Uses Unistyles for generated UI styling. Customize themes and tokens in `unistyles.ts`.
+{{/if}}
+
+## Get Started
+
+```bash
+{{packageManagerInstallCommand}}
+{{packageManagerRunCommand}} start
+```
+
+Inspect the public Expo runtime config:
+
+```bash
+{{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:config
+```
+
+Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/constants/runtime-tenants.ts`.
+
+## Select an App Variant
+
+App Variant native identity is selected with `APP_VARIANT_SLUG`:
+
+```bash
+APP_VARIANT_SLUG={{appVariants.[0].slug}} {{packageManagerRunCommand}} expo:config
+APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:config
+```
+
+The generated App Variant data lives in `src/constants/app-variants.ts`.
+
+Native assets live per App Variant:
+
+```text
+assets/{{appVariants.[0].slug}}/
+assets/{{appVariants.[1].slug}}/
+```
+
+Runtime Tenants do not own native asset folders.
+
+## Build Preparation
+
+Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
+
+```bash
+{{packageManagerTenkitCommand}} build
+{{packageManagerTenkitCommand}} reset
+{{packageManagerTenkitCommand}} doctor
+```
+
+`{{packageManagerTenkitCommand}} build` asks for App Variant, App Variant Environment, and platform. It pulls EAS environment variables into `.env.local`, verifies that the pulled `APP_VARIANT_SLUG` matches the selected App Variant, and then runs `expo prebuild --clean` for that native identity. Runtime Tenant selection remains runtime behavior and is not part of Build Preparation.
+
+Before using build preparation:
+
+1. Set `EXPO_OWNER` in `src/constants/project-config.ts` to your Expo account or organization. It starts blank on purpose, so build preparation fails clearly instead of using Tenkit's Expo account.
+2. Create or link an EAS Project for each App Variant.
+3. Paste each EAS Project ID into `src/constants/app-variants.ts`.
+4. Add `APP_VARIANT_SLUG={{appVariants.[0].slug}}` to the Generic App Variant's EAS environment.
+5. Add `APP_VARIANT_SLUG={{appVariants.[1].slug}}` to the Standalone App Variant's EAS environment.
+
+A new App Variant Slug can seed creation of a new EAS Project. This project generates `{{appVariants.[0].slug}}` and `{{appVariants.[1].slug}}` as its ordered App Variant Slugs.
+
+When an App Variant is linked to an existing EAS Project, that linked EAS Project is authoritative for owner and Slug. Run `eas init` to reconcile the generated local values with EAS.
+
+For CI or non-interactive use:
+
+```bash
+{{packageManagerTenkitCommand}} build --slug {{appVariants.[0].slug}} --env development --platform ios
+{{packageManagerTenkitCommand}} build --slug {{appVariants.[1].slug}} --env production --android
+```
+
+Reset native build state to the default Generic App Variant:
+
+```bash
+{{packageManagerTenkitCommand}} reset
+```
+
+Show local diagnostics:
+
+```bash
+{{packageManagerTenkitCommand}} doctor
+```
+
+## Runtime Tenant Data
+
+Runtime Tenant selection is runtime behavior.
+
+- {{appVariants.[0].displayName}} exposes Runtime Tenant Access for North Studio, South Studio, and East Studio.
+- {{appVariants.[1].displayName}} has a direct Runtime Tenant bootstrap for West Studio.
+- West Studio remains a Runtime Tenant record alongside the {{appVariants.[1].displayName}} App Variant.
+- The Standalone Runtime Tenant is excluded from {{appVariants.[0].displayName}} selection.
+
+The validation logic lives in `src/lib/runtime-tenant-access.ts` and rejects broken local-source relationships such as duplicate Runtime Tenant IDs, missing references, duplicate standalone assignments, and Standalone Runtime Tenants appearing in the Generic App Variant access list.
+
+## Proof Template Status
+
+This generated project is the third proof Template. Repeated Generated App Local CLI behavior may be centralized later if the proof Templates reveal a stable shared contract.

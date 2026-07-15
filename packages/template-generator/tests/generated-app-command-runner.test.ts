@@ -1,0 +1,20 @@
+/// <reference types="node" />
+
+import { assert, test } from 'vitest';
+
+import { runGeneratedAppCommand } from '../src/generated-app-command-runner';
+
+test('generated app verification reports command failures', async () => {
+  let thrown: unknown;
+
+  try {
+    await runGeneratedAppCommand(process.cwd(), process.execPath, ['-e', 'process.exit(17)']);
+  } catch (error) {
+    thrown = error;
+  }
+
+  assert.ok(thrown instanceof Error);
+  assert.match(thrown.message, /Generated app verification command failed:/);
+  assert.match(thrown.message, /-e process\.exit\(17\)/);
+  assert.match(thrown.message, /exit code 17/);
+});

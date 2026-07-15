@@ -12,6 +12,7 @@ export function defaultRunCommand(
     const stdio = options.stdio ?? 'inherit';
     const child = spawn(command, [...args], {
       cwd,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
       stdio,
     });
 

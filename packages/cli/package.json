@@ -40,6 +40,7 @@
     "build": "pnpm -F @tenkit/template-generator build && tsdown src/index.ts --format esm --dts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false",
+    "verify:matrix": "pnpm -F @tenkit/template-generator build && tsx scripts/verify-generation-matrix.ts",
     "pack:dry-run": "pnpm pack --dry-run",
     "prepack": "pnpm run build"
   },
@@ -54,6 +55,7 @@
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.9.3",
     "tsdown": "^0.22.3",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.3",
     "vitest": "^4.1.9"
   },

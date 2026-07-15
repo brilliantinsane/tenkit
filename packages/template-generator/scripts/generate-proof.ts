@@ -5,20 +5,26 @@ import { resolve } from 'pathe';
 
 import {
   formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedStylingChoice,
   normalizeGeneratedSetupType,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
+  type GeneratedStylingChoice,
 } from '../src/generator';
-import { getGeneratedSetupTypeDefinition } from '../src/generated-setup-types';
+import { getGeneratedSetupTypeMetadata } from '../src/generated-setup-types';
 import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-proof';
 
 type ParsedArgs = {
+  appVariantAccents?: string[];
+  appVariantNames?: string[];
   setupType?: GeneratedSetupType;
   target?: string;
   force: boolean;
   install: boolean;
   projectName?: string;
   packageName?: string;
+  stylingChoice: GeneratedStylingChoice;
 };
 
 type ResolvedArgs = ParsedArgs & {
@@ -27,7 +33,7 @@ type ResolvedArgs = ParsedArgs & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -50,10 +56,25 @@ function parseSetupType(value: string): GeneratedSetupType {
   }
 }
 
+function parseStylingChoice(value: string): GeneratedStylingChoice {
+  try {
+    return normalizeGeneratedStylingChoice(value);
+  } catch {
+    throw new Error(
+      `Unsupported generated Styling Choice ${JSON.stringify(value)}. Expected one of: ${SUPPORTED_GENERATED_STYLING_CHOICES.join(', ')}.`,
+    );
+  }
+}
+
+function parseOrderedValues(value: string): string[] {
+  return value.split(',').map((entry) => entry.trim());
+}
+
 function parseArgs(args: string[]): ResolvedArgs {
   const parsed: ParsedArgs = {
     force: false,
     install: true,
+    stylingChoice: 'bare',
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -68,6 +89,15 @@ function parseArgs(args: string[]): ResolvedArgs {
       index += 1;
     } else if (arg === '--target') {
       parsed.target = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--styling') {
+      parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--variant-names') {
+      parsed.appVariantNames = parseOrderedValues(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--variant-accents') {
+      parsed.appVariantAccents = parseOrderedValues(readValue(args, index, arg));
       index += 1;
     } else if (arg === '--force') {
       parsed.force = true;
@@ -92,7 +122,11 @@ function parseArgs(args: string[]): ResolvedArgs {
     throw new Error(`Missing --target.\n${usage()}`);
   }
 
-  return parsed as ResolvedArgs;
+  return {
+    ...parsed,
+    setupType: parsed.setupType,
+    target: parsed.target,
+  };
 }
 
 function resolveFromInitialWorkingDirectory(path: string): string {
@@ -127,11 +161,14 @@ async function main() {
 
   const result = await runGenerationProof({
     setupType: args.setupType,
+    appVariantAccents: args.appVariantAccents,
+    appVariantNames: args.appVariantNames,
     targetDir,
     force: args.force,
     git: 'init',
     projectName: args.projectName,
     packageName: args.packageName,
+    stylingChoice: args.stylingChoice,
     workspaceRoot,
   });
 
@@ -161,7 +198,7 @@ async function main() {
   }
 
   console.log('');
-  console.log(getGeneratedSetupTypeDefinition(args.setupType).readyMessage);
+  console.log(getGeneratedSetupTypeMetadata(args.setupType).readyMessage);
   console.log('');
   console.log('To run your project:');
   console.log(`- cd ${displayTargetDir}`);

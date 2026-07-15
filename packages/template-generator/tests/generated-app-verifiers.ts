@@ -3,9 +3,10 @@ import { join } from 'pathe';
 import { assert } from 'vitest';
 
 import {
-  getGeneratedSetupTypeDefinition,
+  getGeneratedSetupTypeMetadata,
   type GeneratedSetupType,
 } from '../src/generated-setup-types';
+import { type GeneratedStylingChoice } from '../src/generated-styling-choices';
 
 type PackageJson = {
   name?: string;
@@ -36,8 +37,24 @@ function assertNoStandaloneGeneratedSourceLeaks(generatedSource: string) {
   assert.notMatch(generatedSource, /base-expo|templates\/assets/);
 }
 
+async function verifyGeneratedGestureHandlerBaseline(targetDir: string) {
+  const packageJson = await readJson<PackageJson & { main?: string }>(
+    join(targetDir, 'package.json'),
+  );
+  const layout = await readText(join(targetDir, 'src/app/_layout.tsx'));
+  const entrypoint =
+    packageJson.main === 'index.ts' ? await readText(join(targetDir, 'index.ts')) : '';
+
+  assert.equal(packageJson.dependencies?.['react-native-gesture-handler'], '~2.31.1');
+  assert.notMatch(layout, /GestureHandlerRootView|react-native-gesture-handler/);
+  assert.notMatch(
+    entrypoint,
+    /GestureHandlerRootView|(?:^|\n)\s*import\s+['"]react-native-gesture-handler['"]/,
+  );
+}
+
 async function verifyWhiteLabelApps(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('white-label-apps');
+  const definition = getGeneratedSetupTypeMetadata('white-label-apps');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
   const designTokens = await readText(join(targetDir, 'src/constants/design-tokens.ts'));
@@ -92,7 +109,7 @@ async function verifyWhiteLabelApps(targetDir: string) {
 }
 
 async function verifySingleAppRuntimeTenants(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('single-app-runtime-tenants');
+  const definition = getGeneratedSetupTypeMetadata('single-app-runtime-tenants');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const readme = await readText(join(targetDir, 'README.md'));
   const envExample = await readText(join(targetDir, '.env.example'));
@@ -181,6 +198,7 @@ async function verifySingleAppRuntimeTenants(targetDir: string) {
   assert.notMatch(app, /Runtime Tenant IDs/);
   assert.notMatch(app, /resolveSelectableRuntimeTenants/);
   assert.match(settings, /Picker/);
+  assert.match(settings, /<SafeAreaView style=\{globalStyles\.container\}>/);
   assert.match(settings, /Active Runtime Tenant/);
   assert.match(settings, /globalStyles\.container/);
   assert.notMatch(settings, /swift-ui\/modifiers|scrollContentBackground/);
@@ -236,7 +254,7 @@ async function verifySingleAppRuntimeTenants(targetDir: string) {
 }
 
 async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
-  const definition = getGeneratedSetupTypeDefinition('generic-with-standalone-app-variants');
+  const definition = getGeneratedSetupTypeMetadata('generic-with-standalone-app-variants');
   const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
   const readme = await readText(join(targetDir, 'README.md'));
   const envExample = await readText(join(targetDir, '.env.example'));
@@ -271,8 +289,8 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.match(readme, /Generated App Local CLI/);
   assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
-  assert.match(readme, /Atlas Network App Variant's EAS environment/);
-  assert.match(readme, /West Studio App Variant's EAS environment/);
+  assert.match(readme, /Generic App Variant's EAS environment/);
+  assert.match(readme, /Standalone App Variant's EAS environment/);
   assert.match(envExample, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
   assert.match(appConfig, /resolveAppVariantConfig/);
@@ -281,11 +299,11 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.match(runtimeTenantTypes, /export type RuntimeTenant =/);
   assert.match(appVariants, /role: 'generic'/);
   assert.match(appVariants, /slug: 'atlas-network'/);
-  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /name: "Atlas Network"/);
   assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.match(appVariants, /role: 'standalone'/);
   assert.match(appVariants, /slug: 'west-studio'/);
-  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /name: "West Studio"/);
   assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
   assert.match(runtimeTenants, /name: 'North Studio'/);
   assert.match(runtimeTenants, /name: 'South Studio'/);
@@ -332,8 +350,9 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.notMatch(tenkitCliRuntime, /Runtime Tenant/);
   assert.match(app, /Active Runtime Tenant/);
   assert.match(app, /Active Runtime Tenant ID/);
-  assert.match(app, /Atlas Network can select North, South, and East Studio/);
+  assert.match(app, /\{\s*"Atlas Network"\s*\} can select North, South, and East Studio/);
   assert.match(settings, /Picker/);
+  assert.match(settings, /<SafeAreaView style=\{globalStyles\.container\}>/);
   assert.match(settings, /hasRuntimeTenantSelection/);
   assert.equal(await exists(join(targetDir, 'src/app/settings.tsx')), true);
   assert.equal(await exists(join(targetDir, 'src/app/explore.tsx')), false);
@@ -373,10 +392,308 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   );
 }
 
+async function verifyUniwindGeneratedApp(setupType: GeneratedSetupType, targetDir: string) {
+  const definition = getGeneratedSetupTypeMetadata(setupType);
+  const packageJson = await readJson<PackageJson>(join(targetDir, 'package.json'));
+  const tsconfig = await readText(join(targetDir, 'tsconfig.json'));
+  const metroConfig = await readText(join(targetDir, 'metro.config.js'));
+  const globalCss = await readText(join(targetDir, 'src/global.css'));
+  const uniwindEnv = await readText(join(targetDir, 'src/uniwind-env.d.ts'));
+  const gitignore = await readText(join(targetDir, '.gitignore'));
+  const layout = await readText(join(targetDir, 'src/app/_layout.tsx'));
+  const app = await readText(join(targetDir, 'src/app/index.tsx'));
+  const nativeTabs = await readText(join(targetDir, 'src/components/app-tabs.tsx'));
+  const webTabs = await readText(join(targetDir, 'src/components/app-tabs.web.tsx'));
+  const appConfig = await readText(join(targetDir, 'app.config.ts'));
+
+  assert.equal(packageJson.name, definition.defaultPackageName);
+  assert.equal(packageJson.dependencies?.uniwind, '^1.10.0');
+  assert.equal(packageJson.dependencies?.clsx, '^2.1.1');
+  assert.equal(packageJson.dependencies?.['tailwind-merge'], '^3.6.0');
+  assert.equal(packageJson.dependencies?.['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies?.tailwindcss, '^4.3.2');
+  assert.match(tsconfig, /"uniwind\/types"/);
+  assert.match(tsconfig, /"src\/uniwind-env\.d\.ts"/);
+  assert.match(metroConfig, /withUniwindConfig\(config, \{/);
+  assert.match(metroConfig, /cssEntryFile: '\.\/src\/global\.css'/);
+  assert.match(metroConfig, /dtsFile: '\.\/src\/uniwind-types\.d\.ts'/);
+  assert.match(globalCss, /@layer theme/);
+  assert.match(globalCss, /@variant dark/);
+  assert.match(globalCss, /@variant light/);
+  assert.match(globalCss, /--color-background:/);
+  assert.match(globalCss, /--color-surface:/);
+  assert.match(globalCss, /--color-surface-raised:/);
+  assert.match(globalCss, /--color-foreground:/);
+  assert.match(globalCss, /--color-muted:/);
+  assert.match(globalCss, /--color-accent:/);
+  assert.notMatch(globalCss, /--color-bg(?:-|:)|--color-text(?:-|:)/);
+  assert.match(uniwindEnv, /<reference types="uniwind\/types" \/>/);
+  assert.match(uniwindEnv, /declare module '\*\.css';/);
+  assert.match(gitignore, /src\/uniwind-types\.d\.ts/);
+  assert.match(layout, /import '\.\.\/global\.css'/);
+  assert.match(app, /bg-background/);
+  assert.match(app, /text-foreground/);
+  assert.match(app, /text-muted/);
+  assert.match(app, /className="text-base text-accent font-semibold tracking-normal"/);
+  assert.notMatch(app, /theme\.accent/);
+  assert.notMatch(app, /\{ appVariant, theme \} = useAppVariantConfig\(\)/);
+  assert.notMatch(app, /appVariant\.theme/);
+  assert.match(nativeTabs, /useCSSVariable/);
+  assert.match(nativeTabs, /'--color-surface'/);
+  assert.match(nativeTabs, /'--color-surface-raised'/);
+  assert.match(nativeTabs, /'--color-foreground'/);
+  assert.match(nativeTabs, /'--color-muted'/);
+  assert.match(nativeTabs, /as ColorValue\[\]/);
+  assert.match(nativeTabs, /selected: accent/);
+  assert.notMatch(nativeTabs, /#[0-9a-f]{3,8}\b/i);
+  assert.match(webTabs, /className=/);
+  assert.match(webTabs, /bg-surface-raised/);
+  assert.match(webTabs, /bg-surface/);
+  assert.match(webTabs, /text-foreground/);
+  assert.match(webTabs, /text-muted/);
+  assert.notMatch(`${app}\n${webTabs}`, /bg-bg|border-bg|text-text/);
+  assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.equal(await exists(join(targetDir, 'src/css.d.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/uniwind-env.d.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/uniwind-types.d.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/lib/cn.ts')), true);
+  assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/theme/colors.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/design-tokens.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/globals.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-text.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-view.tsx')), false);
+
+  for (const slug of definition.appVariantSlugs) {
+    assert.equal(await exists(join(targetDir, `assets/${slug}/icons/icon.png`)), true);
+    assert.equal(await exists(join(targetDir, `assets/${slug}/app.icon/icon.json`)), true);
+  }
+
+  const generatedSource = [appConfig, layout, app, nativeTabs, webTabs, globalCss];
+
+  if (setupType === 'white-label-apps') {
+    const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+    const explore = await readText(join(targetDir, 'src/app/explore.tsx'));
+
+    assert.match(appConfig, /APP_VARIANT_SLUG/);
+    assert.match(appVariants, /slug: 'first-tenant'/);
+    assert.match(appVariants, /slug: 'second-tenant'/);
+    assert.match(explore, /withUniwind\(NativeSafeAreaView\)/);
+    assert.equal(await exists(join(targetDir, 'src/app/settings.tsx')), false);
+    generatedSource.push(appVariants, explore);
+  } else {
+    const settings = await readText(join(targetDir, 'src/app/settings.tsx'));
+    const activeRuntimeTenantHook = await readText(
+      join(targetDir, 'src/hooks/use-active-runtime-tenant.ts'),
+    );
+    const runtimeTenantAccess = await readText(join(targetDir, 'src/lib/runtime-tenant-access.ts'));
+    const appPreferences = await readText(join(targetDir, 'src/storage/app-preferences.ts'));
+
+    assert.match(app, /useActiveRuntimeTenant/);
+    assert.match(settings, /hasRuntimeTenantSelection/);
+    assert.match(settings, /setActiveRuntimeTenantId/);
+    assert.match(settings, /<SafeAreaView className="flex-1 gap-5 px-6 py-10">/);
+    assert.match(settings, /theme\.accent/);
+    assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+    assert.match(runtimeTenantAccess, /validateRuntimeTenantAccess/);
+    assert.match(appPreferences, /createMMKV/);
+    assert.equal(await exists(join(targetDir, 'src/app/explore.tsx')), false);
+    generatedSource.push(settings, activeRuntimeTenantHook, runtimeTenantAccess, appPreferences);
+
+    if (setupType === 'single-app-runtime-tenants') {
+      const appVariant = await readText(join(targetDir, 'src/constants/app-variant.ts'));
+      assert.match(appVariant, /slug: 'acme-app'/);
+      assert.match(activeRuntimeTenantHook, /runtimeTenantAccess\.allowedRuntimeTenantIds/);
+      assert.equal(await exists(join(targetDir, 'src/constants/app-variants.ts')), false);
+      generatedSource.push(appVariant);
+    } else {
+      const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+      assert.match(appConfig, /APP_VARIANT_SLUG/);
+      assert.match(appVariants, /role: 'generic'/);
+      assert.match(appVariants, /role: 'standalone'/);
+      assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+      assert.match(
+        runtimeTenantAccess,
+        /must not appear in Generic App Variant Runtime Tenant Access/,
+      );
+      generatedSource.push(appVariants);
+    }
+  }
+
+  assertNoStandaloneGeneratedSourceLeaks(generatedSource.join('\n'));
+}
+
+async function verifyUnistylesGeneratedApp(setupType: GeneratedSetupType, targetDir: string) {
+  const definition = getGeneratedSetupTypeMetadata(setupType);
+  const packageJson = await readJson<PackageJson & { main?: string }>(
+    join(targetDir, 'package.json'),
+  );
+  const readme = await readText(join(targetDir, 'README.md'));
+  const entrypoint = await readText(join(targetDir, 'index.ts'));
+  const babelConfig = await readText(join(targetDir, 'babel.config.js'));
+  const unistyles = await readText(join(targetDir, 'unistyles.ts'));
+  const appConfig = await readText(join(targetDir, 'app.config.ts'));
+  const layout = await readText(join(targetDir, 'src/app/_layout.tsx'));
+  const app = await readText(join(targetDir, 'src/app/index.tsx'));
+  const nativeTabs = await readText(join(targetDir, 'src/components/app-tabs.tsx'));
+  const webTabs = await readText(join(targetDir, 'src/components/app-tabs.web.tsx'));
+  const tenkitCli = await readText(join(targetDir, 'scripts/tenkit-cli.ts'));
+  const tenkitCliCore = await readText(join(targetDir, 'scripts/tenkit-cli-core.ts'));
+  const tenkitCliRuntime = await readText(join(targetDir, 'scripts/tenkit-cli-runtime.ts'));
+
+  assert.equal(packageJson.name, definition.defaultPackageName);
+  assert.equal(packageJson.main, 'index.ts');
+  assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
+  assert.equal(packageJson.dependencies?.['@react-native/normalize-colors'], '0.85.3');
+  assert.equal(packageJson.dependencies?.['react-native-unistyles'], '3.3.0');
+  assert.equal(packageJson.dependencies?.['react-native-nitro-modules'], '0.36.1');
+  assert.equal(packageJson.dependencies?.uniwind, undefined);
+  assert.equal(packageJson.dependencies?.['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies?.tailwindcss, undefined);
+  assert.match(readme, /Uses Unistyles for generated UI styling/);
+  assert.match(readme, /Customize themes and tokens in `unistyles\.ts`/);
+  assert.ok(
+    entrypoint.indexOf("import './unistyles';") < entrypoint.indexOf("import 'expo-router/entry';"),
+  );
+  assert.match(babelConfig, /'react-native-unistyles\/plugin'/);
+  assert.match(babelConfig, /root: 'src'/);
+  assert.match(unistyles, /const expoConfig: unknown = Constants\.expoConfig/);
+  assert.match(unistyles, /Missing or invalid App Variant Accent/);
+  assert.match(unistyles, /background: '#000000'/);
+  assert.match(unistyles, /background: '#E6E6E6'/);
+  assert.match(unistyles, /accent: appVariantAccent/);
+  assert.match(unistyles, /adaptiveThemes: true/);
+  assert.equal(unistyles.match(/StyleSheet\.configure\(/g)?.length, 1);
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.notMatch(layout, /useUnistyles|ThemeProvider|useColorScheme/);
+  assert.match(app, /StyleSheet\.create\(\(theme\) =>/);
+  assert.match(nativeTabs, /useUnistyles/);
+  assert.match(nativeTabs, /selected: theme\.colors\.accent/);
+  assert.match(webTabs, /StyleSheet\.create\(\(theme\) =>/);
+  assert.notMatch(webTabs, /useUnistyles|withUnistyles/);
+  assert.match(webTabs, /pressed && styles\.pressed/);
+  assert.match(tenkitCli, /command\('build'\)/);
+  assert.match(tenkitCli, /command\('reset'\)/);
+  assert.match(tenkitCli, /command\('doctor'\)/);
+  assert.notMatch(tenkitCli, /command\('setup'\)/);
+  assert.equal(await exists(join(targetDir, 'metro.config.js')), false);
+  assert.equal(await exists(join(targetDir, 'src/global.css')), false);
+  assert.equal(await exists(join(targetDir, 'src/uniwind-env.d.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/lib/cn.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/theme/ThemeContext.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/theme/colors.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/design-tokens.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/constants/globals.ts')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-text.tsx')), false);
+  assert.equal(await exists(join(targetDir, 'src/components/themed-view.tsx')), false);
+
+  for (const slug of definition.appVariantSlugs) {
+    assert.equal(await exists(join(targetDir, `assets/${slug}/icons/icon.png`)), true);
+    assert.equal(await exists(join(targetDir, `assets/${slug}/app.icon/icon.json`)), true);
+  }
+
+  const generatedSource = [
+    readme,
+    entrypoint,
+    babelConfig,
+    unistyles,
+    appConfig,
+    layout,
+    app,
+    nativeTabs,
+    webTabs,
+    tenkitCli,
+    tenkitCliCore,
+    tenkitCliRuntime,
+  ];
+
+  if (setupType === 'white-label-apps') {
+    const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+    const explore = await readText(join(targetDir, 'src/app/explore.tsx'));
+
+    assert.match(appConfig, /APP_VARIANT_SLUG/);
+    assert.match(appVariants, /slug: 'first-tenant'/);
+    assert.match(appVariants, /slug: 'second-tenant'/);
+    assert.match(explore, /StyleSheet\.create\(\(theme, runtime\) =>/);
+    assert.match(explore, /paddingTop: runtime\.insets\.top \+ theme\.spacing\.lg/);
+    assert.match(explore, /paddingBottom: runtime\.insets\.bottom \+ theme\.spacing\.lg/);
+    assert.match(explore, /paddingLeft: runtime\.insets\.left \+ theme\.spacing\.lg/);
+    assert.match(explore, /paddingRight: runtime\.insets\.right \+ theme\.spacing\.lg/);
+    assert.notMatch(explore, /SafeAreaView|react-native-safe-area-context/);
+    assert.match(tenkitCliCore, /from '\.\.\/src\/constants\/app-variants'/);
+    assert.match(tenkitCliRuntime, /from '\.\.\/src\/constants\/app-variants'/);
+    assert.equal(await exists(join(targetDir, 'src/app/settings.tsx')), false);
+    generatedSource.push(appVariants, explore);
+  } else {
+    const settings = await readText(join(targetDir, 'src/app/settings.tsx'));
+    const activeRuntimeTenantHook = await readText(
+      join(targetDir, 'src/hooks/use-active-runtime-tenant.ts'),
+    );
+    const runtimeTenantAccess = await readText(join(targetDir, 'src/lib/runtime-tenant-access.ts'));
+    const appPreferences = await readText(join(targetDir, 'src/storage/app-preferences.ts'));
+
+    assert.match(app, /useActiveRuntimeTenant/);
+    assert.match(settings, /hasRuntimeTenantSelection/);
+    assert.match(settings, /setActiveRuntimeTenantId/);
+    assert.match(settings, /StyleSheet\.create\(\(theme, runtime\) =>/);
+    assert.match(settings, /paddingTop: runtime\.insets\.top,/);
+    assert.match(settings, /paddingBottom: runtime\.insets\.bottom \+ 40/);
+    assert.match(settings, /paddingLeft: runtime\.insets\.left \+ theme\.spacing\.lg/);
+    assert.match(settings, /paddingRight: runtime\.insets\.right \+ theme\.spacing\.lg/);
+    assert.notMatch(settings, /SafeAreaView|react-native-safe-area-context/);
+    assert.match(settings, /theme\.colors\.accent/);
+    assert.match(settings, /pressed && styles\.pressed/);
+    assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+    assert.match(runtimeTenantAccess, /validateRuntimeTenantAccess/);
+    assert.match(appPreferences, /createMMKV/);
+    assert.equal(await exists(join(targetDir, 'src/app/explore.tsx')), false);
+    generatedSource.push(settings, activeRuntimeTenantHook, runtimeTenantAccess, appPreferences);
+
+    if (setupType === 'single-app-runtime-tenants') {
+      const appVariant = await readText(join(targetDir, 'src/constants/app-variant.ts'));
+      assert.match(appVariant, /slug: 'acme-app'/);
+      assert.match(activeRuntimeTenantHook, /runtimeTenantAccess\.allowedRuntimeTenantIds/);
+      assert.match(tenkitCliCore, /from '\.\.\/src\/constants\/app-variant'/);
+      assert.match(tenkitCliRuntime, /from '\.\.\/src\/constants\/app-variant'/);
+      assert.notMatch(tenkitCliRuntime, /Select an App Variant:/);
+      assert.equal(await exists(join(targetDir, 'src/constants/app-variants.ts')), false);
+      generatedSource.push(appVariant);
+    } else {
+      const appVariants = await readText(join(targetDir, 'src/constants/app-variants.ts'));
+      assert.match(appVariants, /role: 'generic'/);
+      assert.match(appVariants, /role: 'standalone'/);
+      assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+      assert.match(tenkitCliCore, /from '\.\.\/src\/constants\/app-variants'/);
+      assert.match(tenkitCliRuntime, /Select an App Variant:/);
+      assert.match(
+        runtimeTenantAccess,
+        /must not appear in Generic App Variant Runtime Tenant Access/,
+      );
+      generatedSource.push(appVariants);
+    }
+  }
+
+  assertNoStandaloneGeneratedSourceLeaks(generatedSource.join('\n'));
+}
+
 export async function verifyGeneratedAppShape(
   setupType: GeneratedSetupType,
   targetDir: string,
+  stylingChoice: GeneratedStylingChoice = 'bare',
 ): Promise<void> {
+  await verifyGeneratedGestureHandlerBaseline(targetDir);
+
+  if (stylingChoice === 'uniwind') {
+    await verifyUniwindGeneratedApp(setupType, targetDir);
+    return;
+  }
+
+  if (stylingChoice === 'unistyles') {
+    await verifyUnistylesGeneratedApp(setupType, targetDir);
+    return;
+  }
+
   if (setupType === 'white-label-apps') {
     await verifyWhiteLabelApps(targetDir);
     return;

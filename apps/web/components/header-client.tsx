@@ -1,9 +1,11 @@
 "use client"
 
-import type { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import type { ReactNode } from "react"
 
+import { ConfigureHeaderLink } from "@/components/configure-header-link"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,22 @@ export function HeaderClient({
   mobileStats: HeaderStatsSlots
 }) {
   const scrolled = useScroll(72, 28)
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
+  const logo = (
+    <>
+      <Image
+        alt="logo"
+        className="h-[30px] w-auto invert-0 dark:invert"
+        height={157}
+        loading="eager"
+        priority
+        src="/tenkit-logo-long.svg"
+        width={374}
+      />
+      <h2 className="sr-only">tenkit</h2>
+    </>
+  )
 
   return (
     <header
@@ -58,40 +76,51 @@ export function HeaderClient({
         )}
       >
         <div className="flex items-center gap-2">
-          <MobileNav stats={mobileStats} />
-          <Link
-            className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
-            href="/#top"
-            aria-label="Tenkit home"
-          >
-            <Image
-              alt="logo"
-              className="invert-0 dark:invert"
-              height={18}
-              loading="eager"
-              priority
-              src="/tenkit-logo-long.svg"
-              width={75}
-            />
-            <h2 className="sr-only">tenkit</h2>
-          </Link>
+          <MobileNav isHomePage={isHomePage} stats={mobileStats} />
+          {isHomePage ? (
+            <a
+              className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
+              href="#top"
+              aria-label="Tenkit home"
+            >
+              {logo}
+            </a>
+          ) : (
+            <Link
+              className="rounded-md p-2 hover:bg-muted dark:hover:bg-muted/50"
+              href="/#top"
+              aria-label="Tenkit home"
+            >
+              {logo}
+            </Link>
+          )}
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <nav aria-label="Primary" className="flex items-center gap-1">
             {navLinks.map((link) => (
               <Button asChild key={link.label} size="sm" variant="ghost">
-                <Link href={link.href}>{link.label}</Link>
+                {isHomePage ? (
+                  <a href={link.href}>{link.label}</a>
+                ) : (
+                  <Link href={`/${link.href}`}>{link.label}</Link>
+                )}
               </Button>
             ))}
           </nav>
+          <div className="flex items-center border-l pl-2">
+            <ConfigureHeaderLink />
+          </div>
           <div className="flex items-center gap-1.5 border-l pl-2">
             {desktopStats.github}
             {desktopStats.npm}
             <ThemeSwitcher buttonSize="icon-sm" />
           </div>
         </div>
-        <div className="md:hidden">
-          <ThemeSwitcher buttonSize="icon" />
+        <div className="flex items-center md:hidden">
+          <ConfigureHeaderLink />
+          <div className="ml-2 border-l pl-2">
+            <ThemeSwitcher buttonSize="icon-sm" />
+          </div>
         </div>
       </nav>
     </header>

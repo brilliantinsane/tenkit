@@ -26,6 +26,8 @@ export const rootMetadata = {
     images: [
       {
         url: ogImageUrl(),
+        width: 1672,
+        height: 941,
         alt: SITE_CONFIG.ogImageAlt,
       },
     ],

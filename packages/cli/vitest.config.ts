@@ -3,12 +3,26 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@tenkit/template-generator': resolve(
-        import.meta.dirname,
-        '../template-generator/src/index.ts',
-      ),
-    },
+    alias: [
+      {
+        find: '@tenkit/template-generator/setup-type-definitions',
+        replacement: resolve(
+          import.meta.dirname,
+          '../template-generator/src/generated-setup-type-definitions.ts',
+        ),
+      },
+      {
+        find: '@tenkit/template-generator/styling-definitions',
+        replacement: resolve(
+          import.meta.dirname,
+          '../template-generator/src/generated-styling-choices.ts',
+        ),
+      },
+      {
+        find: '@tenkit/template-generator',
+        replacement: resolve(import.meta.dirname, '../template-generator/src/index.ts'),
+      },
+    ],
   },
   test: {
     clearMocks: true,

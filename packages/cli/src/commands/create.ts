@@ -1,21 +1,28 @@
 import { intro, outro } from '@clack/prompts';
 import { Command } from 'commander';
 
-import { CLI_VERSION, DEFAULT_PROJECT_NAME, supportedSetupValues } from '../constants';
+import {
+  CLI_VERSION,
+  DEFAULT_PROJECT_NAME,
+  supportedSetupValues,
+  supportedStylingValues,
+} from '../constants';
 import { runCreateFlow } from '../create/run-create';
 import type { CreateCommandOptions, CreateFlowEnvironment } from '../create/types';
 import { SUPPORTED_PACKAGE_MANAGERS } from '../create/package-manager';
-import { parseGitMode } from '../create/validation';
 
 type CommanderOptions = {
   name?: string;
   packageName?: string;
   setup?: string;
   setupType?: string;
+  styling?: string;
+  variantNames?: string;
+  variantAccents?: string;
   packageManager?: string;
   yes?: boolean;
   install?: boolean;
-  git?: string | false;
+  git?: boolean;
   dryRun?: boolean;
 };
 
@@ -25,10 +32,13 @@ function normalizeCommanderOptions(options: CommanderOptions): CreateCommandOpti
     packageName: options.packageName,
     setup: options.setup,
     setupType: options.setupType,
+    styling: options.styling,
+    appVariantNamesInput: options.variantNames,
+    appVariantAccentsInput: options.variantAccents,
     packageManager: options.packageManager,
     yes: options.yes,
     install: options.install,
-    git: parseGitMode(options.git),
+    git: options.git,
     dryRun: options.dryRun,
   };
 }
@@ -45,13 +55,17 @@ export function createProgram(env: CreateFlowEnvironment): Command {
     .option('--package-name <name>', 'generated package.json name override')
     .option('-s, --setup <setup>', `public Setup slug: ${supportedSetupValues().join(', ')}`)
     .option('--setup-type <setupType>', 'canonical Setup Type ID or public Setup slug')
+    .option('--styling <styling>', `Styling Choice: ${supportedStylingValues().join(', ')}`)
+    .option('--variant-names <names>', 'ordered comma-separated App Variant names')
+    .option('--variant-accents <colors>', 'ordered comma-separated App Variant Accent colors')
     .option(
       '--package-manager <manager>',
       `install and generated command package manager: ${SUPPORTED_PACKAGE_MANAGERS.join(', ')}`,
     )
     .option('--yes', 'skip prompts and accept defaults')
+    .option('--install', 'install dependencies')
     .option('--no-install', 'skip dependency installation')
-    .option('--git <mode>', 'git behavior: init, commit, none')
+    .option('--git', 'initialize Git and create Initial commit')
     .option('--no-git', 'skip git initialization')
     .option('--dry-run', 'validate options and print the create plan without writing files')
     .configureOutput({

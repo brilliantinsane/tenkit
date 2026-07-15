@@ -16,7 +16,13 @@ type MobileNavStats = {
   npm: ReactNode
 }
 
-export function MobileNav({ stats }: { stats: MobileNavStats }) {
+export function MobileNav({
+  isHomePage,
+  stats,
+}: {
+  isHomePage: boolean
+  stats: MobileNavStats
+}) {
   const [open, setOpen] = React.useState(false)
   const closeMenu = React.useCallback(() => setOpen(false), [])
   const openMenu = React.useCallback(() => {
@@ -67,9 +73,15 @@ export function MobileNav({ stats }: { stats: MobileNavStats }) {
                   key={link.label}
                   variant="ghost"
                 >
-                  <Link href={link.href} onClick={closeMenu}>
-                    {link.label}
-                  </Link>
+                  {isHomePage ? (
+                    <Link href={link.href} onClick={closeMenu}>
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <Link href={`/${link.href}`} onClick={closeMenu}>
+                      {link.label}
+                    </Link>
+                  )}
                 </Button>
               ))}
             </div>

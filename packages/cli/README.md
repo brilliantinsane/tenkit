@@ -15,7 +15,7 @@ final next steps.
 ## Highlights
 
 - Create a generated Expo project from a selected Tenkit Setup Type.
-- Ask only for project name and Setup Type in the default interactive flow.
+- Prompt for project name, Setup Type, App Variant customization, and Styling Choice.
 - Support `pnpm`, `npm`, `npx`, Bun, and `bunx` launchers.
 - Use the selected package manager for install commands, generated README
   commands, and generated app-local commands.
@@ -45,6 +45,7 @@ tenkit --help
 tenkit --name studio-app --setup white-label --yes
 tenkit --name venue-network --setup runtime-tenants --yes
 tenkit --name franchise-app --setup generic-standalone --yes
+tenkit --name unistyles-app --setup white-label --styling unistyles --yes
 ```
 
 ```bash
@@ -58,6 +59,16 @@ white-label
 runtime-tenants
 generic-standalone
 ```
+
+Supported Styling Option Values:
+
+```text
+bare
+uniwind
+unistyles
+```
+
+Bare remains the default when Styling is omitted or `--yes` accepts defaults.
 
 Override package-manager detection when needed:
 

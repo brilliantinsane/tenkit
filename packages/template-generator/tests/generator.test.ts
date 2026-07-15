@@ -7,12 +7,25 @@ import {
   generateProject,
   generateSingleAppRuntimeTenantsProject,
   generateWhiteLabelAppsProject,
+  normalizeGeneratedStylingChoice,
+  type GeneratedStylingChoice,
 } from '../src/generator';
 import {
   getVirtualFile,
   mergeVirtualFileTrees,
   type VirtualFileTree,
 } from '../src/virtual-file-tree';
+
+type SetupTypeCase = {
+  setupType:
+    | 'white-label-apps'
+    | 'single-app-runtime-tenants'
+    | 'generic-with-standalone-app-variants';
+  expectedRoute: 'explore' | 'settings';
+  appVariantPath: 'src/constants/app-variant.ts' | 'src/constants/app-variants.ts';
+  appVariantCount: 1 | 2;
+  defaultAccents: readonly string[];
+};
 
 function readVirtualFile(tree: VirtualFileTree, path: string): string {
   const file = getVirtualFile(tree, path);
@@ -29,6 +42,356 @@ function readVirtualBinary(tree: VirtualFileTree, path: string): Uint8Array {
   assert.ok(file, `Expected virtual file ${path}`);
   assert.ok(file.contents instanceof Uint8Array, `Expected virtual file ${path} to be binary`);
   return file.contents;
+}
+
+function hasVirtualFile(tree: VirtualFileTree, path: string): boolean {
+  return getVirtualFile(tree, path) !== undefined;
+}
+
+function assertNoGeneratedSourceLeaks(tree: VirtualFileTree) {
+  const generatedSource = tree
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+  const generatedPaths = tree.map((file) => file.path).join('\n');
+
+  assert.notMatch(
+    generatedSource,
+    /(?:^|[\s'"(])(?:apps|packages)\/(?:playground|web|template-generator|cli|create-tenkit)\//m,
+  );
+  assert.notMatch(generatedSource, /from ['"](?:@tenkit\/|tenkit\/)/);
+  assert.notMatch(generatedSource, /\/Users\/[^/]+\/|\/private\/var\/folders\//);
+  assert.notMatch(generatedSource, /active[-_\s]?setup/i);
+  assert.notMatch(generatedSource, /setup[-_\s]?type/i);
+  assert.notMatch(generatedSource, /base-expo|templates\/(?:assets|surfaces|styling)/);
+  assert.notMatch(
+    generatedPaths,
+    /^(?:shared|bare|uniwind|unistyles|surfaces|styling|setup-types)\//m,
+  );
+  assert.notMatch(generatedPaths, /^(?:tenkit|types|constants|assets\/app)\//m);
+  assert.notMatch(generatedPaths, /(?:^|\/)templates\/|LICENSE|\.hbs$/m);
+}
+
+const setupTypeCases = [
+  {
+    setupType: 'white-label-apps',
+    expectedRoute: 'explore',
+    appVariantPath: 'src/constants/app-variants.ts',
+    appVariantCount: 2,
+    defaultAccents: ['#208AEF', '#EF8520'],
+  },
+  {
+    setupType: 'single-app-runtime-tenants',
+    expectedRoute: 'settings',
+    appVariantPath: 'src/constants/app-variant.ts',
+    appVariantCount: 1,
+    defaultAccents: ['#EB2556'],
+  },
+  {
+    setupType: 'generic-with-standalone-app-variants',
+    expectedRoute: 'settings',
+    appVariantPath: 'src/constants/app-variants.ts',
+    appVariantCount: 2,
+    defaultAccents: ['#20EF99', '#9A00CD'],
+  },
+] as const satisfies readonly SetupTypeCase[];
+
+function expectedUniwindGlobalCss(accent: string) {
+  return `@import 'tailwindcss';
+@import 'uniwind';
+
+@layer theme {
+  :root {
+    @variant dark {
+      --color-background: #000000;
+      --color-surface: #0d0d0d;
+      --color-surface-raised: #1a1a1a;
+      --color-foreground: #f2f2f2;
+      --color-muted: #b3b3b3;
+      --color-accent: ${accent};
+    }
+
+    @variant light {
+      --color-background: #e6e6e6;
+      --color-surface: #f2f2f2;
+      --color-surface-raised: #ffffff;
+      --color-foreground: #0d0d0d;
+      --color-muted: #4d4d4d;
+      --color-accent: ${accent};
+    }
+  }
+}
+`;
+}
+
+function assertSetupTypeBehavior(tree: VirtualFileTree, setupType: SetupTypeCase['setupType']) {
+  const appConfig = readVirtualFile(tree, 'app.config.ts');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
+
+  assert.match(appConfig, /resolveAppVariantConfig/);
+  assert.match(home, /useAppVariantConfig/);
+
+  if (setupType === 'white-label-apps') {
+    assert.match(appConfig, /APP_VARIANT_SLUG/);
+    assert.match(home, /App Variant: \{appVariant\.slug\}/);
+    assert.equal(hasVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts'), false);
+    assert.equal(hasVirtualFile(tree, 'src/lib/runtime-tenant-access.ts'), false);
+    assert.equal(hasVirtualFile(tree, 'src/storage/app-preferences.ts'), false);
+    return;
+  }
+
+  const settings = readVirtualFile(tree, 'src/app/settings.tsx');
+  const activeRuntimeTenantHook = readVirtualFile(tree, 'src/hooks/use-active-runtime-tenant.ts');
+  const runtimeTenantAccess = readVirtualFile(tree, 'src/lib/runtime-tenant-access.ts');
+  const appPreferences = readVirtualFile(tree, 'src/storage/app-preferences.ts');
+
+  assert.match(home, /useActiveRuntimeTenant/);
+  assert.match(settings, /useActiveRuntimeTenant/);
+  assert.match(settings, /hasRuntimeTenantSelection/);
+  assert.match(settings, /selectableRuntimeTenants/);
+  assert.match(settings, /setActiveRuntimeTenantId/);
+  assert.match(activeRuntimeTenantHook, /useMMKVNumber/);
+  assert.match(activeRuntimeTenantHook, /ACTIVE_RUNTIME_TENANT_ID_KEY/);
+  assert.match(runtimeTenantAccess, /validateRuntimeTenantAccess/);
+  assert.match(appPreferences, /createMMKV/);
+  assert.match(appPreferences, /active-runtime-tenant-id/);
+
+  if (setupType === 'single-app-runtime-tenants') {
+    assert.match(activeRuntimeTenantHook, /runtimeTenantAccess\.allowedRuntimeTenantIds/);
+    assert.match(runtimeTenantAccess, /Default Runtime Tenant ID/);
+    assert.match(
+      runtimeTenantAccess,
+      /Runtime Tenant list includes IDs not allowed by App Variant/,
+    );
+    return;
+  }
+
+  assert.match(appConfig, /APP_VARIANT_SLUG/);
+  assert.match(activeRuntimeTenantHook, /appVariant\.role === 'standalone'/);
+  assert.match(
+    activeRuntimeTenantHook,
+    /hasRuntimeTenantSelection: appVariant\.role === 'generic'/,
+  );
+  assert.match(runtimeTenantAccess, /standaloneRuntimeTenantId/);
+  assert.match(runtimeTenantAccess, /must not appear in Generic App Variant Runtime Tenant Access/);
+}
+
+function assertBareStylingOutput(tree: VirtualFileTree) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const gitignore = readVirtualFile(tree, '.gitignore');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
+
+  assert.ok(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'));
+  assert.ok(hasVirtualFile(tree, 'src/theme/colors.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/constants/design-tokens.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/constants/globals.ts'));
+  assert.ok(hasVirtualFile(tree, 'src/components/themed-text.tsx'));
+  assert.ok(hasVirtualFile(tree, 'src/components/themed-view.tsx'));
+  assert.equal(hasVirtualFile(tree, 'metro.config.js'), false);
+  assert.equal(hasVirtualFile(tree, 'src/global.css'), false);
+  assert.equal(hasVirtualFile(tree, 'src/css.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-env.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-types.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/lib/cn.ts'), false);
+  assert.notMatch(gitignore, /src\/uniwind-types\.d\.ts/);
+  assert.equal(packageJson.dependencies.uniwind, undefined);
+  assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
+  assert.equal(packageJson.dependencies.clsx, undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, undefined);
+  assert.match(home, /<ThemedText themeColor="accent">\s+Tenkit\s+<\/ThemedText>/);
+  assert.notMatch(home, /<ThemedText type="smallBold" themeColor="accent">/);
+}
+
+function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: string) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const layout = readVirtualFile(tree, 'src/app/_layout.tsx');
+  const home = readVirtualFile(tree, 'src/app/index.tsx');
+  const nativeTabs = readVirtualFile(tree, 'src/components/app-tabs.tsx');
+  const webTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
+  const metroConfig = readVirtualFile(tree, 'metro.config.js');
+  const globalCss = readVirtualFile(tree, 'src/global.css');
+  const uniwindEnv = readVirtualFile(tree, 'src/uniwind-env.d.ts');
+  const gitignore = readVirtualFile(tree, '.gitignore');
+  const uniwindComponentSource = tree
+    .filter((file) => file.path.startsWith('src/app/') || file.path.startsWith('src/components/'))
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+  const tsconfig = JSON.parse(readVirtualFile(tree, 'tsconfig.json')) as {
+    compilerOptions: { types: string[] };
+    include: string[];
+  };
+
+  assert.equal(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/colors.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/design-tokens.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/globals.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-text.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-view.tsx'), false);
+  assert.ok(hasVirtualFile(tree, 'metro.config.js'));
+  assert.ok(hasVirtualFile(tree, 'src/global.css'));
+  assert.equal(hasVirtualFile(tree, 'src/css.d.ts'), false);
+  assert.ok(hasVirtualFile(tree, 'src/uniwind-env.d.ts'));
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-types.d.ts'), false);
+  assert.ok(hasVirtualFile(tree, 'src/lib/cn.ts'));
+  assert.equal(packageJson.dependencies.uniwind, '^1.10.0');
+  assert.equal(packageJson.dependencies['tailwind-merge'], '^3.6.0');
+  assert.equal(packageJson.dependencies.clsx, '^2.1.1');
+  assert.equal(packageJson.dependencies['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, '^4.3.2');
+  assert.ok(tsconfig.compilerOptions.types.includes('uniwind/types'));
+  assert.ok(tsconfig.include.includes('src/uniwind-env.d.ts'));
+  assert.match(metroConfig, /withUniwindConfig\(config, \{/);
+  assert.match(metroConfig, /cssEntryFile: '\.\/src\/global\.css'/);
+  assert.match(metroConfig, /dtsFile: '\.\/src\/uniwind-types\.d\.ts'/);
+  assert.equal(globalCss, expectedUniwindGlobalCss(expectedAccent));
+  assert.match(uniwindEnv, /<reference types="uniwind\/types" \/>/);
+  assert.match(uniwindEnv, /declare module '\*\.css';/);
+  assert.match(gitignore, /src\/uniwind-types\.d\.ts/);
+  assert.match(layout, /import '..\/global\.css';/);
+  assert.match(layout, /ThemeProvider/);
+  assert.match(layout, /Uniwind\.updateCSSVariables\('light',/);
+  assert.match(layout, /Uniwind\.updateCSSVariables\('dark',/);
+  assert.equal(layout.match(/'--color-accent': theme\.accent/g)?.length, 2);
+  assert.match(nativeTabs, /type ColorValue/);
+  assert.match(nativeTabs, /useCSSVariable/);
+  assert.match(
+    nativeTabs,
+    /const \[surface, surfaceRaised, foreground, muted\] = useCSSVariable\(\[/,
+  );
+  assert.match(nativeTabs, /'--color-surface'/);
+  assert.match(nativeTabs, /'--color-surface-raised'/);
+  assert.match(nativeTabs, /'--color-foreground'/);
+  assert.match(nativeTabs, /'--color-muted'/);
+  assert.match(nativeTabs, /\]\) as ColorValue\[\]/);
+  assert.notMatch(nativeTabs, /as \[string, string, string, string\]/);
+  assert.match(nativeTabs, /selected: accent/);
+  assert.notMatch(nativeTabs, /backgroundColor="#f8fafc"|indicatorColor="#ffffff"/);
+  assert.notMatch(nativeTabs, /#[0-9a-f]{3,8}\b/i);
+  assert.match(home, /bg-background/);
+  assert.match(home, /text-foreground/);
+  assert.match(home, /text-muted/);
+  assert.match(home, /className="text-base text-accent font-semibold tracking-normal"/);
+  assert.notMatch(home, /style=\{\{ color: theme\.accent \}\}/);
+  assert.notMatch(home, /\{ appVariant, theme \} = useAppVariantConfig\(\)/);
+  assert.notMatch(home, /appVariant\.theme/);
+  assert.match(webTabs, /className=/);
+  assert.match(webTabs, /bg-surface-raised/);
+  assert.match(webTabs, /bg-surface/);
+  assert.match(webTabs, /text-foreground/);
+  assert.match(webTabs, /text-muted/);
+  assert.match(webTabs, /from '@\/lib\/cn'/);
+  assert.match(webTabs, /style=\{isFocused \? \{ color: accent \} : undefined\}/);
+  if (hasVirtualFile(tree, 'src/app/explore.tsx')) {
+    assert.match(readVirtualFile(tree, 'src/app/explore.tsx'), /withUniwind\(NativeSafeAreaView\)/);
+  }
+  assert.match(uniwindComponentSource, /bg-background/);
+  assert.match(uniwindComponentSource, /bg-surface/);
+  assert.match(uniwindComponentSource, /bg-surface-raised/);
+  assert.match(uniwindComponentSource, /text-foreground/);
+  assert.match(uniwindComponentSource, /text-muted/);
+  assert.notMatch(uniwindComponentSource, /bg-bg|border-bg|text-text/);
+  assert.notMatch(globalCss, /--color-bg(?:-|:)|--color-text(?:-|:)/);
+  assert.notMatch(
+    uniwindComponentSource,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|(?:^|[\s'"])border-accent(?:[\s'"]|$)/,
+  );
+}
+
+function assertUnistylesStylingOutput(tree: VirtualFileTree) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    main: string;
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const entrypoint = readVirtualFile(tree, 'index.ts');
+  const babelConfig = readVirtualFile(tree, 'babel.config.js');
+  const unistyles = readVirtualFile(tree, 'unistyles.ts');
+  const layout = readVirtualFile(tree, 'src/app/_layout.tsx');
+  const nativeTabs = readVirtualFile(tree, 'src/components/app-tabs.tsx');
+  const webTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
+  const readme = readVirtualFile(tree, 'README.md');
+  const unistylesUiSource = tree
+    .filter((file) => file.path.startsWith('src/app/') || file.path.startsWith('src/components/'))
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+
+  assert.equal(packageJson.main, 'index.ts');
+  assert.equal(packageJson.dependencies['react-native-unistyles'], '3.3.0');
+  assert.equal(packageJson.dependencies['react-native-nitro-modules'], '0.36.1');
+  assert.equal(packageJson.dependencies['@react-native/normalize-colors'], '0.85.3');
+  assert.equal(packageJson.dependencies.uniwind, undefined);
+  assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
+  assert.equal(packageJson.dependencies.clsx, undefined);
+  assert.equal(packageJson.dependencies['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, undefined);
+  assert.equal(hasVirtualFile(tree, 'metro.config.js'), false);
+  assert.equal(hasVirtualFile(tree, 'src/global.css'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-env.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/lib/cn.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/colors.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/design-tokens.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/globals.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-text.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-view.tsx'), false);
+  assert.ok(hasVirtualFile(tree, 'babel.config.js'));
+  assert.ok(hasVirtualFile(tree, 'index.ts'));
+  assert.ok(hasVirtualFile(tree, 'unistyles.ts'));
+  assert.ok(
+    entrypoint.indexOf("import './unistyles';") < entrypoint.indexOf("import 'expo-router/entry';"),
+  );
+  assert.match(babelConfig, /presets: \['babel-preset-expo'\]/);
+  assert.match(babelConfig, /plugins: \[\['react-native-unistyles\/plugin', \{ root: 'src' \}\]\]/);
+  assert.match(unistyles, /import Constants from 'expo-constants'/);
+  assert.match(unistyles, /const expoConfig: unknown = Constants\.expoConfig/);
+  assert.match(unistyles, /\/\^#\[0-9A-F\]\{6\}\$\//);
+  assert.match(unistyles, /Missing or invalid App Variant Accent/);
+  assert.match(unistyles, /background: '#000000'/);
+  assert.match(unistyles, /surface: '#0D0D0D'/);
+  assert.match(unistyles, /surfaceRaised: '#1A1A1A'/);
+  assert.match(unistyles, /foreground: '#F2F2F2'/);
+  assert.match(unistyles, /muted: '#B3B3B3'/);
+  assert.match(unistyles, /background: '#E6E6E6'/);
+  assert.match(unistyles, /surface: '#F2F2F2'/);
+  assert.match(unistyles, /surfaceRaised: '#FFFFFF'/);
+  assert.match(unistyles, /foreground: '#0D0D0D'/);
+  assert.match(unistyles, /muted: '#4D4D4D'/);
+  assert.equal(unistyles.match(/accent: appVariantAccent/g)?.length, 2);
+  assert.notMatch(unistyles, /#208AEF|#EF8520|#EB2556|#20EF99|#9A00CD/);
+  assert.match(unistyles, /spacing:/);
+  assert.match(unistyles, /radii:/);
+  assert.match(unistyles, /typography:/);
+  assert.match(unistyles, /xs: 0/);
+  assert.match(unistyles, /interface UnistylesThemes extends AppThemes/);
+  assert.match(unistyles, /interface UnistylesBreakpoints extends AppBreakpoints/);
+  assert.equal(unistyles.match(/StyleSheet\.configure\(/g)?.length, 1);
+  assert.match(unistyles, /adaptiveThemes: true/);
+  assert.notMatch(unistyles, /initialTheme|updateTheme|setTheme|setAdaptiveThemes/);
+  assert.notMatch(layout, /ThemeProvider|useUnistyles|useColorScheme/);
+  assert.match(nativeTabs, /useUnistyles/);
+  assert.match(nativeTabs, /selected: theme\.colors\.accent/);
+  assert.notMatch(webTabs, /useUnistyles|withUnistyles/);
+  assert.match(webTabs, /StyleSheet\.create\(\(theme\) =>/);
+  assert.match(webTabs, /pressed && styles\.pressed/);
+  assert.match(unistylesUiSource, /StyleSheet\.create\(\(theme\) =>/);
+  assert.notMatch(
+    unistylesUiSource,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|className=|withUnistyles|UnistylesRuntime/,
+  );
+  assert.equal(unistylesUiSource.match(/useUnistyles/g)?.length, 2);
+  if (hasVirtualFile(tree, 'src/app/settings.tsx')) {
+    assert.match(readVirtualFile(tree, 'src/app/settings.tsx'), /pressed && styles\.pressed/);
+  }
+  assert.match(readme, /uses Unistyles for generated UI styling/i);
+  assert.match(readme, /customize themes and tokens in `unistyles\.ts`/i);
 }
 
 test('White Label Apps Template generation is deterministic', () => {
@@ -105,6 +468,348 @@ test('generic Template generation dispatches by Setup Type', () => {
       projectName: 'Example App',
     }),
   );
+});
+
+test('missing Styling Choice defaults to Bare output', () => {
+  assert.equal(normalizeGeneratedStylingChoice(undefined), 'bare');
+
+  for (const { setupType } of setupTypeCases) {
+    assert.deepEqual(
+      generateProject({ setupType }),
+      generateProject({ setupType, stylingChoice: 'bare' }),
+    );
+  }
+});
+
+test('Template generation rejects unsupported Styling Choice values', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        stylingChoice: 'unsupported-styling',
+      } as unknown as Parameters<typeof generateProject>[0]),
+    /Unsupported generated Styling Choice "unsupported-styling".*Expected one of: bare, uniwind, unistyles/,
+  );
+});
+
+test('per-App-Variant customization fills unchanged White Label positions from shared defaults', () => {
+  const tree = generateProject({
+    setupType: 'white-label-apps',
+    appVariantNames: ['My Cool App', undefined],
+    appVariantAccents: ['#123abc', undefined],
+  });
+  const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');
+
+  assert.match(appVariants, /name: "My Cool App"/);
+  assert.match(appVariants, /slug: 'my-cool-app'/);
+  assert.match(appVariants, /scheme: 'mycoolapp'/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.mycoolapp'/);
+  assert.match(appVariants, /packageName: 'com\.example\.mycoolapp'/);
+  assert.match(appVariants, /accent: "#123ABC"/);
+  assert.match(appVariants, /name: "Second Tenant"/);
+  assert.match(appVariants, /accent: "#EF8520"/);
+  assert.ok(hasVirtualFile(tree, 'assets/my-cool-app/icons/icon.png'));
+  assert.ok(hasVirtualFile(tree, 'assets/second-tenant/icons/icon.png'));
+  assert.equal(hasVirtualFile(tree, 'assets/first-tenant/icons/icon.png'), false);
+  assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=my-cool-app/);
+});
+
+test('per-App-Variant names and Accents reach every generated Setup Type and Styling combination', () => {
+  const customizationCases = [
+    {
+      setupType: 'white-label-apps',
+      appVariantNames: ['My Cool App', undefined],
+      appVariantAccents: ['#112233', undefined],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedNames: ['My Cool App', 'Second Tenant'],
+      expectedSlugs: ['my-cool-app', 'second-tenant'],
+      expectedAccents: ['#112233', '#EF8520'],
+    },
+    {
+      setupType: 'single-app-runtime-tenants',
+      appVariantNames: ['Café Central'],
+      appVariantAccents: ['#abcdef'],
+      appVariantPath: 'src/constants/app-variant.ts',
+      expectedNames: ['Café Central'],
+      expectedSlugs: ['cafe-central'],
+      expectedAccents: ['#ABCDEF'],
+    },
+    {
+      setupType: 'generic-with-standalone-app-variants',
+      appVariantNames: [undefined, '123 Studio'],
+      appVariantAccents: [undefined, '#00aa55'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedNames: ['Atlas Network', '123 Studio'],
+      expectedSlugs: ['atlas-network', 'app-123-studio'],
+      expectedAccents: ['#20EF99', '#00AA55'],
+    },
+  ] as const;
+
+  for (const customization of customizationCases) {
+    for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
+      const tree = generateProject({ ...customization, stylingChoice });
+      const appVariants = readVirtualFile(tree, customization.appVariantPath);
+
+      for (const expectedName of customization.expectedNames) {
+        assert.match(appVariants, new RegExp(`name: ${JSON.stringify(expectedName)}`));
+      }
+
+      for (const expectedSlug of customization.expectedSlugs) {
+        assert.match(appVariants, new RegExp(`slug: '${expectedSlug}'`));
+        assert.ok(hasVirtualFile(tree, `assets/${expectedSlug}/icons/icon.png`));
+      }
+
+      for (const expectedAccent of customization.expectedAccents) {
+        assert.match(appVariants, new RegExp(`accent: ${JSON.stringify(expectedAccent)}`));
+      }
+
+      assert.match(
+        readVirtualFile(tree, '.env.example'),
+        new RegExp(`APP_VARIANT_SLUG=${customization.expectedSlugs[0]}`),
+      );
+
+      if (hasVirtualFile(tree, 'src/constants/runtime-tenants.ts')) {
+        assert.notMatch(readVirtualFile(tree, 'src/constants/runtime-tenants.ts'), /accent/i);
+      }
+
+      if (stylingChoice === 'uniwind') {
+        const globalCss = readVirtualFile(tree, 'src/global.css');
+        const rootLayout = readVirtualFile(tree, 'src/app/_layout.tsx');
+
+        assert.equal(
+          globalCss.match(new RegExp(`--color-accent: ${customization.expectedAccents[0]};`, 'g'))
+            ?.length,
+          2,
+        );
+        assert.match(rootLayout, /Uniwind\.updateCSSVariables\('light'/);
+        assert.match(rootLayout, /Uniwind\.updateCSSVariables\('dark'/);
+        assert.match(rootLayout, /'--color-accent': theme\.accent/);
+        assert.match(rootLayout, /<AppTabs accent=\{theme\.accent\}/);
+        assert.notMatch(rootLayout, /useEffect/);
+        assert.ok(
+          rootLayout.indexOf("Uniwind.updateCSSVariables('light'") <
+            rootLayout.indexOf('export default function RootLayout'),
+        );
+      } else if (stylingChoice === 'bare') {
+        assert.match(readVirtualFile(tree, 'src/app/_layout.tsx'), /primary: theme\.accent/);
+      } else {
+        const unistyles = readVirtualFile(tree, 'unistyles.ts');
+
+        assert.match(unistyles, /const expoConfig: unknown = Constants\.expoConfig/);
+        assert.match(unistyles, /const appVariantAccent = readAppVariantAccent\(expoConfig\)/);
+        assert.match(unistyles, /accent: appVariantAccent/);
+      }
+    }
+  }
+});
+
+test('generated App Variant Slugs include EAS creation and reconciliation guidance', () => {
+  const guidanceCases = [
+    {
+      setupType: 'white-label-apps',
+      appVariantNames: ['North Star', 'South Star'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedSlugs: ['north-star', 'south-star'],
+      expectedBuildPreparationSlugs: ['north-star'],
+    },
+    {
+      setupType: 'single-app-runtime-tenants',
+      appVariantNames: ['Central App'],
+      appVariantPath: 'src/constants/app-variant.ts',
+      expectedSlugs: ['central-app'],
+      expectedBuildPreparationSlugs: [],
+    },
+    {
+      setupType: 'generic-with-standalone-app-variants',
+      appVariantNames: ['Atlas Group', 'West Place'],
+      appVariantPath: 'src/constants/app-variants.ts',
+      expectedSlugs: ['atlas-group', 'west-place'],
+      expectedBuildPreparationSlugs: ['atlas-group', 'west-place'],
+    },
+  ] as const;
+
+  for (const guidance of guidanceCases) {
+    const tree = generateProject(guidance);
+    const appVariants = readVirtualFile(tree, guidance.appVariantPath);
+    const readme = readVirtualFile(tree, 'README.md');
+
+    assert.equal(
+      appVariants.match(
+        /Replace with the actual EAS Project Slug after creating or linking the project/g,
+      )?.length,
+      guidance.expectedSlugs.length,
+    );
+    assert.match(readme, /new App Variant Slug can seed creation of a new EAS Project/i);
+    assert.match(readme, /linked EAS Project.*authoritative.*eas init.*reconcile/i);
+
+    for (const expectedSlug of guidance.expectedSlugs) {
+      assert.match(readme, new RegExp(expectedSlug));
+    }
+
+    for (const expectedSlug of guidance.expectedBuildPreparationSlugs) {
+      assert.match(readme, new RegExp(`build --slug ${expectedSlug}`));
+    }
+  }
+});
+
+test('Generic generated guidance uses customized App Variant names without changing Runtime Tenants', () => {
+  for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
+    const tree = generateProject({
+      setupType: 'generic-with-standalone-app-variants',
+      stylingChoice,
+      appVariantNames: ['Atlas Group', 'West App'],
+    });
+    const readme = readVirtualFile(tree, 'README.md');
+    const home = readVirtualFile(tree, 'src/app/index.tsx');
+    const runtimeTenants = readVirtualFile(tree, 'src/constants/runtime-tenants.ts');
+
+    assert.match(readme, /Atlas Group is the Generic App Variant/);
+    assert.match(readme, /West App is a Standalone App Variant/);
+    assert.match(readme, /West App opens West Studio directly/);
+    assert.match(
+      readme,
+      /West Studio remains a Runtime Tenant record alongside the West App App Variant/,
+    );
+    assert.match(home, /\{\s*"Atlas Group"\s*\} can select North, South, and East Studio/);
+    assert.match(home, /\{\s*"West App"\s*\} opens West Studio directly/);
+    assert.notMatch(readme, /Atlas Network/);
+    assert.match(runtimeTenants, /name: 'West Studio'/);
+  }
+});
+
+test('Generic generated screens safely render punctuation-bearing App Variant display names', () => {
+  for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
+    const tree = generateProject({
+      setupType: 'generic-with-standalone-app-variants',
+      stylingChoice,
+      appVariantNames: ['South <Prime>', 'North {Best}'],
+    });
+    const home = readVirtualFile(tree, 'src/app/index.tsx');
+
+    assert.match(home, /\{\s*"South <Prime>"\s*\} can select North, South, and East Studio/);
+    assert.match(home, /\{\s*"North \{Best\}"\s*\} opens West Studio directly/);
+  }
+});
+
+test('Template generation validates package and per-App-Variant inputs', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        packageName: 'a'.repeat(215),
+      }),
+    /Package name must be 214 characters or fewer/,
+  );
+  assert.throws(
+    () => generateProject({ setupType: 'white-label-apps', appVariantNames: ['Only One'] }),
+    /Invalid App Variant name count 1.*exactly 2 App Variant values/,
+  );
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        appVariantNames: ['Cool App', 'CoolApp'],
+      }),
+    /Duplicate derived App Variant identity "coolapp"/,
+  );
+  assert.throws(
+    () => generateProject({ setupType: 'runtime-tenants', appVariantAccents: ['blue'] }),
+    /Invalid generated accent color "blue".*six-digit hex color.*#208AEF/,
+  );
+});
+
+test('generated output stays free of Template composition details across the matrix', () => {
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const tree = generateProject({ setupType, stylingChoice });
+      const paths = tree.map((file) => file.path);
+
+      assert.ok(paths.includes('package.json'));
+      assert.ok(paths.includes('README.md'));
+      assert.ok(paths.includes('app.config.ts'));
+      assert.ok(paths.includes('pnpm-workspace.yaml'));
+      assert.ok(paths.includes('src/constants/project-config.ts'));
+      assert.ok(paths.includes('tsconfig.json'));
+      assert.ok(paths.includes('src/app/_layout.tsx'));
+      assert.ok(paths.includes('src/app/index.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.tsx'));
+      assertNoGeneratedSourceLeaks(tree);
+    }
+  }
+});
+
+test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every Setup Type', () => {
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType, expectedRoute, defaultAccents } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const tree = generateProject({ setupType, stylingChoice });
+      const paths = tree.map((file) => file.path);
+
+      assert.ok(paths.includes('package.json'));
+      assert.ok(paths.includes('README.md'));
+      assert.ok(paths.includes('app.config.ts'));
+      assert.ok(paths.includes('src/app/_layout.tsx'));
+      assert.ok(paths.includes('src/app/index.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.tsx'));
+      assert.ok(paths.includes('src/components/app-tabs.web.tsx'));
+      assert.equal(paths.includes(`src/app/${expectedRoute}.tsx`), true);
+      assert.equal(
+        paths.includes(
+          expectedRoute === 'explore' ? 'src/app/settings.tsx' : 'src/app/explore.tsx',
+        ),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'shared')),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'bare')),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'uniwind')),
+        false,
+      );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'unistyles')),
+        false,
+      );
+
+      if (stylingChoice === 'bare') {
+        assertBareStylingOutput(tree);
+      } else if (stylingChoice === 'uniwind') {
+        assertUniwindStylingOutput(tree, defaultAccents[0]);
+      } else {
+        assertUnistylesStylingOutput(tree);
+      }
+    }
+  }
+});
+
+test('Styling Choice preserves generated Setup Type behavior across the matrix', () => {
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      assertSetupTypeBehavior(generateProject({ setupType, stylingChoice }), setupType);
+    }
+  }
 });
 
 test('generic Template generation rejects unsupported Setup Types', () => {
@@ -401,20 +1106,21 @@ test('Template generation renders selected package manager into generated app ou
 
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {
   const tree = generateProject({ setupType: 'white-label-apps' });
+  const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');
   const generatedSource = tree
     .map((file) => file.contents)
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineWhiteLabelAppsSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.notMatch(generatedSource, /single-app-runtime-tenants/);
   assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.firsttenant'/);
+  assert.match(appVariants, /packageName: 'com\.example\.firsttenant'/);
+  assert.match(appVariants, /bundleIdentifier: 'com\.example\.secondtenant'/);
+  assert.match(appVariants, /packageName: 'com\.example\.secondtenant'/);
+  assert.notMatch(generatedSource, /com\.brilliantinsane/);
 });
 
 test('Single App Runtime Tenants Template generates one App Variant with bundled Runtime Tenants', () => {
@@ -484,7 +1190,7 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   assert.equal(paths.includes('src/constants/app-variants.ts'), false);
   assert.match(appVariant, /export const appVariant =/);
   assert.match(appVariant, /slug: 'acme-app'/);
-  assert.match(appVariant, /name: 'Acme App'/);
+  assert.match(appVariant, /name: "Acme App"/);
   assert.match(appVariant, /runtimeTenantAccess/);
   assert.match(appVariant, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.notMatch(appVariant, /appVariants|defaultAppVariantId|selectionMode/);
@@ -544,13 +1250,8 @@ test('Single App Runtime Tenants generated tree is standalone selected output', 
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineSingleAppRuntimeTenantsSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
   assert.notMatch(generatedSource, /generic-with-standalone-app-variants/);
 });
 
@@ -611,10 +1312,10 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.match(readVirtualFile(tree, '.env.example'), /APP_VARIANT_SLUG=atlas-network/);
   assert.match(appVariants, /role: 'generic'/);
   assert.match(appVariants, /slug: 'atlas-network'/);
-  assert.match(appVariants, /name: 'Atlas Network'/);
+  assert.match(appVariants, /name: "Atlas Network"/);
   assert.match(appVariants, /role: 'standalone'/);
   assert.match(appVariants, /slug: 'west-studio'/);
-  assert.match(appVariants, /name: 'West Studio'/);
+  assert.match(appVariants, /name: "West Studio"/);
   assert.match(appVariants, /standaloneRuntimeTenantId: 103/);
   assert.match(appVariants, /allowedRuntimeTenantIds: \[100, 101, 102\]/);
   assert.match(runtimeTenants, /name: 'North Studio'/);
@@ -655,8 +1356,8 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   assert.match(readme, /Public CLI create flow/);
   assert.match(readme, /APP_VARIANT_SLUG=atlas-network/);
   assert.match(readme, /APP_VARIANT_SLUG=west-studio/);
-  assert.match(readme, /Atlas Network App Variant's EAS environment/);
-  assert.match(readme, /West Studio App Variant's EAS environment/);
+  assert.match(readme, /Generic App Variant's EAS environment/);
+  assert.match(readme, /Standalone App Variant's EAS environment/);
   assert.notMatch(readme, /public create entrypoint|web builder|publishing/);
 });
 
@@ -667,11 +1368,6 @@ test('Generic With Standalone App Variants generated tree is standalone selected
     .filter((contents): contents is string => typeof contents === 'string')
     .join('\n');
 
-  assert.notMatch(generatedSource, /apps\/playground/);
-  assert.notMatch(generatedSource, /from ['"].*playground/);
+  assertNoGeneratedSourceLeaks(tree);
   assert.notMatch(generatedSource, /defineGenericAppSetup/);
-  assert.notMatch(generatedSource, /activeSetup|Active Setup/);
-  assert.notMatch(generatedSource, /setupType|Setup Type/);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /^tenkit\//m);
-  assert.notMatch(tree.map((file) => file.path).join('\n'), /LICENSE|\.hbs|base-expo/);
 });

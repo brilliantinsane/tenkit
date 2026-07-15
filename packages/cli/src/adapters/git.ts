@@ -1,6 +1,4 @@
-import { PROMPT_CANCELLED } from '../constants';
-import { CreateFlowCancelledError } from '../errors';
-import type { CreateFlowEnvironment, PublicCliGitMode, RunCommand } from '../create/types';
+import type { RunCommand } from '../create/types';
 
 async function isGitAvailable(runCommand: RunCommand, cwd: string): Promise<boolean> {
   return (await runCommand('git', ['--version'], cwd, { stdio: 'ignore' })).ok;
@@ -23,73 +21,49 @@ export type InitialGitSetup = {
 };
 
 async function resolveGitMode({
-  explicitGitMode,
-  env,
+  enabled,
   runCommand,
   targetDir,
 }: {
-  explicitGitMode: PublicCliGitMode | undefined;
-  env: CreateFlowEnvironment;
+  enabled: boolean;
   runCommand: RunCommand;
   targetDir: string;
-}): Promise<{ mode: false | 'init' | 'commit'; skippedReason?: string }> {
-  if (explicitGitMode === false || explicitGitMode === 'none') {
-    return { mode: false, skippedReason: 'disabled' };
+}): Promise<{ enabled: boolean; skippedReason?: string }> {
+  if (!enabled) {
+    return { enabled: false, skippedReason: 'disabled' };
   }
 
   if (!(await isGitAvailable(runCommand, targetDir))) {
-    return { mode: false, skippedReason: 'git-unavailable' };
+    return { enabled: false, skippedReason: 'git-unavailable' };
   }
 
   const insideGitWorktree = await isInsideGitWorktree(runCommand, targetDir);
 
-  if (insideGitWorktree && explicitGitMode === undefined) {
-    if (!env.isInteractive || env.isCi) {
-      return { mode: false, skippedReason: 'nested-worktree' };
-    }
-
-    const answer = await env.prompts.confirm({
-      message: 'Initialize a nested git repository?',
-      initialValue: false,
-    });
-
-    if (answer === PROMPT_CANCELLED) {
-      throw new CreateFlowCancelledError();
-    }
-
-    if (!answer) {
-      return { mode: false, skippedReason: 'nested-worktree' };
-    }
+  if (insideGitWorktree) {
+    return { enabled: false, skippedReason: 'nested-worktree' };
   }
 
-  if (explicitGitMode === 'init') {
-    return { mode: 'init' };
-  }
-
-  return { mode: 'commit' };
+  return { enabled: true };
 }
 
 export async function prepareInitialGitSetup({
-  explicitGitMode,
-  env,
+  enabled,
   runCommand,
   probeDir,
 }: {
-  explicitGitMode: PublicCliGitMode | undefined;
-  env: CreateFlowEnvironment;
+  enabled: boolean;
   runCommand: RunCommand;
   probeDir: string;
 }): Promise<InitialGitSetup> {
   const gitPlan = await resolveGitMode({
-    explicitGitMode,
-    env,
+    enabled,
     runCommand,
     targetDir: probeDir,
   });
 
   return {
     async run(targetDir) {
-      if (!gitPlan.mode) {
+      if (!gitPlan.enabled) {
         return {
           gitInitialized: false,
           gitCommitted: false,
@@ -106,14 +80,6 @@ export async function prepareInitialGitSetup({
           gitInitialized,
           gitCommitted: false,
           gitFailed: true,
-        };
-      }
-
-      if (gitPlan.mode === 'init') {
-        return {
-          gitInitialized,
-          gitCommitted: false,
-          gitFailed: false,
         };
       }
 
