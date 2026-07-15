@@ -168,6 +168,56 @@ export function normalizeProjectName(projectName: string): string {
   return normalizedProjectName;
 }
 
+function isPathSeparatorPresent(value: string): boolean {
+  return value.includes('/') || value.includes('\\');
+}
+
+function slugifyPackageName(projectName: string): string {
+  return projectName
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+export function validatePackageName(value: string): string {
+  const packageName = value.trim();
+
+  if (packageName.length === 0) {
+    throw new Error('Package name is required.');
+  }
+
+  if (packageName.length > 214) {
+    throw new Error('Package name must be 214 characters or fewer.');
+  }
+
+  if (packageName !== packageName.toLowerCase()) {
+    throw new Error('Package name must be lowercase.');
+  }
+
+  if (isPathSeparatorPresent(packageName)) {
+    throw new Error('Package name must not contain path separators.');
+  }
+
+  if (packageName.startsWith('.') || packageName.startsWith('_')) {
+    throw new Error('Package name must not start with "." or "_".');
+  }
+
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(packageName)) {
+    throw new Error(
+      'Package name must contain only lowercase letters, numbers, ".", "_", and "-".',
+    );
+  }
+
+  return packageName;
+}
+
+export function derivePackageName(projectName: string): string {
+  return validatePackageName(slugifyPackageName(projectName));
+}
+
 export function deriveAppVariantIdentity(appVariantName: string): AppVariantIdentity {
   if (appVariantName.includes(',')) {
     throw new Error('App Variant name must not contain commas.');

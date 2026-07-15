@@ -350,7 +350,7 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.notMatch(tenkitCliRuntime, /Runtime Tenant/);
   assert.match(app, /Active Runtime Tenant/);
   assert.match(app, /Active Runtime Tenant ID/);
-  assert.match(app, /Atlas Network can select North, South, and East Studio/);
+  assert.match(app, /\{\s*"Atlas Network"\s*\} can select North, South, and East Studio/);
   assert.match(settings, /Picker/);
   assert.match(settings, /<SafeAreaView style=\{globalStyles\.container\}>/);
   assert.match(settings, /hasRuntimeTenantSelection/);

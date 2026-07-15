@@ -79,6 +79,17 @@ describe("Configurator command state", () => {
     expect(derivedState.command).toBe(derivedState.projectNameError)
   })
 
+  test("rejects project names whose derived package name exceeds the CLI limit", () => {
+    const derivedState = deriveConfiguratorState({
+      ...createDefaultConfiguratorState(),
+      projectName: "a".repeat(215),
+    })
+
+    expect(derivedState.projectNameError).toMatch(/214 characters or fewer/)
+    expect(derivedState.commandIsCopyable).toBe(false)
+    expect(derivedState.command).toBe(derivedState.projectNameError)
+  })
+
   test.each([
     ["pnpm", "pnpm create tenkit@latest"],
     ["npm", "npm create tenkit@latest --"],

@@ -1,7 +1,11 @@
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
 import { normalizeGeneratedSetupType, type GeneratedSetupType } from '@tenkit/template-generator';
-import { getGeneratedSetupTypeDefinition } from '@tenkit/template-generator/setup-type-definitions';
+import {
+  derivePackageName,
+  getGeneratedSetupTypeDefinition,
+  validatePackageName,
+} from '@tenkit/template-generator/setup-type-definitions';
 
 import {
   DEFAULT_PROJECT_NAME,
@@ -13,13 +17,11 @@ import {
 } from '../constants';
 import { CreateFlowCancelledError } from '../errors';
 import {
-  derivePackageName,
   normalizeAppVariantCustomization,
   normalizeAppVariantAccentInput,
   normalizeAppVariantNameInput,
   normalizeSetupInput,
   normalizeStylingInput,
-  validatePackageName,
   validateProjectName,
 } from './validation';
 import {

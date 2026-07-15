@@ -7,6 +7,7 @@ import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupTypeDefinition,
+  validatePackageName,
 } from './generated-setup-type-definitions';
 import {
   type GeneratedStylingChoice,
@@ -80,15 +81,7 @@ function normalizeName(value: string | undefined, fallback: string): string {
 }
 
 function normalizePackageName(value: string | undefined, fallback: string): string {
-  const packageName = normalizeName(value, fallback);
-
-  if (!/^[a-z0-9._-]+$/.test(packageName)) {
-    throw new Error(
-      `Invalid generated app package name ${JSON.stringify(packageName)}. Use a lowercase package name that can also be used as the Expo Slug.`,
-    );
-  }
-
-  return packageName;
+  return validatePackageName(normalizeName(value, fallback));
 }
 
 function normalizePackageManager(

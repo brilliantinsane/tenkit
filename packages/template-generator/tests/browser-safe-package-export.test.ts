@@ -4,8 +4,10 @@ import { assert, test } from 'vitest';
 type SetupTypeDefinitionsModule = {
   GENERATED_SETUP_TYPE_DEFINITIONS: readonly unknown[];
   deriveAppVariantIdentity: (appVariantName: string) => { slug: string };
+  derivePackageName: (projectName: string) => string;
   getGeneratedSetupTypeDefinition: (setupType: string) => unknown;
   getGeneratedSetupTypeDefinitionByPublicSlug: (publicSlug: string) => unknown;
+  validatePackageName: (packageName: string) => string;
 };
 
 type StylingDefinitionsModule = {
@@ -23,10 +25,14 @@ function isSetupTypeDefinitionsModule(value: unknown): value is SetupTypeDefinit
     Array.isArray(value.GENERATED_SETUP_TYPE_DEFINITIONS) &&
     'deriveAppVariantIdentity' in value &&
     typeof value.deriveAppVariantIdentity === 'function' &&
+    'derivePackageName' in value &&
+    typeof value.derivePackageName === 'function' &&
     'getGeneratedSetupTypeDefinition' in value &&
     typeof value.getGeneratedSetupTypeDefinition === 'function' &&
     'getGeneratedSetupTypeDefinitionByPublicSlug' in value &&
-    typeof value.getGeneratedSetupTypeDefinitionByPublicSlug === 'function'
+    typeof value.getGeneratedSetupTypeDefinitionByPublicSlug === 'function' &&
+    'validatePackageName' in value &&
+    typeof value.validatePackageName === 'function'
   );
 }
 
@@ -51,6 +57,8 @@ test('loads the browser-safe Setup Type definitions package subpath without runt
   assert.ok(isSetupTypeDefinitionsModule(publicModule));
   assert.equal(publicModule.GENERATED_SETUP_TYPE_DEFINITIONS.length, 3);
   assert.equal(publicModule.deriveAppVariantIdentity('My App').slug, 'my-app');
+  assert.equal(publicModule.derivePackageName('My App'), 'my-app');
+  assert.throws(() => publicModule.validatePackageName('a'.repeat(215)), /214 characters/);
   assert.equal(
     publicModule.getGeneratedSetupTypeDefinition('white-label-apps'),
     publicModule.getGeneratedSetupTypeDefinitionByPublicSlug('white-label'),

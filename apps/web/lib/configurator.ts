@@ -3,6 +3,7 @@ import { parseColor } from "@ark-ui/react/color-picker"
 import {
   deriveAppVariantIdentities,
   deriveAppVariantIdentity,
+  derivePackageName,
   getGeneratedSetupTypeDefinitionByPublicSlug,
   normalizeProjectName,
   type AppVariantIdentity,
@@ -251,8 +252,14 @@ function getCreateLauncher(packageManager: ConfiguratorPackageManager): string {
     : `${packageManager} create tenkit@latest`
 }
 
+function normalizeConfiguratorProjectName(projectName: string): string {
+  return derivePackageName(normalizeProjectName(projectName))
+}
+
 export function buildConfiguratorCommand(state: ConfiguratorState): string {
-  const normalizedProjectName = normalizeProjectName(state.projectName)
+  const normalizedProjectName = normalizeConfiguratorProjectName(
+    state.projectName
+  )
   const defaults = createDefaultConfiguratorState(state.setupType)
   const hasNonProjectChange =
     state.setupType !== DEFAULT_CONFIGURATOR_SETUP_TYPE ||
@@ -296,10 +303,12 @@ export function deriveConfiguratorState(state: ConfiguratorState) {
   let projectNameError: string | undefined
 
   try {
-    normalizeProjectName(state.projectName)
-  } catch {
+    normalizeConfiguratorProjectName(state.projectName)
+  } catch (error) {
     projectNameError =
-      "Enter a project name with a usable Latin letter or number."
+      error instanceof Error
+        ? error.message.replace(/^Package name/, "Project name")
+        : "Enter a valid project name."
   }
 
   const previews = state.appVariantNames.map((name) => {

@@ -670,14 +670,36 @@ test('Generic generated guidance uses customized App Variant names without chang
       readme,
       /West Studio remains a Runtime Tenant record alongside the West App App Variant/,
     );
-    assert.match(home, /Atlas Group can select North, South, and East Studio/);
-    assert.match(home, /West App opens West Studio directly/);
+    assert.match(home, /\{\s*"Atlas Group"\s*\} can select North, South, and East Studio/);
+    assert.match(home, /\{\s*"West App"\s*\} opens West Studio directly/);
     assert.notMatch(readme, /Atlas Network/);
     assert.match(runtimeTenants, /name: 'West Studio'/);
   }
 });
 
-test('Template generation validates per-App-Variant cardinality, identity, and Accent', () => {
+test('Generic generated screens safely render punctuation-bearing App Variant display names', () => {
+  for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
+    const tree = generateProject({
+      setupType: 'generic-with-standalone-app-variants',
+      stylingChoice,
+      appVariantNames: ['South <Prime>', 'North {Best}'],
+    });
+    const home = readVirtualFile(tree, 'src/app/index.tsx');
+
+    assert.match(home, /\{\s*"South <Prime>"\s*\} can select North, South, and East Studio/);
+    assert.match(home, /\{\s*"North \{Best\}"\s*\} opens West Studio directly/);
+  }
+});
+
+test('Template generation validates package and per-App-Variant inputs', () => {
+  assert.throws(
+    () =>
+      generateProject({
+        setupType: 'white-label-apps',
+        packageName: 'a'.repeat(215),
+      }),
+    /Package name must be 214 characters or fewer/,
+  );
   assert.throws(
     () => generateProject({ setupType: 'white-label-apps', appVariantNames: ['Only One'] }),
     /Invalid App Variant name count 1.*exactly 2 App Variant values/,

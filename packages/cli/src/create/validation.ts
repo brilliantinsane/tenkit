@@ -18,64 +18,12 @@ import {
 
 import { DEFAULT_PUBLIC_SETUP_SLUG, supportedStylingValues } from '../constants';
 
-function isPathSeparatorPresent(value: string): boolean {
-  return value.includes('/') || value.includes('\\');
-}
-
 export function validateProjectName(value: string): string {
   try {
     return normalizeProjectName(value);
   } catch {
     throw new Error('Project name must contain a usable Latin letter or number.');
   }
-}
-
-function slugifyPackageName(projectName: string): string {
-  return projectName
-    .trim()
-    .toLowerCase()
-    .replace(/['"]/g, '')
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^[._-]+|[._-]+$/g, '')
-    .replace(/-{2,}/g, '-');
-}
-
-export function validatePackageName(value: string): string {
-  const packageName = value.trim();
-
-  if (packageName.length === 0) {
-    throw new Error('Package name is required.');
-  }
-
-  if (packageName.length > 214) {
-    throw new Error('Package name must be 214 characters or fewer.');
-  }
-
-  if (packageName !== packageName.toLowerCase()) {
-    throw new Error('Package name must be lowercase.');
-  }
-
-  if (isPathSeparatorPresent(packageName)) {
-    throw new Error('Package name must not contain path separators.');
-  }
-
-  if (packageName.startsWith('.') || packageName.startsWith('_')) {
-    throw new Error('Package name must not start with "." or "_".');
-  }
-
-  if (!/^[a-z0-9][a-z0-9._-]*$/.test(packageName)) {
-    throw new Error(
-      'Package name must contain only lowercase letters, numbers, ".", "_", and "-".',
-    );
-  }
-
-  return packageName;
-}
-
-export function derivePackageName(projectName: string): string {
-  const packageName = slugifyPackageName(projectName);
-
-  return validatePackageName(packageName);
 }
 
 export function normalizeAppVariantNameInput(value: string): string {

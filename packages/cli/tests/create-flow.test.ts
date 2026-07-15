@@ -5,6 +5,11 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import {
+  derivePackageName,
+  validatePackageName,
+} from '@tenkit/template-generator/setup-type-definitions';
+
 import { isDirectCliRun } from '../src/adapters/workspace';
 import { createProgram } from '../src/commands/create';
 import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
@@ -16,11 +21,9 @@ import type {
   PromptSelectOptions,
 } from '../src/create/types';
 import {
-  derivePackageName,
   normalizeAppVariantCustomization,
   normalizeSetupInput,
   normalizeStylingInput,
-  validatePackageName,
   validateProjectName,
 } from '../src/create/validation';
 
