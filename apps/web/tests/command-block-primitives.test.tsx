@@ -67,6 +67,7 @@ describe("CommandActions", () => {
           styling: "uniwind",
           git: false,
           install: true,
+          projectNameCustomized: true,
         }}
       >
         <CommandActions
@@ -88,6 +89,7 @@ describe("CommandActions", () => {
           packageManager: "bun",
           git: false,
           install: true,
+          projectNameCustomized: true,
         }
       )
     })

@@ -73,6 +73,7 @@ describe("pnpm release command UI", () => {
           styling: "uniwind",
           git: true,
           install: true,
+          projectNameCustomized: false,
         }}
       >
         <ExpandableCodeBlockCommand
@@ -98,6 +99,7 @@ describe("pnpm release command UI", () => {
           styling: "uniwind",
           git: true,
           install: true,
+          projectNameCustomized: false,
         }}
       >
         <ExpandableCodeBlockCommand

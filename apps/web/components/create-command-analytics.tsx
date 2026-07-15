@@ -12,6 +12,7 @@ export type CreateCommandAnalyticsContext =
       styling: ConfiguratorStyling
       git: boolean
       install: boolean
+      projectNameCustomized: boolean
     }
 
 const CreateCommandAnalyticsContext =

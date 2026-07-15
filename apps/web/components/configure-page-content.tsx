@@ -39,6 +39,7 @@ import {
   CONFIGURATOR_PACKAGE_MANAGER_OPTIONS,
   CONFIGURATOR_SETUP_TYPE_OPTIONS,
   CONFIGURATOR_STYLING_OPTIONS,
+  DEFAULT_CONFIGURATOR_PROJECT_NAME,
 } from "@/lib/configurator"
 import { cn } from "@/lib/utils"
 
@@ -180,6 +181,8 @@ function ConfiguratorCommandPanel() {
             styling: state.styling,
             git: state.git,
             install: state.install,
+            projectNameCustomized:
+              state.projectName !== DEFAULT_CONFIGURATOR_PROJECT_NAME,
           }}
         >
           <div

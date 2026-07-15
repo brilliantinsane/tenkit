@@ -199,8 +199,62 @@ describe("ConfigurePageContent interactions", () => {
         setupType: "runtime-tenants",
         styling: "uniwind",
         packageManager: "npm",
+        git: false,
+        install: false,
       }
     )
+  })
+
+  test("tracks whether the copied command uses a customized project name", async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    })
+
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    await user.click(screen.getByRole("button", { name: "Copy" }))
+
+    await waitFor(() => {
+      expect(trackDatabuddyEvent).toHaveBeenLastCalledWith(
+        "create_command_copied",
+        {
+          surface: "configurator",
+          setupType: "white-label",
+          styling: "bare",
+          packageManager: "pnpm",
+          git: true,
+          install: true,
+          projectNameCustomized: false,
+        }
+      )
+    })
+
+    trackDatabuddyEvent.mockClear()
+    fireEvent.change(screen.getByLabelText("Project name"), {
+      target: { value: "Private Customer" },
+    })
+    await user.click(screen.getByRole("button", { name: "Copy" }))
+
+    await waitFor(() => {
+      expect(trackDatabuddyEvent).toHaveBeenLastCalledWith(
+        "create_command_copied",
+        {
+          surface: "configurator",
+          setupType: "white-label",
+          styling: "bare",
+          packageManager: "pnpm",
+          git: true,
+          install: true,
+          projectNameCustomized: true,
+        }
+      )
+    })
   })
 
   test("tracks changed bounded Configurator Choices", async () => {

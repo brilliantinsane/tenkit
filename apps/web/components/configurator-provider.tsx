@@ -123,6 +123,8 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         setupType: randomizedState.setupType,
         styling: randomizedState.styling,
         packageManager: randomizedState.packageManager,
+        git: randomizedState.git,
+        install: randomizedState.install,
       })
 
       void setQuery({
