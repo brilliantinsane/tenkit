@@ -24,6 +24,7 @@ import {
   configuratorUrlKeys,
   getConfiguratorDefaultsReset,
 } from "@/lib/configurator-search-params"
+import { trackDatabuddyEvent } from "@/lib/databuddy"
 
 type ConfiguratorAppVariantField = {
   position: number
@@ -118,6 +119,14 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
     randomize: () => {
       const randomizedState = randomizeConfiguratorState(state)
 
+      trackDatabuddyEvent("configurator_randomized", {
+        setupType: randomizedState.setupType,
+        styling: randomizedState.styling,
+        packageManager: randomizedState.packageManager,
+        git: randomizedState.git,
+        install: randomizedState.install,
+      })
+
       void setQuery({
         setupType: randomizedState.setupType,
         styling: randomizedState.styling,
@@ -141,6 +150,13 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       void setQuery({ projectName })
     },
     selectSetupType: (setupType) => {
+      if (setupType !== state.setupType) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "setup_type",
+          value: setupType,
+        })
+      }
+
       void setQuery({
         setupType,
         appVariantNamesSerialized: "",
@@ -148,9 +164,23 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       })
     },
     selectStyling: (styling) => {
+      if (styling !== state.styling) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "styling",
+          value: styling,
+        })
+      }
+
       void setQuery({ styling })
     },
     selectPackageManager: (packageManager) => {
+      if (packageManager !== state.packageManager) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "package_manager",
+          value: packageManager,
+        })
+      }
+
       void setQuery({ packageManager })
     },
     updateAppVariantName: (position, name) => {
@@ -180,9 +210,23 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       })
     },
     setGit: (git) => {
+      if (git !== state.git) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "git",
+          value: git,
+        })
+      }
+
       void setQuery({ git })
     },
     setInstall: (install) => {
+      if (install !== state.install) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "install",
+          value: install,
+        })
+      }
+
       void setQuery({ install })
     },
   }

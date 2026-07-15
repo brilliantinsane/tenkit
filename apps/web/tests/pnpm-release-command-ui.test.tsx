@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, test, vi } from "vitest"
 
 import { CodeBlockCommand } from "@/components/code-block-command"
+import { CreateCommandAnalyticsProvider } from "@/components/create-command-analytics"
 import { ExpandableCodeBlockCommand } from "@/components/expandable-code-block-command"
 import { PNPM_LATEST_SAFE_AT } from "@/lib/pnpm-release-command"
 
@@ -28,10 +29,12 @@ describe("pnpm release command UI", () => {
     })
 
     render(
-      <CodeBlockCommand
-        pnpm="pnpm create tenkit@latest"
-        npm="npm create tenkit@latest"
-      />
+      <CreateCommandAnalyticsProvider value={{ surface: "landing" }}>
+        <CodeBlockCommand
+          pnpm="pnpm create tenkit@latest"
+          npm="npm create tenkit@latest"
+        />
+      </CreateCommandAnalyticsProvider>
     )
 
     const command = screen.getByText(
@@ -63,30 +66,52 @@ describe("pnpm release command UI", () => {
     })
 
     const { rerender } = render(
-      <ExpandableCodeBlockCommand
-        pnpm="pnpm create tenkit@latest --name tenkit-app --styling uniwind"
-        npm="npm create tenkit@latest -- --name tenkit-app --styling uniwind"
-        bun="bun create tenkit@latest --name tenkit-app --styling uniwind"
-        value="npm"
-        expanded={false}
-        onValueChange={vi.fn()}
-        onExpandedChange={vi.fn()}
-      />
+      <CreateCommandAnalyticsProvider
+        value={{
+          surface: "configurator",
+          setupType: "white-label",
+          styling: "uniwind",
+          git: true,
+          install: true,
+          projectNameCustomized: false,
+        }}
+      >
+        <ExpandableCodeBlockCommand
+          pnpm="pnpm create tenkit@latest --name tenkit-app --styling uniwind"
+          npm="npm create tenkit@latest -- --name tenkit-app --styling uniwind"
+          bun="bun create tenkit@latest --name tenkit-app --styling uniwind"
+          value="npm"
+          expanded={false}
+          onValueChange={vi.fn()}
+          onExpandedChange={vi.fn()}
+        />
+      </CreateCommandAnalyticsProvider>
     )
 
     expect(screen.queryByRole("note")).toBeNull()
     expect(document.body.textContent).toContain("npm create tenkit@latest")
 
     rerender(
-      <ExpandableCodeBlockCommand
-        pnpm="pnpm create tenkit@latest --name tenkit-app --styling uniwind"
-        npm="npm create tenkit@latest -- --name tenkit-app --styling uniwind"
-        bun="bun create tenkit@latest --name tenkit-app --styling uniwind"
-        value="pnpm"
-        expanded={false}
-        onValueChange={vi.fn()}
-        onExpandedChange={vi.fn()}
-      />
+      <CreateCommandAnalyticsProvider
+        value={{
+          surface: "configurator",
+          setupType: "white-label",
+          styling: "uniwind",
+          git: true,
+          install: true,
+          projectNameCustomized: false,
+        }}
+      >
+        <ExpandableCodeBlockCommand
+          pnpm="pnpm create tenkit@latest --name tenkit-app --styling uniwind"
+          npm="npm create tenkit@latest -- --name tenkit-app --styling uniwind"
+          bun="bun create tenkit@latest --name tenkit-app --styling uniwind"
+          value="pnpm"
+          expanded={false}
+          onValueChange={vi.fn()}
+          onExpandedChange={vi.fn()}
+        />
+      </CreateCommandAnalyticsProvider>
     )
 
     expect(screen.getByRole("note")).toBeDefined()

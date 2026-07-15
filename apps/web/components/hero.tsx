@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { preload } from "react-dom"
 
 import { CodeBlockCommand } from "@/components/code-block-command"
+import { CreateCommandAnalyticsProvider } from "@/components/create-command-analytics"
 import { HeroAnnouncement } from "@/components/hero-announcement"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GitHubMark } from "@/components/github-mark"
@@ -74,11 +75,13 @@ export function HeroSection() {
             "animate-in transition-all delay-500 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          <CodeBlockCommand
-            pnpm="pnpm create tenkit@latest"
-            npm="npm create tenkit@latest"
-            bun="bun create tenkit@latest"
-          />
+          <CreateCommandAnalyticsProvider value={{ surface: "landing" }}>
+            <CodeBlockCommand
+              pnpm="pnpm create tenkit@latest"
+              npm="npm create tenkit@latest"
+              bun="bun create tenkit@latest"
+            />
+          </CreateCommandAnalyticsProvider>
         </div>
       </div>
       <div className="relative">
