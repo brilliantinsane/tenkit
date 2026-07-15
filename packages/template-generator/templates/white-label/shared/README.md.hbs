@@ -11,6 +11,9 @@ This app can produce multiple branded native apps from one Expo codebase. Each A
 - Includes per-App Variant assets under `assets/<app-variant-slug>/`.
 - Ships with a local Tenkit CLI for build preparation: `build`, `reset`, and `doctor`.
 - Includes `expo-dev-client` for native development builds and `expo-system-ui` for native UI style handling.
+{{#if isUnistylesStyling}}
+- Uses Unistyles for generated UI styling. Customize themes and tokens in `unistyles.ts`.
+{{/if}}
 
 ## Get Started
 

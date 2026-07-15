@@ -2,11 +2,13 @@ import {
   formatSupportedGeneratedSetupTypes,
   normalizeGeneratedAccentColor,
   normalizeGeneratedSetupType,
-  normalizeGeneratedStylingChoice,
   type GeneratedAccentColor,
-  type GeneratedStylingChoice,
   type GeneratedSetupType,
 } from '@tenkit/template-generator';
+import {
+  normalizeGeneratedStylingChoice,
+  type GeneratedStylingChoice,
+} from '@tenkit/template-generator/styling-definitions';
 import {
   deriveAppVariantIdentity,
   deriveAppVariantIdentities,

@@ -12,6 +12,13 @@ export default defineConfig({
         ),
       },
       {
+        find: '@tenkit/template-generator/styling-definitions',
+        replacement: resolve(
+          import.meta.dirname,
+          '../template-generator/src/generated-styling-choices.ts',
+        ),
+      },
+      {
         find: '@tenkit/template-generator',
         replacement: resolve(import.meta.dirname, '../template-generator/src/index.ts'),
       },

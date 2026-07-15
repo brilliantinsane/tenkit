@@ -8,6 +8,10 @@ import {
   type AppVariantIdentity,
   type PublicSetupSlug,
 } from "@tenkit/template-generator/setup-type-definitions"
+import {
+  SUPPORTED_GENERATED_STYLING_CHOICES,
+  type GeneratedStylingChoice,
+} from "@tenkit/template-generator/styling-definitions"
 
 const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
 const RANDOM_APP_VARIANT_NAMES = [
@@ -47,21 +51,28 @@ export const CONFIGURATOR_SETUP_TYPE_OPTIONS = [
 export const CONFIGURATOR_SETUP_TYPE_VALUES =
   CONFIGURATOR_SETUP_TYPE_OPTIONS.map(({ value }) => value)
 
-export const CONFIGURATOR_STYLING_OPTIONS = [
-  {
-    value: "bare",
+const CONFIGURATOR_STYLING_PRESENTATION = {
+  bare: {
     label: "Bare",
     detail: "React Native StyleSheet",
   },
-  {
-    value: "uniwind",
+  uniwind: {
     label: "Uniwind",
     detail: "Tailwind for React Native",
   },
-] as const
+  unistyles: {
+    label: "Unistyles",
+    detail: "Adaptive React Native styling",
+  },
+} satisfies Record<GeneratedStylingChoice, { label: string; detail: string }>
 
-export type ConfiguratorStyling =
-  (typeof CONFIGURATOR_STYLING_OPTIONS)[number]["value"]
+export const CONFIGURATOR_STYLING_OPTIONS =
+  SUPPORTED_GENERATED_STYLING_CHOICES.map((value) => ({
+    value,
+    ...CONFIGURATOR_STYLING_PRESENTATION[value],
+  }))
+
+export type ConfiguratorStyling = GeneratedStylingChoice
 
 export const CONFIGURATOR_STYLING_VALUES = CONFIGURATOR_STYLING_OPTIONS.map(
   ({ value }) => value

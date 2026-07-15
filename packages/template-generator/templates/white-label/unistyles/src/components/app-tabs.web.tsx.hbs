@@ -1,0 +1,107 @@
+import {
+  TabList,
+  TabSlot,
+  TabTrigger,
+  Tabs,
+  type TabListProps,
+  type TabTriggerSlotProps,
+} from 'expo-router/ui';
+import { Pressable, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+const projectName = {{projectNameStringLiteral}};
+
+export default function AppTabs() {
+  return (
+    <Tabs>
+      <TabSlot style={styles.slot} />
+      <TabList asChild>
+        <CustomTabList>
+          <TabTrigger name="home" href="/" asChild>
+            <TabButton>Home</TabButton>
+          </TabTrigger>
+          <TabTrigger name="explore" href="/explore" asChild>
+            <TabButton>Explore</TabButton>
+          </TabTrigger>
+        </CustomTabList>
+      </TabList>
+    </Tabs>
+  );
+}
+
+function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  return (
+    <Pressable
+      {...props}
+      style={({ pressed }) => [
+        styles.tabButton,
+        isFocused && styles.focusedTabButton,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text style={[styles.tabLabel, isFocused && styles.focusedTabLabel]}>{children}</Text>
+    </Pressable>
+  );
+}
+
+function CustomTabList(props: TabListProps) {
+  return (
+    <View {...props} style={[props.style, styles.tabList]}>
+      <View style={styles.tabListContent}>
+        <Text style={styles.projectName}>{projectName}</Text>
+        {props.children}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme) => ({
+  slot: {
+    height: '100%',
+  },
+  tabButton: {
+    borderRadius: theme.radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.surface,
+  },
+  focusedTabButton: {
+    backgroundColor: theme.colors.surfaceRaised,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  tabLabel: {
+    ...theme.typography.label,
+    color: theme.colors.muted,
+  },
+  focusedTabLabel: {
+    color: theme.colors.accent,
+  },
+  tabList: {
+    position: 'absolute',
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.md,
+  },
+  tabListContent: {
+    maxWidth: 768,
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceRaised,
+    borderRadius: theme.radii.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  projectName: {
+    ...theme.typography.label,
+    marginRight: 'auto',
+    color: theme.colors.foreground,
+  },
+}));

@@ -3,6 +3,7 @@ import { globalStyles } from '@/constants/globals';
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useTheme } from '@/theme/ThemeContext';
 import { FieldGroup, Host, Picker, Row, Spacer, Text } from '@expo/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { colors, dark } = useTheme();
@@ -16,27 +17,29 @@ export default function SettingsScreen() {
 
   return (
     <ThemedView style={globalStyles.container}>
-      <Host style={globalStyles.container} colorScheme={colorScheme}>
-        <FieldGroup style=\{{ backgroundColor: colors.background }}>
-          {hasRuntimeTenantSelection ? (
-            <Row alignment="center">
-              <Text>Active Runtime Tenant</Text>
+      <SafeAreaView style={globalStyles.container}>
+        <Host style={globalStyles.container} colorScheme={colorScheme}>
+          <FieldGroup style=\{{ backgroundColor: colors.background }}>
+            {hasRuntimeTenantSelection ? (
+              <Row alignment="center">
+                <Text>Active Runtime Tenant</Text>
 
-              <Spacer flexible />
+                <Spacer flexible />
 
-              <Picker selectedValue={activeRuntimeTenantId} onValueChange={setActiveRuntimeTenantId}>
-                {selectableRuntimeTenants.map((runtimeTenant) => (
-                  <Picker.Item
-                    key={runtimeTenant.runtimeTenantId}
-                    label={runtimeTenant.name}
-                    value={runtimeTenant.runtimeTenantId}
-                  />
-                ))}
-              </Picker>
-            </Row>
-          ) : null}
-        </FieldGroup>
-      </Host>
+                <Picker selectedValue={activeRuntimeTenantId} onValueChange={setActiveRuntimeTenantId}>
+                  {selectableRuntimeTenants.map((runtimeTenant) => (
+                    <Picker.Item
+                      key={runtimeTenant.runtimeTenantId}
+                      label={runtimeTenant.name}
+                      value={runtimeTenant.runtimeTenantId}
+                    />
+                  ))}
+                </Picker>
+              </Row>
+            ) : null}
+          </FieldGroup>
+        </Host>
+      </SafeAreaView>
     </ThemedView>
   );
 }

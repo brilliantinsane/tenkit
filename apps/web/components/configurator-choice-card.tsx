@@ -74,36 +74,6 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
   )
 }
 
-export function ConfiguratorCodeResponsiveComingSoonIconChoiceCard({
-  label,
-  icon,
-  className,
-}: {
-  label: string
-  icon: ReactNode
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      disabled
-      className={cn(
-        "relative w-full cursor-not-allowed overflow-hidden rounded-xl border bg-card/80 text-center opacity-60 shadow-sm",
-        className
-      )}
-    >
-      <ChoiceCardContent className="flex h-20 items-center p-3 lg:h-32 lg:justify-center">
-        <ResponsiveIconChoiceCardContent
-          selected={false}
-          label={label}
-          detail="Coming soon"
-          icon={icon}
-        />
-      </ChoiceCardContent>
-    </button>
-  )
-}
-
 function ResponsiveIconChoiceCardContent({
   selected,
   label,

@@ -9,6 +9,9 @@
       "@tenkit/template-generator": ["../template-generator/src/index.ts"],
       "@tenkit/template-generator/setup-type-definitions": [
         "../template-generator/src/generated-setup-type-definitions.ts"
+      ],
+      "@tenkit/template-generator/styling-definitions": [
+        "../template-generator/src/generated-styling-choices.ts"
       ]
     },
     "types": ["node"],

@@ -58,6 +58,26 @@ test('proof accepts --styling and generates the selected Styling output', async 
   assert.match(packageJson, /"uniwind": "\^1\.10\.0"/);
 });
 
+test('proof accepts Unistyles through the existing --styling option', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--styling',
+    'unistyles',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'unistyles.ts')), true);
+  const packageJson = await fs.readFile(join(targetDir, 'package.json'), 'utf8');
+  assert.match(packageJson, /"react-native-unistyles": "3\.3\.0"/);
+});
+
 test('proof accepts ordered per-App-Variant names and Accents', async () => {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
   const targetDir = join(tempRoot, 'app');
@@ -85,7 +105,7 @@ test('proof accepts ordered per-App-Variant names and Accents', async () => {
 test('verify accepts --styling before validating the Setup Type', async () => {
   await expectScriptFailure(
     verifyScript,
-    ['--styling', 'uniwind', '--setup-type', 'unsupported'],
+    ['--styling', 'unistyles', '--setup-type', 'unsupported'],
     /Unsupported generated Setup Type "unsupported"/,
   );
 });

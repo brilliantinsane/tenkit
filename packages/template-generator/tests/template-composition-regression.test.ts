@@ -10,7 +10,7 @@ import { assert, test } from 'vitest';
 const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const templatesRoot = join(packageRoot, 'templates');
 const setupTypeTemplatePaths = ['white-label', 'runtime-tenants', 'generic-standalone'] as const;
-const stylingTemplatePaths = ['bare', 'uniwind'] as const;
+const stylingTemplatePaths = ['bare', 'uniwind', 'unistyles'] as const;
 const universalSharedPaths = [
   'app.config.ts.hbs',
   'src/constants/project-config.ts.hbs',
@@ -39,7 +39,7 @@ test('Template source paths use ADR 0009 owners', () => {
       return false;
     }
 
-    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind)\//.test(path);
+    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind|unistyles)\//.test(path);
   });
 
   assert.deepEqual(unexpectedPaths, []);
@@ -63,7 +63,10 @@ test('Template source paths use ADR 0009 owners', () => {
   );
 
   for (const path of appShellPaths) {
-    assert.match(path, /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind)\//);
+    assert.match(
+      path,
+      /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//,
+    );
   }
 });
 

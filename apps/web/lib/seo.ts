@@ -1,4 +1,10 @@
+import type { Metadata } from "next"
 import type { Graph } from "schema-dts"
+
+import {
+  SUPPORTED_GENERATED_STYLING_CHOICES,
+  type GeneratedStylingChoice,
+} from "@tenkit/template-generator/styling-definitions"
 
 import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
@@ -6,10 +12,10 @@ import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
 export const SITE_CONFIG = {
   name: "Tenkit",
   url: "https://www.tenkit.dev",
-  title: "Tenkit - Multi-tenant mobile app starter kit",
+  title: "Tenkit - Multi-Tenant Mobile Apps Built with Expo",
   titleTemplate: "%s | Tenkit",
   description:
-    "Build one mobile app with Expo and ship it as many branded apps from a shared codebase.",
+    "Build multi-tenant mobile apps with Expo and React Native. Generate white-label App Variants, Runtime Tenants, and hybrid architectures from one codebase.",
   applicationName: "Tenkit",
   author: {
     name: "Tenkit",
@@ -21,6 +27,11 @@ export const SITE_CONFIG = {
   ogImageAlt:
     "Tenkit preview image for multi-tenant setup types and generated app workflows for apps built with Expo.",
   keywords: [
+    "multi-tenant apps built with Expo",
+    "multi-tenant mobile apps using Expo",
+    "multi tenant mobile app",
+    "multi tenant app",
+    "mobile app multi tenancy",
     "branded mobile apps",
     "multi-brand apps",
     "white-label mobile apps",
@@ -40,6 +51,52 @@ export const SITE_CONFIG = {
     "Build Preparation",
   ],
 } as const
+
+export const CONFIGURE_PAGE_SEO = {
+  path: "/configure",
+  title: "Configure a Multi-Tenant App Built with Expo",
+  description:
+    "Configure a multi-tenant starter built with Expo: choose a Setup Type, Styling Option, App Variants, and a reproducible create-tenkit command.",
+} as const
+
+type PageSeo = {
+  path: string
+  title: string
+  description: string
+}
+
+export function createPageMetadata(page: PageSeo) {
+  const socialTitle = `${page.title} | ${SITE_CONFIG.name}`
+
+  return {
+    title: page.title,
+    description: page.description,
+    alternates: {
+      canonical: page.path,
+    },
+    openGraph: {
+      type: "website",
+      url: absoluteUrl(page.path),
+      siteName: SITE_CONFIG.name,
+      title: socialTitle,
+      description: page.description,
+      images: [
+        {
+          url: ogImageUrl(),
+          width: 1672,
+          height: 941,
+          alt: SITE_CONFIG.ogImageAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: socialTitle,
+      description: page.description,
+      images: [ogImageUrl()],
+    },
+  } satisfies Metadata
+}
 
 export const MARKDOWN_MIRRORS = [
   {
@@ -77,7 +134,35 @@ export const EXTERNAL_TENKIT_SURFACES = [
 
 export const CREATE_COMMAND = "pnpm create tenkit@latest"
 
+const STYLING_CHOICE_DOCUMENTATION = {
+  bare: {
+    label: "Bare",
+    description: "React Native StyleSheet. This is the default.",
+  },
+  uniwind: {
+    label: "Uniwind",
+    description: "Tailwind styling for React Native.",
+  },
+  unistyles: {
+    label: "Unistyles",
+    description: "Adaptive React Native styling with Unistyles 3.",
+  },
+} satisfies Record<
+  GeneratedStylingChoice,
+  { label: string; description: string }
+>
+
+export const STYLING_CHOICES = SUPPORTED_GENERATED_STYLING_CHOICES.map(
+  (value) => ({ value, ...STYLING_CHOICE_DOCUMENTATION[value] })
+)
+
 export const TENKIT_COMMANDS = [
+  {
+    command:
+      "pnpm create tenkit@latest --name unistyles-app --setup white-label --styling unistyles --yes",
+    description:
+      "Create a White Label Apps project with the Unistyles Styling Option Value.",
+  },
   {
     command: CREATE_COMMAND,
     description: "Start the Public CLI create flow for a generated Tenkit app.",
@@ -133,6 +218,13 @@ ${EXTERNAL_TENKIT_SURFACES.map(
 
 ${SETUP_TYPES.map(
   (setup) => `- ${setup.label}: ${setup.headline} ${setup.description}`
+).join("\n")}
+
+## Styling Choices
+
+${STYLING_CHOICES.map(
+  (styling) =>
+    `- ${styling.label} (\`${styling.value}\`): ${styling.description}`
 ).join("\n")}
 `
 }
@@ -259,6 +351,7 @@ export function getLandingJsonLdGraph(): Graph {
         url: homeUrl,
         image: ogImageUrl(),
         installUrl: NPM_PACKAGE_URL,
+        isAccessibleForFree: true,
         publisher: {
           "@id": organizationId,
         },
@@ -293,7 +386,6 @@ export function getLandingJsonLdGraph(): Graph {
         name: "Create a Tenkit project",
         description:
           "Generate a Tenkit starter project for apps built with Expo using the Public CLI.",
-        totalTime: "PT5M",
         tool: [
           {
             "@type": "HowToTool",

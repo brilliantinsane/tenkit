@@ -31,7 +31,7 @@ describe('generation matrix coverage', () => {
   test('covers every Setup Type, Styling Choice, package manager, and value profile', () => {
     const cases = createExhaustiveGenerationCases();
 
-    assert.equal(cases.length, 36);
+    assert.equal(cases.length, 54);
     assert.deepEqual(
       new Set(cases.map(({ setupType }) => setupType)),
       new Set([
@@ -42,7 +42,7 @@ describe('generation matrix coverage', () => {
     );
     assert.deepEqual(
       new Set(cases.map(({ stylingChoice }) => stylingChoice)),
-      new Set(['bare', 'uniwind']),
+      new Set(['bare', 'uniwind', 'unistyles']),
     );
     assert.deepEqual(
       new Set(cases.map(({ packageManager }) => packageManager)),
@@ -76,20 +76,20 @@ describe('generation matrix coverage', () => {
     assert.deepEqual(defaultRuntimeTenants?.appVariantAccents, ['#EB2556']);
   });
 
-  test('uses six installed cases to cover native output, package managers, and Git choices', () => {
+  test('uses nine installed cases to cover every Setup Type plus Styling combination', () => {
     const cases = createInstalledVerificationCases();
 
-    assert.equal(cases.length, 6);
+    assert.equal(cases.length, 9);
     assert.equal(
       new Set(cases.map(({ setupType, stylingChoice }) => `${setupType}:${stylingChoice}`)).size,
-      6,
+      9,
     );
     assert.deepEqual(
       cases.reduce<Record<string, number>>((counts, matrixCase) => {
         counts[matrixCase.packageManager] = (counts[matrixCase.packageManager] ?? 0) + 1;
         return counts;
       }, {}),
-      { pnpm: 2, npm: 2, bun: 2 },
+      { pnpm: 3, npm: 3, bun: 3 },
     );
     assert.ok(cases.every(({ install }) => install));
     assert.deepEqual(new Set(cases.map(({ git }) => git)), new Set([true, false]));

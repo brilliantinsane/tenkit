@@ -64,7 +64,10 @@ function assertNoGeneratedSourceLeaks(tree: VirtualFileTree) {
   assert.notMatch(generatedSource, /active[-_\s]?setup/i);
   assert.notMatch(generatedSource, /setup[-_\s]?type/i);
   assert.notMatch(generatedSource, /base-expo|templates\/(?:assets|surfaces|styling)/);
-  assert.notMatch(generatedPaths, /^(?:shared|bare|uniwind|surfaces|styling|setup-types)\//m);
+  assert.notMatch(
+    generatedPaths,
+    /^(?:shared|bare|uniwind|unistyles|surfaces|styling|setup-types)\//m,
+  );
   assert.notMatch(generatedPaths, /^(?:tenkit|types|constants|assets\/app)\//m);
   assert.notMatch(generatedPaths, /(?:^|\/)templates\/|LICENSE|\.hbs$/m);
 }
@@ -301,6 +304,96 @@ function assertUniwindStylingOutput(tree: VirtualFileTree, expectedAccent: strin
   );
 }
 
+function assertUnistylesStylingOutput(tree: VirtualFileTree) {
+  const packageJson = JSON.parse(readVirtualFile(tree, 'package.json')) as {
+    main: string;
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  const entrypoint = readVirtualFile(tree, 'index.ts');
+  const babelConfig = readVirtualFile(tree, 'babel.config.js');
+  const unistyles = readVirtualFile(tree, 'unistyles.ts');
+  const layout = readVirtualFile(tree, 'src/app/_layout.tsx');
+  const nativeTabs = readVirtualFile(tree, 'src/components/app-tabs.tsx');
+  const webTabs = readVirtualFile(tree, 'src/components/app-tabs.web.tsx');
+  const readme = readVirtualFile(tree, 'README.md');
+  const unistylesUiSource = tree
+    .filter((file) => file.path.startsWith('src/app/') || file.path.startsWith('src/components/'))
+    .map((file) => file.contents)
+    .filter((contents): contents is string => typeof contents === 'string')
+    .join('\n');
+
+  assert.equal(packageJson.main, 'index.ts');
+  assert.equal(packageJson.dependencies['react-native-unistyles'], '3.3.0');
+  assert.equal(packageJson.dependencies['react-native-nitro-modules'], '0.36.1');
+  assert.equal(packageJson.dependencies['@react-native/normalize-colors'], '0.85.3');
+  assert.equal(packageJson.dependencies.uniwind, undefined);
+  assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
+  assert.equal(packageJson.dependencies.clsx, undefined);
+  assert.equal(packageJson.dependencies['@expo/ui'], undefined);
+  assert.equal(packageJson.devDependencies.tailwindcss, undefined);
+  assert.equal(hasVirtualFile(tree, 'metro.config.js'), false);
+  assert.equal(hasVirtualFile(tree, 'src/global.css'), false);
+  assert.equal(hasVirtualFile(tree, 'src/uniwind-env.d.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/lib/cn.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/ThemeContext.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/theme/colors.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/design-tokens.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/constants/globals.ts'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-text.tsx'), false);
+  assert.equal(hasVirtualFile(tree, 'src/components/themed-view.tsx'), false);
+  assert.ok(hasVirtualFile(tree, 'babel.config.js'));
+  assert.ok(hasVirtualFile(tree, 'index.ts'));
+  assert.ok(hasVirtualFile(tree, 'unistyles.ts'));
+  assert.ok(
+    entrypoint.indexOf("import './unistyles';") < entrypoint.indexOf("import 'expo-router/entry';"),
+  );
+  assert.match(babelConfig, /presets: \['babel-preset-expo'\]/);
+  assert.match(babelConfig, /plugins: \[\['react-native-unistyles\/plugin', \{ root: 'src' \}\]\]/);
+  assert.match(unistyles, /import Constants from 'expo-constants'/);
+  assert.match(unistyles, /const expoConfig: unknown = Constants\.expoConfig/);
+  assert.match(unistyles, /\/\^#\[0-9A-F\]\{6\}\$\//);
+  assert.match(unistyles, /Missing or invalid App Variant Accent/);
+  assert.match(unistyles, /background: '#000000'/);
+  assert.match(unistyles, /surface: '#0D0D0D'/);
+  assert.match(unistyles, /surfaceRaised: '#1A1A1A'/);
+  assert.match(unistyles, /foreground: '#F2F2F2'/);
+  assert.match(unistyles, /muted: '#B3B3B3'/);
+  assert.match(unistyles, /background: '#E6E6E6'/);
+  assert.match(unistyles, /surface: '#F2F2F2'/);
+  assert.match(unistyles, /surfaceRaised: '#FFFFFF'/);
+  assert.match(unistyles, /foreground: '#0D0D0D'/);
+  assert.match(unistyles, /muted: '#4D4D4D'/);
+  assert.equal(unistyles.match(/accent: appVariantAccent/g)?.length, 2);
+  assert.notMatch(unistyles, /#208AEF|#EF8520|#EB2556|#20EF99|#9A00CD/);
+  assert.match(unistyles, /spacing:/);
+  assert.match(unistyles, /radii:/);
+  assert.match(unistyles, /typography:/);
+  assert.match(unistyles, /xs: 0/);
+  assert.match(unistyles, /interface UnistylesThemes extends AppThemes/);
+  assert.match(unistyles, /interface UnistylesBreakpoints extends AppBreakpoints/);
+  assert.equal(unistyles.match(/StyleSheet\.configure\(/g)?.length, 1);
+  assert.match(unistyles, /adaptiveThemes: true/);
+  assert.notMatch(unistyles, /initialTheme|updateTheme|setTheme|setAdaptiveThemes/);
+  assert.notMatch(layout, /ThemeProvider|useUnistyles|useColorScheme/);
+  assert.match(nativeTabs, /useUnistyles/);
+  assert.match(nativeTabs, /selected: theme\.colors\.accent/);
+  assert.notMatch(webTabs, /useUnistyles|withUnistyles/);
+  assert.match(webTabs, /StyleSheet\.create\(\(theme\) =>/);
+  assert.match(webTabs, /pressed && styles\.pressed/);
+  assert.match(unistylesUiSource, /StyleSheet\.create\(\(theme\) =>/);
+  assert.notMatch(
+    unistylesUiSource,
+    /ThemeContext|ThemedText|ThemedView|globalStyles|className=|withUnistyles|UnistylesRuntime/,
+  );
+  assert.equal(unistylesUiSource.match(/useUnistyles/g)?.length, 2);
+  if (hasVirtualFile(tree, 'src/app/settings.tsx')) {
+    assert.match(readVirtualFile(tree, 'src/app/settings.tsx'), /pressed && styles\.pressed/);
+  }
+  assert.match(readme, /uses Unistyles for generated UI styling/i);
+  assert.match(readme, /customize themes and tokens in `unistyles\.ts`/i);
+}
+
 test('White Label Apps Template generation is deterministic', () => {
   const first = generateWhiteLabelAppsProject({
     setupType: 'white-label-apps',
@@ -395,7 +488,7 @@ test('Template generation rejects unsupported Styling Choice values', () => {
         setupType: 'white-label-apps',
         stylingChoice: 'unsupported-styling',
       } as unknown as Parameters<typeof generateProject>[0]),
-    /Unsupported generated Styling Choice "unsupported-styling".*Expected one of: bare, uniwind/,
+    /Unsupported generated Styling Choice "unsupported-styling".*Expected one of: bare, uniwind, unistyles/,
   );
 });
 
@@ -453,7 +546,7 @@ test('per-App-Variant names and Accents reach every generated Setup Type and Sty
   ] as const;
 
   for (const customization of customizationCases) {
-    for (const stylingChoice of ['bare', 'uniwind'] as const) {
+    for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
       const tree = generateProject({ ...customization, stylingChoice });
       const appVariants = readVirtualFile(tree, customization.appVariantPath);
 
@@ -497,8 +590,14 @@ test('per-App-Variant names and Accents reach every generated Setup Type and Sty
           rootLayout.indexOf("Uniwind.updateCSSVariables('light'") <
             rootLayout.indexOf('export default function RootLayout'),
         );
-      } else {
+      } else if (stylingChoice === 'bare') {
         assert.match(readVirtualFile(tree, 'src/app/_layout.tsx'), /primary: theme\.accent/);
+      } else {
+        const unistyles = readVirtualFile(tree, 'unistyles.ts');
+
+        assert.match(unistyles, /const expoConfig: unknown = Constants\.expoConfig/);
+        assert.match(unistyles, /const appVariantAccent = readAppVariantAccent\(expoConfig\)/);
+        assert.match(unistyles, /accent: appVariantAccent/);
       }
     }
   }
@@ -554,7 +653,7 @@ test('generated App Variant Slugs include EAS creation and reconciliation guidan
 });
 
 test('Generic generated guidance uses customized App Variant names without changing Runtime Tenants', () => {
-  for (const stylingChoice of ['bare', 'uniwind'] as const) {
+  for (const stylingChoice of ['bare', 'uniwind', 'unistyles'] as const) {
     const tree = generateProject({
       setupType: 'generic-with-standalone-app-variants',
       stylingChoice,
@@ -598,7 +697,11 @@ test('Template generation validates per-App-Variant cardinality, identity, and A
 });
 
 test('generated output stays free of Template composition details across the matrix', () => {
-  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
 
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
@@ -619,8 +722,12 @@ test('generated output stays free of Template composition details across the mat
   }
 });
 
-test('Styling Choice matrix emits Bare and Uniwind output for every Setup Type', () => {
-  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
+test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every Setup Type', () => {
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
 
   for (const { setupType, expectedRoute, defaultAccents } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
@@ -653,18 +760,28 @@ test('Styling Choice matrix emits Bare and Uniwind output for every Setup Type',
         paths.some((path) => path.split('/').some((segment) => segment === 'uniwind')),
         false,
       );
+      assert.equal(
+        paths.some((path) => path.split('/').some((segment) => segment === 'unistyles')),
+        false,
+      );
 
       if (stylingChoice === 'bare') {
         assertBareStylingOutput(tree);
-      } else {
+      } else if (stylingChoice === 'uniwind') {
         assertUniwindStylingOutput(tree, defaultAccents[0]);
+      } else {
+        assertUnistylesStylingOutput(tree);
       }
     }
   }
 });
 
 test('Styling Choice preserves generated Setup Type behavior across the matrix', () => {
-  const stylingChoices = ['bare', 'uniwind'] as const satisfies readonly GeneratedStylingChoice[];
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
 
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {

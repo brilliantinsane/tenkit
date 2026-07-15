@@ -1,9 +1,11 @@
-export const SUPPORTED_GENERATED_STYLING_CHOICES = ['bare', 'uniwind'] as const;
+export const SUPPORTED_GENERATED_STYLING_CHOICES = ['bare', 'uniwind', 'unistyles'] as const;
 
 export type GeneratedStylingChoice = (typeof SUPPORTED_GENERATED_STYLING_CHOICES)[number];
 
 function isGeneratedStylingChoice(value: string): value is GeneratedStylingChoice {
-  return value === 'bare' || value === 'uniwind';
+  return SUPPORTED_GENERATED_STYLING_CHOICES.some(
+    (supportedStylingChoice) => value === supportedStylingChoice,
+  );
 }
 
 export function normalizeGeneratedStylingChoice(value: string | undefined): GeneratedStylingChoice {

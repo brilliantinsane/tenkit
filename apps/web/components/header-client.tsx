@@ -28,7 +28,6 @@ export function HeaderClient({
   const scrolled = useScroll(72, 28)
   const pathname = usePathname()
   const isHomePage = pathname === "/"
-  const showViewportDivider = pathname !== "/configure"
   const logo = (
     <>
       <Image
@@ -53,9 +52,9 @@ export function HeaderClient({
           "bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/50":
             scrolled,
           "after:pointer-events-none after:absolute after:right-[calc(50%_-_50dvw)] after:bottom-0 after:left-[calc(50%_-_50dvw)] after:h-px after:bg-border":
-            !scrolled && showViewportDivider,
+            !scrolled,
           "after:pointer-events-none after:absolute after:right-[calc(50%_-_50dvw)] after:bottom-0 after:left-[calc(50%_-_50dvw)] after:h-px after:bg-border md:after:hidden":
-            scrolled && showViewportDivider,
+            scrolled,
         }
       )}
     >

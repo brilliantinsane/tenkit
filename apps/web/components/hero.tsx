@@ -39,7 +39,7 @@ export function HeroSection() {
             "animate-in delay-100 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          One Codebase Many Branded Apps
+          Build Multi-Tenant Apps with Expo from One Codebase
         </h1>
 
         <p
@@ -48,7 +48,7 @@ export function HeroSection() {
             "animate-in delay-200 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          Create a project built with Expo around the Setup Type you actually
+          Generate a multi-tenant mobile app around the Setup Type you actually
           ship: white-label App Variants, Runtime Tenants, or a hybrid with
           selected standalone breakouts.
         </p>

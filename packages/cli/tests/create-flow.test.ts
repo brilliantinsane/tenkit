@@ -124,8 +124,9 @@ describe('create-flow validation', () => {
   test('normalizes Public CLI Styling and ordered App Variant inputs', () => {
     expect(normalizeStylingInput(undefined)).toBe('bare');
     expect(normalizeStylingInput('uniwind')).toBe('uniwind');
+    expect(normalizeStylingInput('unistyles')).toBe('unistyles');
     expect(() => normalizeStylingInput('nativewind')).toThrow(
-      /Unsupported Styling Choice "nativewind".*bare, uniwind/,
+      /Unsupported Styling Choice "nativewind".*bare, uniwind, unistyles/,
     );
 
     expect(normalizeAppVariantCustomization('white-label-apps', undefined, undefined)).toEqual({
@@ -313,6 +314,29 @@ describe('non-interactive create', () => {
     expect(appVariants).toContain('accent: "#123ABC"');
     expect(appVariants).toContain('accent: "#456DEF"');
     expect(globalCss.match(/--color-accent: #123ABC;/g)).toHaveLength(2);
+  });
+
+  test('generates Unistyles output from an explicit Public CLI Styling Choice', async () => {
+    const tempRoot = await createTempRoot();
+    const result = await runCreateFlow(
+      {
+        name: 'unistyles-demo',
+        setup: 'white-label',
+        styling: 'unistyles',
+        install: false,
+        git: false,
+        yes: true,
+      },
+      createEnv({ cwd: tempRoot }),
+    );
+    const packageJson = await fs.readJson(join(tempRoot, 'unistyles-demo/package.json'));
+    const entrypoint = await fs.readFile(join(tempRoot, 'unistyles-demo/index.ts'), 'utf8');
+
+    expect(result.stylingChoice).toBe('unistyles');
+    expect(packageJson.main).toBe('index.ts');
+    expect(packageJson.dependencies['react-native-unistyles']).toBe('3.3.0');
+    expect(entrypoint).toContain("import './unistyles'");
+    expect(entrypoint).toContain("import 'expo-router/entry'");
   });
 
   test('rejects unsafe existing or protected targets', async () => {
@@ -905,6 +929,7 @@ describe('interactive prompts', () => {
       options: [
         { label: 'Bare', value: 'bare' },
         { label: 'Uniwind', value: 'uniwind' },
+        { label: 'Unistyles', value: 'unistyles' },
       ],
     });
     expect(confirmPrompt).toHaveBeenCalledOnce();
@@ -959,6 +984,7 @@ describe('interactive prompts', () => {
       options: [
         { label: 'Bare', value: 'bare' },
         { label: 'Uniwind', value: 'uniwind' },
+        { label: 'Unistyles', value: 'unistyles' },
       ],
     });
   });
@@ -1024,6 +1050,7 @@ describe('Commander contract', () => {
     expect(help).toContain('--name <name>');
     expect(help).toContain('--setup <setup>');
     expect(help).toContain('--styling <styling>');
+    expect(help).toContain('Styling Choice: bare, uniwind, unistyles');
     expect(help).toContain('--variant-names <names>');
     expect(help).toContain('--variant-accents <colors>');
     expect(help).toContain('--package-manager <manager>');
@@ -1065,7 +1092,7 @@ describe('Commander contract', () => {
   test.each([
     {
       args: ['--styling', 'nativewind'],
-      message: /Unsupported Styling Choice "nativewind".*bare, uniwind/,
+      message: /Unsupported Styling Choice "nativewind".*bare, uniwind, unistyles/,
     },
     {
       args: ['--variant-accents', 'blue,#123ABC'],

@@ -29,6 +29,7 @@
     ".": "./dist/index.mjs",
     "./generator": "./dist/generator.mjs",
     "./setup-type-definitions": "./dist/generated-setup-type-definitions.mjs",
+    "./styling-definitions": "./dist/generated-styling-choices.mjs",
     "./writer": "./dist/writer.mjs",
     "./local-proof": "./dist/local-proof.mjs"
   },
@@ -39,7 +40,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown src/index.ts src/generator.ts src/generated-setup-type-definitions.ts src/writer.ts src/local-proof.ts --format esm --dts",
+    "build": "tsdown src/index.ts src/generator.ts src/generated-setup-type-definitions.ts src/generated-styling-choices.ts src/writer.ts src/local-proof.ts --format esm --dts",
     "pack:dry-run": "pnpm pack --dry-run",
     "prepack": "pnpm run build",
     "test": "pnpm run build && vitest run tests/browser-safe-package-export.test.ts tests/generated-setup-type-definitions.test.ts tests/generator.test.ts tests/writer.test.ts tests/generated-app-command-runner.test.ts tests/generated-app-verification.test.ts tests/maintainer-command-args.test.ts tests/template-composition-regression.test.ts",

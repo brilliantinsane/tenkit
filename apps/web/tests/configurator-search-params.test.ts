@@ -19,7 +19,7 @@ describe("Configurator search params", () => {
     const url = serialize({
       projectName: "My App",
       setupType: "generic-standalone",
-      styling: "uniwind",
+      styling: "unistyles",
       packageManager: "npm",
       appVariantNamesSerialized: "Tenkit Network,North Studio",
       appVariantAccentsSerialized: "#208AEF,#123ABC",
@@ -31,7 +31,7 @@ describe("Configurator search params", () => {
     expect(Object.fromEntries(query)).toEqual({
       name: "My App",
       setup: "generic-standalone",
-      styling: "uniwind",
+      styling: "unistyles",
       pm: "npm",
       vn: "Tenkit Network,North Studio",
       vacc: "#208AEF,#123ABC",
@@ -40,6 +40,7 @@ describe("Configurator search params", () => {
     })
     expect(load(query)).toMatchObject({
       projectName: "My App",
+      styling: "unistyles",
       appVariantNamesSerialized: "Tenkit Network,North Studio",
       appVariantAccentsSerialized: "#208AEF,#123ABC",
       git: false,

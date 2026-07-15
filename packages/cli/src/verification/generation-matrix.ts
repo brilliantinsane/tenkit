@@ -7,11 +7,13 @@ import { promisify } from 'node:util';
 import {
   generateProject,
   SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedSetupType,
-  type GeneratedStylingChoice,
   type VirtualFileTree,
 } from '@tenkit/template-generator';
+import {
+  SUPPORTED_GENERATED_STYLING_CHOICES,
+  type GeneratedStylingChoice,
+} from '@tenkit/template-generator/styling-definitions';
 import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
@@ -253,6 +255,33 @@ export function createInstalledVerificationCases(): readonly GenerationMatrixCas
       valueProfile: 'custom',
       install: true,
       git: false,
+    }),
+    createMatrixCase({
+      phase: 'installed',
+      setupType: 'white-label-apps',
+      stylingChoice: 'unistyles',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+    }),
+    createMatrixCase({
+      phase: 'installed',
+      setupType: 'single-app-runtime-tenants',
+      stylingChoice: 'unistyles',
+      packageManager: 'npm',
+      valueProfile: 'custom',
+      install: true,
+      git: false,
+    }),
+    createMatrixCase({
+      phase: 'installed',
+      setupType: 'generic-with-standalone-app-variants',
+      stylingChoice: 'unistyles',
+      packageManager: 'bun',
+      valueProfile: 'default',
+      install: true,
+      git: true,
     }),
   ];
 }

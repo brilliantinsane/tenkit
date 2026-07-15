@@ -2,7 +2,7 @@
   "name": "{{packageName}}",
   "version": "1.0.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "{{#if isUnistylesStyling}}index.ts{{else}}expo-router/entry{{/if}}",
   "scripts": {
     "start": "expo start",
     "tenkit": "tsx scripts/tenkit-cli.ts",
@@ -13,6 +13,9 @@
     "expo:config": "expo config --type public"
   },
   "dependencies": {
+    {{#if isUnistylesStyling}}
+    "@react-native/normalize-colors": "0.85.3",
+    {{/if}}
     {{#if isBareStyling}}
     "@expo/ui": "~56.0.16",
     {{/if}}
@@ -30,11 +33,15 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
+    "react-native-gesture-handler": "~2.31.1",
     "react-native-mmkv": "^4.3.1",
-    "react-native-nitro-modules": "^0.35.9",
+    "react-native-nitro-modules": "{{#if isUnistylesStyling}}0.36.1{{else}}^0.35.9{{/if}}",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    {{#if isUnistylesStyling}}
+    "react-native-unistyles": "3.3.0",
+    {{/if}}
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.8.3"{{#if isUniwindStyling}},
     "tailwind-merge": "^3.6.0",

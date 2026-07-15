@@ -1,0 +1,103 @@
+import { Pressable, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
+
+export default function SettingsScreen() {
+  const {
+    activeRuntimeTenantId,
+    hasRuntimeTenantSelection,
+    selectableRuntimeTenants,
+    setActiveRuntimeTenantId,
+  } = useActiveRuntimeTenant();
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.heading}>
+        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>Active Runtime Tenant</Text>
+      </View>
+
+      {hasRuntimeTenantSelection ? (
+        <View style={styles.runtimeTenantList}>
+          {selectableRuntimeTenants.map((runtimeTenant) => {
+            const selected = activeRuntimeTenantId === runtimeTenant.runtimeTenantId;
+
+            return (
+              <Pressable
+                key={runtimeTenant.runtimeTenantId}
+                onPress={() => setActiveRuntimeTenantId(runtimeTenant.runtimeTenantId)}
+                style={({ pressed }) => [
+                  styles.runtimeTenantCard,
+                  selected && styles.selectedRuntimeTenantCard,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[styles.runtimeTenantName, selected && styles.selectedRuntimeTenantName]}
+                >
+                  {runtimeTenant.name}
+                </Text>
+                <Text style={styles.runtimeTenantId}>
+                  Runtime Tenant ID: {runtimeTenant.runtimeTenantId}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme, runtime) => ({
+  container: {
+    flex: 1,
+    gap: theme.spacing.lg,
+    paddingTop: runtime.insets.top,
+    paddingBottom: runtime.insets.bottom + 40,
+    paddingLeft: runtime.insets.left + theme.spacing.lg,
+    paddingRight: runtime.insets.right + theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  heading: {
+    gap: theme.spacing.xs,
+  },
+  title: {
+    ...theme.typography.title,
+    color: theme.colors.foreground,
+  },
+  subtitle: {
+    ...theme.typography.body,
+    color: theme.colors.muted,
+  },
+  runtimeTenantList: {
+    gap: 12,
+  },
+  runtimeTenantCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceRaised,
+    borderRadius: theme.radii.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.surface,
+  },
+  selectedRuntimeTenantCard: {
+    borderColor: theme.colors.accent,
+  },
+  pressed: {
+    opacity: 0.75,
+  },
+  runtimeTenantName: {
+    ...theme.typography.body,
+    color: theme.colors.foreground,
+    fontWeight: '600',
+  },
+  selectedRuntimeTenantName: {
+    color: theme.colors.accent,
+  },
+  runtimeTenantId: {
+    ...theme.typography.code,
+    color: theme.colors.muted,
+  },
+}));

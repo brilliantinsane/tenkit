@@ -120,13 +120,24 @@ describe("HeaderClient", () => {
     ).toBe("/github")
   })
 
-  test("leaves horizontal separators to the configure route content", () => {
-    mockUsePathname.mockReturnValue("/configure")
-
-    const markup = renderToStaticMarkup(
+  test("uses the same header divider on home and configure routes", () => {
+    const homeMarkup = renderToStaticMarkup(
       <HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />
     )
+    const homeHeaderClasses = homeMarkup
+      .match(/<header class="([^"]+)"/)?.[1]
+      ?.split(" ")
 
-    expect(markup).not.toContain("after:bg-border")
+    mockUsePathname.mockReturnValue("/configure")
+
+    const configureMarkup = renderToStaticMarkup(
+      <HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />
+    )
+    const configureHeaderClasses = configureMarkup
+      .match(/<header class="([^"]+)"/)?.[1]
+      ?.split(" ")
+
+    expect(configureHeaderClasses).toEqual(homeHeaderClasses)
+    expect(configureHeaderClasses).toContain("after:bg-border")
   })
 })

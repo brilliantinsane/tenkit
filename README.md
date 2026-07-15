@@ -50,6 +50,8 @@ The create flow asks for:
 
 - project name
 - Setup Type
+- App Variant names and Accents
+- Styling Choice
 
 It then creates a child folder, installs dependencies with the package manager you used to launch the create command, initializes git when safe, and prints next steps.
 
@@ -61,6 +63,7 @@ Non-interactive examples:
 pnpm create tenkit@latest --name studio-app --setup white-label --yes
 pnpm create tenkit@latest --name venue-network --setup runtime-tenants --yes
 pnpm create tenkit@latest --name franchise-app --setup generic-standalone --yes
+pnpm create tenkit@latest --name unistyles-app --setup white-label --styling unistyles --yes
 ```
 
 Skip convenience steps when needed:
@@ -84,6 +87,16 @@ white-label
 runtime-tenants
 generic-standalone
 ```
+
+## Styling Choices
+
+| Styling Choice | Public value | Generated foundation               |
+| -------------- | ------------ | ---------------------------------- |
+| **Bare**       | `bare`       | React Native StyleSheet. Default.  |
+| **Uniwind**    | `uniwind`    | Tailwind styling for React Native. |
+| **Unistyles**  | `unistyles`  | Adaptive styling with Unistyles 3. |
+
+Select a non-default Styling Option Value with `--styling`. Bare remains the default when Styling is omitted or `--yes` accepts defaults.
 
 ## Core Concepts
 

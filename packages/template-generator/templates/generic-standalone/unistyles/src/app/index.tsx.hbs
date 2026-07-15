@@ -1,0 +1,66 @@
+import { Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+
+export default function HomeScreen() {
+  const { appVariant } = useAppVariantConfig();
+  const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.brand}>Tenkit</Text>
+      <Text style={styles.title}>Generic App Variant</Text>
+      <View style={styles.details}>
+        <Text selectable style={styles.code}>
+          App Variant: {appVariant.slug}
+        </Text>
+        <Text selectable style={styles.code}>
+          Active Runtime Tenant: {activeRuntimeTenant.name}
+        </Text>
+        <Text selectable style={styles.code}>
+          Active Runtime Tenant ID: {activeRuntimeTenantId}
+        </Text>
+      </View>
+      <Text style={styles.description}>
+        {{appVariants.[0].displayName}} can select North, South, and East Studio. {{appVariants.[1].displayName}} opens West Studio directly.
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme) => ({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  brand: {
+    ...theme.typography.body,
+    color: theme.colors.accent,
+    fontWeight: '600',
+  },
+  title: {
+    ...theme.typography.hero,
+    color: theme.colors.foreground,
+    textAlign: 'center',
+  },
+  details: {
+    minWidth: 224,
+    gap: theme.spacing.xs,
+  },
+  code: {
+    ...theme.typography.code,
+    color: theme.colors.foreground,
+  },
+  description: {
+    ...theme.typography.body,
+    maxWidth: 384,
+    color: theme.colors.muted,
+    textAlign: 'center',
+  },
+}));

@@ -192,6 +192,7 @@ function normalizeTemplateContext({
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
     isNpmPackageManager: packageManager === 'npm',
+    isUnistylesStyling: stylingChoice === 'unistyles',
     isUniwindStyling: stylingChoice === 'uniwind',
     projectName,
     projectNameStringLiteral: JSON.stringify(projectName),

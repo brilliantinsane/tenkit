@@ -112,11 +112,17 @@ test('built create-tenkit delegates to the real CLI and creates a project', asyn
     templateGeneratorPackageRoot,
     ['dist', 'templates', 'package.json', 'README.md'],
   );
+  const publicReadme = await fs.readFile(join(packageRoot, 'README.md'), 'utf8');
 
   expect(help.stderr).toBe('');
   expect(help.code).toBe(0);
   expect(help.stdout).toContain('Create a generated Tenkit Expo project');
   expect(help.stdout).not.toContain('--json');
+  expect(publicReadme).toContain('## Styling Choices');
+  expect(publicReadme).toContain('Bare');
+  expect(publicReadme).toContain('Uniwind');
+  expect(publicReadme).toContain('Unistyles');
+  expect(publicReadme).toContain('--styling unistyles');
 
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-create-smoke-'));
   tempRoots.push(tempRoot);

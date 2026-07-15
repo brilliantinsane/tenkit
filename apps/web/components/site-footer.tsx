@@ -11,7 +11,7 @@ const FluidGradientText = dynamic(() =>
   )
 )
 
-export function SiteFooter({ commandHref }: { commandHref: string }) {
+export function SiteFooter({ commandHref }: { commandHref?: string }) {
   return (
     <footer className="relative overflow-hidden px-4 sm:px-8">
       <div className="relative z-10 grid gap-12 pt-20 lg:grid-cols-[1fr_auto] lg:items-start">
@@ -33,13 +33,15 @@ export function SiteFooter({ commandHref }: { commandHref: string }) {
                 Star on GitHub
               </a>
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href={commandHref}>
-                <TerminalIcon data-icon="inline-start" />
-                Copy create command
-                <ArrowRightIcon data-icon="inline-end" />
-              </a>
-            </Button>
+            {commandHref ? (
+              <Button asChild size="lg" variant="outline">
+                <a href={commandHref}>
+                  <TerminalIcon data-icon="inline-start" />
+                  Copy create command
+                  <ArrowRightIcon data-icon="inline-end" />
+                </a>
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>

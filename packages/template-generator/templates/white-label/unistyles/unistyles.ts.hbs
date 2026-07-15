@@ -1,0 +1,130 @@
+import Constants from 'expo-constants';
+import { StyleSheet } from 'react-native-unistyles';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readAppVariantAccent(expoConfig: unknown): string {
+  if (!isRecord(expoConfig) || !isRecord(expoConfig.extra) || !isRecord(expoConfig.extra.theme)) {
+    throw new Error(
+      'Missing or invalid App Variant Accent in Expo config. Expected extra.theme.accent as #RRGGBB.',
+    );
+  }
+
+  const accent = expoConfig.extra.theme.accent;
+
+  if (typeof accent !== 'string' || !/^#[0-9A-F]{6}$/.test(accent)) {
+    throw new Error(
+      'Missing or invalid App Variant Accent in Expo config. Expected extra.theme.accent as #RRGGBB.',
+    );
+  }
+
+  return accent;
+}
+
+const expoConfig: unknown = Constants.expoConfig;
+const appVariantAccent = readAppVariantAccent(expoConfig);
+
+const designTokens = {
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
+  radii: {
+    sm: 8,
+    md: 16,
+    lg: 24,
+    full: 999,
+  },
+  typography: {
+    body: {
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: '400',
+    },
+    label: {
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: '600',
+    },
+    title: {
+      fontSize: 24,
+      lineHeight: 32,
+      fontWeight: '600',
+    },
+    hero: {
+      fontSize: 36,
+      lineHeight: 44,
+      fontWeight: '700',
+    },
+    code: {
+      fontFamily: 'monospace',
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  },
+} as const;
+
+function createTheme(colors: {
+  background: string;
+  surface: string;
+  surfaceRaised: string;
+  foreground: string;
+  muted: string;
+  accent: string;
+}) {
+  return {
+    colors,
+    ...designTokens,
+  };
+}
+
+const lightTheme = createTheme({
+  background: '#E6E6E6',
+  surface: '#F2F2F2',
+  surfaceRaised: '#FFFFFF',
+  foreground: '#0D0D0D',
+  muted: '#4D4D4D',
+  accent: appVariantAccent,
+});
+
+const darkTheme = createTheme({
+  background: '#000000',
+  surface: '#0D0D0D',
+  surfaceRaised: '#1A1A1A',
+  foreground: '#F2F2F2',
+  muted: '#B3B3B3',
+  accent: appVariantAccent,
+});
+
+const appThemes = {
+  light: lightTheme,
+  dark: darkTheme,
+};
+
+const breakpoints = {
+  xs: 0,
+  sm: 480,
+  md: 768,
+  lg: 1024,
+} as const;
+
+type AppThemes = typeof appThemes;
+type AppBreakpoints = typeof breakpoints;
+
+declare module 'react-native-unistyles' {
+  export interface UnistylesThemes extends AppThemes {}
+  export interface UnistylesBreakpoints extends AppBreakpoints {}
+}
+
+StyleSheet.configure({
+  themes: appThemes,
+  breakpoints,
+  settings: {
+    adaptiveThemes: true,
+  },
+});

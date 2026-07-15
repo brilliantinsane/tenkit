@@ -1,0 +1,48 @@
+import { Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+export default function ExploreScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Explore</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Project shape</Text>
+        <Text style={styles.cardBody}>
+          This app uses Expo Router native tabs, TypeScript, and a dynamic Expo config.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme, runtime) => ({
+  container: {
+    flex: 1,
+    gap: 20,
+    paddingTop: runtime.insets.top + theme.spacing.lg,
+    paddingBottom: runtime.insets.bottom + theme.spacing.lg,
+    paddingLeft: runtime.insets.left + theme.spacing.lg,
+    paddingRight: runtime.insets.right + theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  title: {
+    ...theme.typography.title,
+    color: theme.colors.foreground,
+  },
+  card: {
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceRaised,
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+  },
+  cardTitle: {
+    ...theme.typography.label,
+    color: theme.colors.foreground,
+  },
+  cardBody: {
+    ...theme.typography.body,
+    color: theme.colors.muted,
+  },
+}));

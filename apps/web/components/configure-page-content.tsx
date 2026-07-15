@@ -11,14 +11,11 @@ import {
   SwatchBookIcon,
   WindIcon,
 } from "lucide-react"
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 
 import { PackageManagerIcon } from "@/components/command-block-primitives"
 import { ConfiguratorAccentField } from "@/components/configurator-accent-field"
-import {
-  ConfiguratorCodeResponsiveComingSoonIconChoiceCard,
-  ConfiguratorCodeResponsiveIconChoiceCard,
-} from "@/components/configurator-choice-card"
+import { ConfiguratorCodeResponsiveIconChoiceCard } from "@/components/configurator-choice-card"
 import {
   ConfiguratorProvider,
   useConfigurator,
@@ -60,6 +57,7 @@ const SETUP_TYPE_ICONS = {
 const STYLING_ICONS = {
   bare: <BracesIcon className="size-4" aria-hidden="true" />,
   uniwind: <WindIcon className="size-4" aria-hidden="true" />,
+  unistyles: <SwatchBookIcon className="size-4" aria-hidden="true" />,
 } satisfies Record<
   (typeof CONFIGURATOR_STYLING_OPTIONS)[number]["value"],
   ReactNode
@@ -74,7 +72,6 @@ const PACKAGE_MANAGER_ICONS = {
   ReactNode
 >
 
-const UNISTYLES_ICON = <SwatchBookIcon className="size-4" aria-hidden="true" />
 const RANDOMIZE_ICON = <DicesIcon data-icon="inline-start" />
 const RESET_ICON = <RotateCcwIcon data-icon="inline-start" />
 
@@ -142,17 +139,23 @@ function ConfiguratorHero() {
 
 function ConfiguratorCommandPanel() {
   const { state, actions, meta } = useConfigurator()
+  const [commandExpanded, setCommandExpanded] = useState(false)
 
   return (
     <aside className="z-10 min-w-0 lg:sticky lg:top-24 lg:self-start">
       <div
+        data-slot="configurator-command-panel-card"
+        data-expanded={commandExpanded}
         className={cn(
           "flex flex-col gap-5 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5",
           COMPACT_CONFIGURATOR_CARD_CLASS_NAME
         )}
       >
         <Field data-invalid={Boolean(meta.projectNameError)}>
-          <FieldLabel htmlFor="page-configurator-project-name">
+          <FieldLabel
+            htmlFor="page-configurator-project-name"
+            className="font-heading text-lg font-semibold tracking-normal"
+          >
             Project name
           </FieldLabel>
           <Input
@@ -178,8 +181,10 @@ function ConfiguratorCommandPanel() {
             npm={meta.commands.npm}
             bun={meta.commands.bun}
             value={state.packageManager}
+            expanded={commandExpanded}
             copyDisabled={!meta.commandIsCopyable}
             onValueChange={actions.selectPackageManager}
+            onExpandedChange={setCommandExpanded}
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -253,10 +258,6 @@ function ConfiguratorStylingSection() {
             onSelect={() => actions.selectStyling(option.value)}
           />
         ))}
-        <ConfiguratorCodeResponsiveComingSoonIconChoiceCard
-          label="Unistyles"
-          icon={UNISTYLES_ICON}
-        />
       </div>
     </ConfiguratorSection>
   )
@@ -428,7 +429,7 @@ function ConfiguratorPageFrame() {
         <div aria-hidden="true" className="relative h-px">
           <FullWidthDivider position="top" />
         </div>
-        <SiteFooter commandHref="#configure-command" />
+        <SiteFooter />
       </div>
     </main>
   )

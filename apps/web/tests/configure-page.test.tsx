@@ -27,14 +27,16 @@ describe("ConfigurePageContent", () => {
     expect(markup).toContain("Initialize Git")
     expect(markup).toContain("Expand create command")
     expect(markup).toContain("Ready to inspect it")
-    expect(markup).toContain('href="#configure-command"')
+    expect(markup).not.toContain("Copy create command")
+    expect(markup).not.toContain('href="#configure-command"')
     expect(markup).toContain("lg:sticky")
     expect(markup).toContain("lg:sticky lg:top-24")
     expect(markup).not.toContain("lg:sticky lg:top-16")
     expect(markup).not.toContain("relative h-px lg:hidden")
     expect(markup).toContain("Unistyles")
-    expect(markup).toContain("Coming soon")
-    expect(markup).toContain('disabled=""')
+    expect(markup).toContain("Adaptive React Native styling")
+    expect(markup).not.toContain("Coming soon")
+    expect(markup).not.toContain('disabled=""')
     expect(markup).toContain("Randomize configuration")
     expect(markup).toContain("Reset defaults")
     expect(markup).toContain("Fast, disk-efficient installs")
@@ -47,9 +49,19 @@ describe("ConfigurePageContent", () => {
     expect(markup).not.toContain("lg:border-l")
     expect(markup).not.toContain('class="sticky top-16')
     expect(markup).not.toContain("Configure create command")
+    expect(markup).toContain('data-slot="configurator-command-panel-card"')
+    const projectNameLabelClasses = markup
+      .match(
+        /<label data-slot="field-label" class="([^"]+)" for="page-configurator-project-name">Project name<\/label>/
+      )?.[1]
+      ?.split(" ")
+
+    expect(projectNameLabelClasses).toEqual(
+      expect.arrayContaining(["font-heading", "text-lg", "font-semibold"])
+    )
     expect(
       markup.match(/pointer-events-none absolute inset-px z-10/g)
-    ).toHaveLength(8)
+    ).toHaveLength(9)
     expect(markup.match(/data-position="bottom"/g)).toHaveLength(1)
     expect(markup.match(/data-position="top"/g)).toHaveLength(1)
   })
@@ -117,7 +129,7 @@ describe("ConfigurePageContent", () => {
 
   test("derives the full Configurator state from route query params", () => {
     const markup = renderConfigurator(
-      "?name=Shared%20App&setup=runtime-tenants&styling=uniwind&pm=npm&vn=Tenkit%20Network&vacc=%23123ABC&git=false&i=false"
+      "?name=Shared%20App&setup=runtime-tenants&styling=unistyles&pm=npm&vn=Tenkit%20Network&vacc=%23123ABC&git=false&i=false"
     )
 
     expect(markup).toContain('value="Shared App"')
@@ -125,7 +137,7 @@ describe("ConfigurePageContent", () => {
     expect(markup).toContain('value="#123ABC"')
     expect(markup).toContain("npm create tenkit@latest -- --name shared-app")
     expect(markup).toContain("--setup runtime-tenants")
-    expect(markup).toContain("--styling uniwind")
+    expect(markup).toContain("--styling unistyles")
     expect(markup).toContain("--package-manager npm")
     expect(markup).toContain("--no-git --no-install")
   })

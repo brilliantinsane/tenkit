@@ -38,9 +38,9 @@ describe("ConfigurePageContent interactions", () => {
       "runtime-tenants"
     )
 
-    await user.click(screen.getByRole("button", { name: /^Uniwind/ }))
+    await user.click(screen.getByRole("button", { name: /^Unistyles/ }))
     expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("styling")).toBe(
-      "uniwind"
+      "unistyles"
     )
 
     await user.click(screen.getByRole("button", { name: /^npm/ }))
@@ -143,7 +143,7 @@ describe("ConfigurePageContent interactions", () => {
       <NuqsTestingAdapter
         hasMemory
         resetUrlUpdateQueueOnMount={false}
-        searchParams="?name=Shared+App&setup=runtime-tenants&styling=uniwind&pm=npm&vn=Tenkit+Network&vacc=%23123ABC&git=false&i=false"
+        searchParams="?name=Shared+App&setup=runtime-tenants&styling=unistyles&pm=npm&vn=Tenkit+Network&vacc=%23123ABC&git=false&i=false"
         onUrlUpdate={onUrlUpdate}
       >
         <ConfigurePageContent />
@@ -198,7 +198,7 @@ describe("ConfigurePageContent interactions", () => {
     const unselectedChoices = screen.getAllByRole("button", { pressed: false })
 
     expect(selectedChoices).toHaveLength(3)
-    expect(unselectedChoices).toHaveLength(5)
+    expect(unselectedChoices).toHaveLength(6)
 
     for (const selectedChoice of selectedChoices) {
       expect(
@@ -216,5 +216,56 @@ describe("ConfigurePageContent interactions", () => {
         false
       )
     }
+  })
+
+  test("keeps one fixed chevron while expanding and collapsing the command", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <NuqsTestingAdapter>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const expandButton = screen.getByRole("button", {
+      name: "Expand create command",
+    })
+    const chevron = expandButton.querySelector(
+      '[data-slot="command-expand-icon"]'
+    )
+    const commandPanelCard = document.querySelector(
+      '[data-slot="configurator-command-panel-card"]'
+    )
+    const commandExpansion = document.querySelector(
+      '[data-slot="command-expansion"]'
+    )
+
+    expect(expandButton.getAttribute("aria-expanded")).toBe("false")
+    expect(expandButton.classList.contains("top-2")).toBe(true)
+    expect(commandPanelCard?.getAttribute("data-expanded")).toBe("false")
+    expect(commandExpansion?.classList.contains("grid-rows-[0fr]")).toBe(true)
+
+    await user.click(expandButton)
+
+    const collapseButton = screen.getByRole("button", {
+      name: "Collapse create command",
+    })
+
+    expect(collapseButton.getAttribute("aria-expanded")).toBe("true")
+    expect(
+      collapseButton.querySelector('[data-slot="command-expand-icon"]')
+    ).toBe(chevron)
+    expect(commandPanelCard?.getAttribute("data-expanded")).toBe("true")
+    expect(commandExpansion?.classList.contains("grid-rows-[1fr]")).toBe(true)
+
+    await user.click(collapseButton)
+
+    expect(
+      screen
+        .getByRole("button", { name: "Expand create command" })
+        .getAttribute("aria-expanded")
+    ).toBe("false")
+    expect(commandPanelCard?.getAttribute("data-expanded")).toBe("false")
+    expect(commandExpansion?.classList.contains("grid-rows-[0fr]")).toBe(true)
   })
 })

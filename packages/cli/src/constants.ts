@@ -1,10 +1,12 @@
 import {
-  SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupTypeInput,
-  type GeneratedStylingChoice,
   type PublicSetupSlug,
 } from '@tenkit/template-generator';
+import {
+  SUPPORTED_GENERATED_STYLING_CHOICES,
+  type GeneratedStylingChoice,
+} from '@tenkit/template-generator/styling-definitions';
 
 export const CLI_VERSION = '0.1.2';
 export const DEFAULT_PROJECT_NAME = 'tenkit-app';
@@ -26,6 +28,7 @@ export const SETUP_PROMPT_CHOICES = [
 const STYLING_PROMPT_LABELS = {
   bare: 'Bare',
   uniwind: 'Uniwind',
+  unistyles: 'Unistyles',
 } as const satisfies Record<GeneratedStylingChoice, string>;
 
 export const STYLING_PROMPT_CHOICES: readonly PromptChoice<GeneratedStylingChoice>[] =

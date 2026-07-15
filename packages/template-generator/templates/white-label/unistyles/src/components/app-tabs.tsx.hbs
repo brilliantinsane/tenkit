@@ -1,0 +1,32 @@
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useUnistyles } from 'react-native-unistyles';
+
+export default function AppTabs() {
+  const { theme } = useUnistyles();
+  const iconColor = {
+    default: theme.colors.muted,
+    selected: theme.colors.accent,
+  };
+  const labelStyle = {
+    default: { color: theme.colors.foreground },
+    selected: { color: theme.colors.accent },
+  };
+
+  return (
+    <NativeTabs
+      backgroundColor={theme.colors.surface}
+      indicatorColor={theme.colors.surfaceRaised}
+      iconColor={iconColor}
+      labelStyle={labelStyle}
+    >
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="explore">
+        <NativeTabs.Trigger.Icon sf="safari" md="explore" />
+        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}

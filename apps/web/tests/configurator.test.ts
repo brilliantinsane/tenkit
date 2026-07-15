@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest"
 
 import {
   buildConfiguratorCommand,
+  CONFIGURATOR_STYLING_OPTIONS,
   createDefaultConfiguratorState,
   deriveConfiguratorAppVariantPreviews,
   deriveConfiguratorState,
@@ -19,6 +20,26 @@ import {
 } from "@/lib/configurator"
 
 describe("Configurator command state", () => {
+  test("presents every supported Styling Choice", () => {
+    expect(CONFIGURATOR_STYLING_OPTIONS).toEqual([
+      {
+        value: "bare",
+        label: "Bare",
+        detail: "React Native StyleSheet",
+      },
+      {
+        value: "uniwind",
+        label: "Uniwind",
+        detail: "Tailwind for React Native",
+      },
+      {
+        value: "unistyles",
+        label: "Unistyles",
+        detail: "Adaptive React Native styling",
+      },
+    ])
+  })
+
   test("keeps untouched and project-name-only commands minimal", () => {
     const defaults = createDefaultConfiguratorState()
 
@@ -36,11 +57,11 @@ describe("Configurator command state", () => {
   test("expands every effective choice after a non-project change", () => {
     const state = {
       ...createDefaultConfiguratorState(),
-      styling: "uniwind" as const,
+      styling: "unistyles" as const,
     }
 
     expect(buildConfiguratorCommand(state)).toBe(
-      "pnpm create tenkit@latest --name tenkit-app --setup white-label --variant-names 'First Tenant,Second Tenant' --variant-accents '#208AEF,#EF8520' --styling uniwind --package-manager pnpm --git --install"
+      "pnpm create tenkit@latest --name tenkit-app --setup white-label --variant-names 'First Tenant,Second Tenant' --variant-accents '#208AEF,#EF8520' --styling unistyles --package-manager pnpm --git --install"
     )
     expect(
       buildConfiguratorCommand(createDefaultConfiguratorState())
@@ -98,6 +119,18 @@ describe("Configurator randomization", () => {
       git: false,
       install: false,
     })
+  })
+
+  test("includes Unistyles in randomized Styling Choices", () => {
+    const randomizedState = randomizeConfiguratorState(
+      {
+        ...createDefaultConfiguratorState(),
+        styling: "uniwind",
+      },
+      () => 0
+    )
+
+    expect(randomizedState.styling).toBe("unistyles")
   })
 })
 

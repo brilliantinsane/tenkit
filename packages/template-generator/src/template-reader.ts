@@ -17,6 +17,7 @@ export type TemplateContext = {
   isBareStyling: boolean;
   isBunPackageManager: boolean;
   isNpmPackageManager: boolean;
+  isUnistylesStyling: boolean;
   isUniwindStyling: boolean;
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
