@@ -1069,7 +1069,7 @@ describe('Commander contract', () => {
     await expect(program.parseAsync(['--version'], { from: 'user' })).rejects.toMatchObject({
       code: 'commander.version',
     });
-    expect(lines.join('\n')).toContain('0.1.2');
+    expect(lines.join('\n')).toContain('0.2.0-next.0');
   });
 
   test('accepts symmetric Git and install flags from Commander', async () => {
