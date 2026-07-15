@@ -169,7 +169,13 @@ async function runPublishedCreateSmoke() {
         break;
       }
 
-      assertGeneratedCase(smokeCase);
+      try {
+        assertGeneratedCase(smokeCase);
+      } catch (error) {
+        lastOutput = error instanceof Error ? error.message : 'Generated output assertion failed.';
+        attemptPassed = false;
+        break;
+      }
     }
 
     if (attemptPassed) {
