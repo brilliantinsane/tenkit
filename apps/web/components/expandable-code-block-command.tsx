@@ -7,7 +7,6 @@ import {
   CommandActions,
   CommandTabsHeader,
 } from "@/components/command-block-primitives"
-import { PnpmReleaseAgeNotice } from "@/components/pnpm-release-age-notice"
 import { Tabs, TabsContent } from "@/components/tabs"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +14,6 @@ import {
   formatConfiguratorCommandMultiline,
   type ConfiguratorPackageManager,
 } from "@/lib/configurator"
-import { usePnpmReleaseCommand } from "@/hooks/use-pnpm-release-command"
 import { cn } from "@/lib/utils"
 
 export function ExpandableCodeBlockCommand({
@@ -38,8 +36,7 @@ export function ExpandableCodeBlockCommand({
   copyDisabled?: boolean
 }) {
   const shouldReduceMotion = useReducedMotion()
-  const pnpmReleaseCommand = usePnpmReleaseCommand(pnpm)
-  const tabs = { pnpm: pnpmReleaseCommand.command ?? pnpm, npm, bun }
+  const tabs = { pnpm, npm, bun }
   const expansionTransition = {
     duration: shouldReduceMotion ? 0 : 0.24,
     ease: [0.22, 1, 0.36, 1] as const,
@@ -137,10 +134,6 @@ export function ExpandableCodeBlockCommand({
           )
         })}
       </Tabs>
-
-      {value === "pnpm" && pnpmReleaseCommand.isTemporarilyPinned ? (
-        <PnpmReleaseAgeNotice />
-      ) : null}
 
       <CommandActions
         packageManager={value}
