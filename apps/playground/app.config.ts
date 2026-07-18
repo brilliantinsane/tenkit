@@ -31,6 +31,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: `${icons}/icon.png`,
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
+    experiments: {
+      reactCompiler: true,
+    },
     ios: {
       bundleIdentifier,
       icon: iosIcon,

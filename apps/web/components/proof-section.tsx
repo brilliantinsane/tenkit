@@ -17,7 +17,7 @@ const proofItems = [
     icon: GitForkIcon,
   },
   {
-    label: "Expo SDK 56",
+    label: "Expo SDK 57",
     detail: "native-ready",
     icon: BlocksIcon,
   },

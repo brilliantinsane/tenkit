@@ -270,11 +270,11 @@ Open an issue for bugs, missing Setup Type behavior, generated output problems, 
 
 ## Expo SDK
 
-This repo targets Expo SDK 56.
+This repo targets Expo SDK 57.
 
 Read the exact versioned Expo docs before changing Expo code:
 
-https://docs.expo.dev/versions/v56.0.0/
+https://docs.expo.dev/versions/v57.0.0/
 
 ## License
 
