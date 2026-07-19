@@ -6,6 +6,7 @@
   <a href="https://www.npmjs.com/package/create-tenkit"><img alt="version" src="https://shieldcn.dev/npm/create-tenkit.svg?variant=branded" /></a>
   <a href="https://github.com/brilliantinsane/tenkit"><img alt="badge" src="https://shieldcn.dev/github/brilliantinsane/tenkit/stars.svg?variant=branded&amp;font=geist-mono&amp;logo=github" /></a>
   <a href="https://x.com/brill_insane"><img alt="follow" src="https://shieldcn.dev/x/follow/brill_insane.svg?variant=branded&amp;font=geist" /></a>
+  <a href="https://github.com/sponsors/brilliantinsane"><img alt="sponsors" src="https://shieldcn.dev/github/sponsors/brilliantinsane.svg" /></a>
 </p>
 
 Build and ship multiple Expo apps from one codebase.
@@ -279,6 +280,8 @@ https://docs.expo.dev/versions/v57.0.0/
 ## License
 
 MIT
+
+Using Tenkit at work? [Sponsor me](https://github.com/sponsors/brilliantinsane) to support ongoing development and maintenance.
 
 <p align="center">
   <img alt="chart" src="https://shieldcn.dev/chart/github/stars/brilliantinsane/tenkit.svg?theme=zinc" />
