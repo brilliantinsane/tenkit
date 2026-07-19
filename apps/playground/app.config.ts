@@ -32,6 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     experiments: {
+      typedRoutes: true,
       reactCompiler: true,
     },
     ios: {

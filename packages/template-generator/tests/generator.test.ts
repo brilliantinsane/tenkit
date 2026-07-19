@@ -744,6 +744,28 @@ test('generated output stays free of Template composition details across the mat
   }
 });
 
+test('every generated Template enables Typed Routes and React Compiler', () => {
+  const stylingChoices = [
+    'bare',
+    'uniwind',
+    'unistyles',
+  ] as const satisfies readonly GeneratedStylingChoice[];
+
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const tree = generateProject({ setupType, stylingChoice });
+      const appConfig = readVirtualFile(tree, 'app.config.ts');
+      const generatedInstructions = readVirtualFile(tree, 'AGENTS.md');
+
+      assert.match(appConfig, /experiments: \{\s*typedRoutes: true,\s*reactCompiler: true,\s*\}/);
+      assert.match(
+        generatedInstructions,
+        /Keep `experiments\.typedRoutes` and `experiments\.reactCompiler` enabled/,
+      );
+    }
+  }
+});
+
 test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every Setup Type', () => {
   const stylingChoices = [
     'bare',

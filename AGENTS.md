@@ -114,6 +114,7 @@ Tenkit-specific boundaries:
 - `APP_VARIANT_SLUG` selects an App Variant for config/build preparation. Do not use it as a Runtime Tenant selector.
 - Runtime Tenant records and Capability Profiles should not be dumped wholesale into Expo `extra`.
 - For Expo Router React Navigation theme APIs on SDK 57, import from `expo-router/react-navigation`.
+- Playground and generated Templates must explicitly enable `experiments.typedRoutes` and `experiments.reactCompiler` in Expo config.
 - Keep native asset validation aligned with config references. If config references an asset path, tests or generated verification must prove the asset exists.
 
 ## Theming Rules

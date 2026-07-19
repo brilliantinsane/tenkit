@@ -56,9 +56,10 @@ test('dynamic Expo config injects resolved App Variant native identity and Activ
   assert.equal(config.android?.package, 'com.example.secondtenant');
 });
 
-test('dynamic Expo config enables React Compiler', () => {
+test('dynamic Expo config enables Typed Routes and React Compiler', () => {
   const config = withAppVariantSlug('first-tenant', () => createExpoConfig(configContext));
 
+  assert.equal(config.experiments?.typedRoutes, true);
   assert.equal(config.experiments?.reactCompiler, true);
 });
 
