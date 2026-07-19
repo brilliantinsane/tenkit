@@ -20,9 +20,7 @@ import {
 
 type SetupTypeCase = {
   setupType:
-    | 'white-label-apps'
-    | 'single-app-runtime-tenants'
-    | 'generic-with-standalone-app-variants';
+    'white-label-apps' | 'single-app-runtime-tenants' | 'generic-with-standalone-app-variants';
   expectedRoute: 'explore' | 'settings';
   appVariantPath: 'src/constants/app-variant.ts' | 'src/constants/app-variants.ts';
   appVariantCount: 1 | 2;
@@ -835,6 +833,16 @@ test('every generated Template enables Typed Routes and React Compiler', () => {
 });
 
 test('every generated Template matches the Playground Expo platform dependency contract', () => {
+  assert.equal(
+    readRequiredDependency(
+      playgroundPackageJson,
+      'dependencies',
+      'react-native-reanimated',
+      'Playground',
+    ),
+    '4.5.1',
+  );
+
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       const generatedPackageJson = parsePackageManifest(
