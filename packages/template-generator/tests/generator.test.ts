@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import { readFileSync } from 'node:fs';
+import fs from 'fs-extra';
 import { resolve } from 'pathe';
 import { assert, test } from 'vitest';
 
@@ -60,9 +60,52 @@ const stylingChoices = [
   'unistyles',
 ] as const satisfies readonly GeneratedStylingChoice[];
 
-const playgroundPackageJson = JSON.parse(
-  readFileSync(resolve(import.meta.dirname, '../../../apps/playground/package.json'), 'utf8'),
-) as PackageManifest;
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => typeof entry === 'string')
+  );
+}
+
+function parsePackageManifest(contents: string, source: string): PackageManifest {
+  const manifest: unknown = JSON.parse(contents);
+
+  if (typeof manifest !== 'object' || manifest === null || Array.isArray(manifest)) {
+    assert.fail(`${source} must contain a JSON object`);
+  }
+  if (!('dependencies' in manifest) || !isStringRecord(manifest.dependencies)) {
+    assert.fail(`${source} must contain string-valued dependencies`);
+  }
+  if (!('devDependencies' in manifest) || !isStringRecord(manifest.devDependencies)) {
+    assert.fail(`${source} must contain string-valued devDependencies`);
+  }
+
+  return {
+    dependencies: manifest.dependencies,
+    devDependencies: manifest.devDependencies,
+  };
+}
+
+function readRequiredDependency(
+  manifest: PackageManifest,
+  dependencyGroup: keyof PackageManifest,
+  dependencyName: string,
+  source: string,
+): string {
+  const version = manifest[dependencyGroup][dependencyName];
+  if (typeof version !== 'string') {
+    assert.fail(`${source} must declare ${dependencyName} in ${dependencyGroup}`);
+  }
+
+  return version;
+}
+
+const playgroundPackageJson = parsePackageManifest(
+  fs.readFileSync(resolve(import.meta.dirname, '../../../apps/playground/package.json'), 'utf8'),
+  'Playground package.json',
+);
 
 function readVirtualFile(tree: VirtualFileTree, path: string): string {
   const file = getVirtualFile(tree, path);
@@ -794,21 +837,42 @@ test('every generated Template enables Typed Routes and React Compiler', () => {
 test('every generated Template matches the Playground Expo platform dependency contract', () => {
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
-      const packageJson = JSON.parse(
+      const generatedPackageJson = parsePackageManifest(
         readVirtualFile(generateProject({ setupType, stylingChoice }), 'package.json'),
-      ) as PackageManifest;
+        `${setupType} with ${stylingChoice} package.json`,
+      );
 
       for (const dependencyName of sharedExpoPlatformDependencies) {
         assert.equal(
-          packageJson.dependencies[dependencyName],
-          playgroundPackageJson.dependencies[dependencyName],
+          readRequiredDependency(
+            generatedPackageJson,
+            'dependencies',
+            dependencyName,
+            `${setupType} with ${stylingChoice}`,
+          ),
+          readRequiredDependency(
+            playgroundPackageJson,
+            'dependencies',
+            dependencyName,
+            'Playground',
+          ),
           `${setupType} with ${stylingChoice} must match Playground ${dependencyName}`,
         );
       }
 
       assert.equal(
-        packageJson.devDependencies['@expo/config-types'],
-        playgroundPackageJson.devDependencies['@expo/config-types'],
+        readRequiredDependency(
+          generatedPackageJson,
+          'devDependencies',
+          '@expo/config-types',
+          `${setupType} with ${stylingChoice}`,
+        ),
+        readRequiredDependency(
+          playgroundPackageJson,
+          'devDependencies',
+          '@expo/config-types',
+          'Playground',
+        ),
         `${setupType} with ${stylingChoice} must match Playground @expo/config-types`,
       );
     }
@@ -816,22 +880,34 @@ test('every generated Template matches the Playground Expo platform dependency c
 });
 
 test('every generated Template preserves Expo UI and Nitro dependency ownership', () => {
+  const playgroundExpoUiVersion = readRequiredDependency(
+    playgroundPackageJson,
+    'dependencies',
+    '@expo/ui',
+    'Playground',
+  );
+  const playgroundMmkvVersion = readRequiredDependency(
+    playgroundPackageJson,
+    'dependencies',
+    'react-native-mmkv',
+    'Playground',
+  );
+
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
-      const packageJson = JSON.parse(
+      const packageJson = parsePackageManifest(
         readVirtualFile(generateProject({ setupType, stylingChoice }), 'package.json'),
-      ) as PackageManifest;
+        `${setupType} with ${stylingChoice} package.json`,
+      );
       const hasRuntimeTenants = setupType !== 'white-label-apps';
 
       assert.equal(
         packageJson.dependencies['@expo/ui'],
-        hasRuntimeTenants && stylingChoice === 'bare'
-          ? playgroundPackageJson.dependencies['@expo/ui']
-          : undefined,
+        hasRuntimeTenants && stylingChoice === 'bare' ? playgroundExpoUiVersion : undefined,
       );
       assert.equal(
         packageJson.dependencies['react-native-mmkv'],
-        hasRuntimeTenants ? playgroundPackageJson.dependencies['react-native-mmkv'] : undefined,
+        hasRuntimeTenants ? playgroundMmkvVersion : undefined,
       );
       assert.equal(
         packageJson.dependencies['react-native-nitro-modules'],
