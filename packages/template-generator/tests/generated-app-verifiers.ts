@@ -45,7 +45,7 @@ async function verifyGeneratedGestureHandlerBaseline(targetDir: string) {
   const entrypoint =
     packageJson.main === 'index.ts' ? await readText(join(targetDir, 'index.ts')) : '';
 
-  assert.equal(packageJson.dependencies?.['react-native-gesture-handler'], '~2.31.1');
+  assert.equal(packageJson.dependencies?.['react-native-gesture-handler'], '~2.32.0');
   assert.notMatch(layout, /GestureHandlerRootView|react-native-gesture-handler/);
   assert.notMatch(
     entrypoint,
@@ -69,7 +69,7 @@ async function verifyWhiteLabelApps(targetDir: string) {
 
   assert.equal(packageJson.name, definition.defaultPackageName);
   assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
-  assert.equal(packageJson.dependencies?.expo, '~56.0.12');
+  assert.equal(packageJson.dependencies?.expo, '~57.0.7');
   assert.match(appVariants, /slug: 'first-tenant'/);
   assert.match(appVariants, /slug: 'second-tenant'/);
   assert.match(appConfig, /resolveAppVariantConfig/);
@@ -138,10 +138,10 @@ async function verifySingleAppRuntimeTenants(targetDir: string) {
   assert.equal(packageJson.name, definition.defaultPackageName);
   assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
   assert.equal(packageJson.scripts?.typecheck, 'tsc --noEmit --pretty false');
-  assert.equal(packageJson.dependencies?.['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies?.['@expo/ui'], '~57.0.7');
   assert.equal(packageJson.dependencies?.['react-native-mmkv'], '^4.3.1');
   assert.equal(packageJson.dependencies?.['react-native-nitro-modules'], '^0.35.9');
-  assert.equal(packageJson.dependencies?.expo, '~56.0.12');
+  assert.equal(packageJson.dependencies?.expo, '~57.0.7');
   assert.match(readme, /Runtime Tenant records live in generated source data/);
   assert.match(envExample, /APP_VARIANT_SLUG=acme-app/);
   assert.match(appConfig, /APP_VARIANT_SLUG/);
@@ -281,9 +281,9 @@ async function verifyGenericWithStandaloneAppVariants(targetDir: string) {
   assert.equal(packageJson.name, definition.defaultPackageName);
   assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
   assert.equal(packageJson.scripts?.typecheck, 'tsc --noEmit --pretty false');
-  assert.equal(packageJson.dependencies?.['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies?.['@expo/ui'], '~57.0.7');
   assert.equal(packageJson.dependencies?.['react-native-mmkv'], '^4.3.1');
-  assert.equal(packageJson.dependencies?.expo, '~56.0.12');
+  assert.equal(packageJson.dependencies?.expo, '~57.0.7');
   assert.match(readme, /Generic With Standalone App Variants project/);
   assert.match(readme, /third proof Template/);
   assert.match(readme, /Generated App Local CLI/);
@@ -545,7 +545,7 @@ async function verifyUnistylesGeneratedApp(setupType: GeneratedSetupType, target
   assert.equal(packageJson.name, definition.defaultPackageName);
   assert.equal(packageJson.main, 'index.ts');
   assert.equal(packageJson.scripts?.tenkit, 'tsx scripts/tenkit-cli.ts');
-  assert.equal(packageJson.dependencies?.['@react-native/normalize-colors'], '0.85.3');
+  assert.equal(packageJson.dependencies?.['@react-native/normalize-colors'], '0.86.0');
   assert.equal(packageJson.dependencies?.['react-native-unistyles'], '3.3.0');
   assert.equal(packageJson.dependencies?.['react-native-nitro-modules'], '0.36.1');
   assert.equal(packageJson.dependencies?.uniwind, undefined);

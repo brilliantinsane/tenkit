@@ -1,5 +1,7 @@
 /// <reference types="node" />
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'pathe';
 import { assert, test } from 'vitest';
 
 import {
@@ -26,6 +28,41 @@ type SetupTypeCase = {
   appVariantCount: 1 | 2;
   defaultAccents: readonly string[];
 };
+
+type PackageManifest = {
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+};
+
+const sharedExpoPlatformDependencies = [
+  'expo',
+  'expo-constants',
+  'expo-dev-client',
+  'expo-linking',
+  'expo-router',
+  'expo-splash-screen',
+  'expo-status-bar',
+  'expo-system-ui',
+  'react',
+  'react-dom',
+  'react-native',
+  'react-native-gesture-handler',
+  'react-native-reanimated',
+  'react-native-safe-area-context',
+  'react-native-screens',
+  'react-native-web',
+  'react-native-worklets',
+] as const;
+
+const stylingChoices = [
+  'bare',
+  'uniwind',
+  'unistyles',
+] as const satisfies readonly GeneratedStylingChoice[];
+
+const playgroundPackageJson = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, '../../../apps/playground/package.json'), 'utf8'),
+) as PackageManifest;
 
 function readVirtualFile(tree: VirtualFileTree, path: string): string {
   const file = getVirtualFile(tree, path);
@@ -326,7 +363,7 @@ function assertUnistylesStylingOutput(tree: VirtualFileTree) {
   assert.equal(packageJson.main, 'index.ts');
   assert.equal(packageJson.dependencies['react-native-unistyles'], '3.3.0');
   assert.equal(packageJson.dependencies['react-native-nitro-modules'], '0.36.1');
-  assert.equal(packageJson.dependencies['@react-native/normalize-colors'], '0.85.3');
+  assert.equal(packageJson.dependencies['@react-native/normalize-colors'], '0.86.0');
   assert.equal(packageJson.dependencies.uniwind, undefined);
   assert.equal(packageJson.dependencies['tailwind-merge'], undefined);
   assert.equal(packageJson.dependencies.clsx, undefined);
@@ -719,12 +756,6 @@ test('Template generation validates package and per-App-Variant inputs', () => {
 });
 
 test('generated output stays free of Template composition details across the matrix', () => {
-  const stylingChoices = [
-    'bare',
-    'uniwind',
-    'unistyles',
-  ] as const satisfies readonly GeneratedStylingChoice[];
-
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       const tree = generateProject({ setupType, stylingChoice });
@@ -745,12 +776,6 @@ test('generated output stays free of Template composition details across the mat
 });
 
 test('every generated Template enables Typed Routes and React Compiler', () => {
-  const stylingChoices = [
-    'bare',
-    'uniwind',
-    'unistyles',
-  ] as const satisfies readonly GeneratedStylingChoice[];
-
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       const tree = generateProject({ setupType, stylingChoice });
@@ -766,13 +791,74 @@ test('every generated Template enables Typed Routes and React Compiler', () => {
   }
 });
 
-test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every Setup Type', () => {
-  const stylingChoices = [
-    'bare',
-    'uniwind',
-    'unistyles',
-  ] as const satisfies readonly GeneratedStylingChoice[];
+test('every generated Template matches the Playground Expo platform dependency contract', () => {
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const packageJson = JSON.parse(
+        readVirtualFile(generateProject({ setupType, stylingChoice }), 'package.json'),
+      ) as PackageManifest;
 
+      for (const dependencyName of sharedExpoPlatformDependencies) {
+        assert.equal(
+          packageJson.dependencies[dependencyName],
+          playgroundPackageJson.dependencies[dependencyName],
+          `${setupType} with ${stylingChoice} must match Playground ${dependencyName}`,
+        );
+      }
+
+      assert.equal(
+        packageJson.devDependencies['@expo/config-types'],
+        playgroundPackageJson.devDependencies['@expo/config-types'],
+        `${setupType} with ${stylingChoice} must match Playground @expo/config-types`,
+      );
+    }
+  }
+});
+
+test('every generated Template preserves Expo UI and Nitro dependency ownership', () => {
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const packageJson = JSON.parse(
+        readVirtualFile(generateProject({ setupType, stylingChoice }), 'package.json'),
+      ) as PackageManifest;
+      const hasRuntimeTenants = setupType !== 'white-label-apps';
+
+      assert.equal(
+        packageJson.dependencies['@expo/ui'],
+        hasRuntimeTenants && stylingChoice === 'bare'
+          ? playgroundPackageJson.dependencies['@expo/ui']
+          : undefined,
+      );
+      assert.equal(
+        packageJson.dependencies['react-native-mmkv'],
+        hasRuntimeTenants ? playgroundPackageJson.dependencies['react-native-mmkv'] : undefined,
+      );
+      assert.equal(
+        packageJson.dependencies['react-native-nitro-modules'],
+        stylingChoice === 'unistyles' ? '0.36.1' : hasRuntimeTenants ? '^0.35.9' : undefined,
+      );
+      assert.equal(
+        packageJson.dependencies['@react-native/normalize-colors'],
+        stylingChoice === 'unistyles' ? '0.86.0' : undefined,
+      );
+    }
+  }
+});
+
+test('generated output contains no SDK 56 product copy or documentation links', () => {
+  for (const { setupType } of setupTypeCases) {
+    for (const stylingChoice of stylingChoices) {
+      const generatedText = generateProject({ setupType, stylingChoice })
+        .map((file) => file.contents)
+        .filter((contents): contents is string => typeof contents === 'string')
+        .join('\n');
+
+      assert.notMatch(generatedText, /SDK 56|docs\.expo\.dev\/versions\/v56\.0\.0/);
+    }
+  }
+});
+
+test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every Setup Type', () => {
   for (const { setupType, expectedRoute, defaultAccents } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       const tree = generateProject({ setupType, stylingChoice });
@@ -821,12 +907,6 @@ test('Styling Choice matrix emits Bare, Uniwind, and Unistyles output for every 
 });
 
 test('Styling Choice preserves generated Setup Type behavior across the matrix', () => {
-  const stylingChoices = [
-    'bare',
-    'uniwind',
-    'unistyles',
-  ] as const satisfies readonly GeneratedStylingChoice[];
-
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
       assertSetupTypeBehavior(generateProject({ setupType, stylingChoice }), setupType);
@@ -935,13 +1015,13 @@ test('White Label Apps Template combines shared, setup-owned, and App Variant as
   );
   assert.equal(packageJson.name, 'custom-white-label');
   assert.equal(packageJson.packageManager, undefined);
-  assert.equal(packageJson.dependencies.expo, '~56.0.12');
-  assert.equal(packageJson.dependencies['expo-constants'], '~56.0.18');
-  assert.equal(packageJson.dependencies['expo-dev-client'], '~56.0.19');
-  assert.equal(packageJson.dependencies['expo-linking'], '~56.0.14');
-  assert.equal(packageJson.dependencies['expo-router'], '~56.2.11');
-  assert.equal(packageJson.dependencies['expo-splash-screen'], '~56.0.10');
-  assert.equal(packageJson.dependencies['expo-system-ui'], '~56.0.5');
+  assert.equal(packageJson.dependencies.expo, '~57.0.7');
+  assert.equal(packageJson.dependencies['expo-constants'], '~57.0.6');
+  assert.equal(packageJson.dependencies['expo-dev-client'], '~57.0.7');
+  assert.equal(packageJson.dependencies['expo-linking'], '~57.0.3');
+  assert.equal(packageJson.dependencies['expo-router'], '~57.0.7');
+  assert.equal(packageJson.dependencies['expo-splash-screen'], '~57.0.4');
+  assert.equal(packageJson.dependencies['expo-system-ui'], '~57.0.1');
   assert.equal(packageJson.devDependencies['@inquirer/prompts'], '^8.5.2');
   assert.equal(packageJson.devDependencies.commander, '^15.0.0');
   assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
@@ -1175,7 +1255,7 @@ test('Single App Runtime Tenants Template generates one App Variant with bundled
   const tenkitCliRuntime = readVirtualFile(tree, 'scripts/tenkit-cli-runtime.ts');
 
   assert.equal(packageJson.name, 'custom-runtime-tenants');
-  assert.equal(packageJson.dependencies['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies['@expo/ui'], '~57.0.7');
   assert.equal(packageJson.dependencies['react-native-mmkv'], '^4.3.1');
   assert.equal(packageJson.dependencies['react-native-nitro-modules'], '^0.35.9');
   assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
@@ -1302,7 +1382,7 @@ test('Generic With Standalone App Variants Template generates App Variant assets
   const readme = readVirtualFile(tree, 'README.md');
 
   assert.equal(packageJson.name, 'custom-generic-app');
-  assert.equal(packageJson.dependencies['@expo/ui'], '~56.0.16');
+  assert.equal(packageJson.dependencies['@expo/ui'], '~57.0.7');
   assert.equal(packageJson.dependencies['react-native-mmkv'], '^4.3.1');
   assert.equal(packageJson.scripts.tenkit, 'tsx scripts/tenkit-cli.ts');
   assert.ok(paths.includes('src/app/settings.tsx'));
