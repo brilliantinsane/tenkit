@@ -929,15 +929,25 @@ test('every generated Template preserves Expo UI and Nitro dependency ownership'
   }
 });
 
-test('generated output contains no SDK 56 product copy or documentation links', () => {
+test('generated output uses the SDK 57 documentation and product baseline', () => {
   for (const { setupType } of setupTypeCases) {
     for (const stylingChoice of stylingChoices) {
-      const generatedText = generateProject({ setupType, stylingChoice })
+      const tree = generateProject({ setupType, stylingChoice });
+      const generatedText = tree
         .map((file) => file.contents)
         .filter((contents): contents is string => typeof contents === 'string')
         .join('\n');
 
       assert.notMatch(generatedText, /SDK 56|docs\.expo\.dev\/versions\/v56\.0\.0/);
+      assert.match(
+        readVirtualFile(tree, 'AGENTS.md'),
+        /https:\/\/docs\.expo\.dev\/versions\/v57\.0\.0\//,
+      );
+      assert.match(readVirtualFile(tree, 'README.md'), /Expo SDK 57/);
+
+      if (setupType !== 'generic-with-standalone-app-variants') {
+        assert.match(readVirtualFile(tree, 'src/app/index.tsx'), /Expo SDK 57/);
+      }
     }
   }
 });
