@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pack-release": "tsx scripts/pack-release.ts",
     "plan": "tsx scripts/plan-release.ts",
+    "smoke": "tsx scripts/smoke-current-release.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false"
   },
