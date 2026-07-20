@@ -1,4 +1,4 @@
-export const RELEASE_SET_PACKAGES = [
+export const RELEASE_SET_PACKAGES = /** @type {const} */ ([
   {
     name: '@tenkit/template-generator',
     root: 'packages/template-generator',
@@ -16,12 +16,10 @@ export const RELEASE_SET_PACKAGES = [
     artifactPrefix: 'create-tenkit',
     internalDependency: '@tenkit/cli',
   },
-] as const;
+]);
 
-export type ReleaseSetPackage = (typeof RELEASE_SET_PACKAGES)[number];
-export type ReleaseSetPackageName = ReleaseSetPackage['name'];
-
-export function getReleaseSetPackage(name: string): ReleaseSetPackage {
+/** @param {string} name */
+export function getReleaseSetPackage(name) {
   const releasePackage = RELEASE_SET_PACKAGES.find((candidate) => candidate.name === name);
 
   if (!releasePackage) {

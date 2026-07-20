@@ -1,6 +1,6 @@
 import { readReleaseHistory } from './git-release-history';
 import { planReleaseSet, type ReleaseSetPlan } from './release-plan';
-import { RELEASE_SET_PACKAGES } from './release-set';
+import { RELEASE_SET_PACKAGES } from './release-set.mjs';
 
 type PlanReleaseSetFromRepositoryInput = {
   workspaceRoot: string;
