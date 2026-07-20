@@ -1,7 +1,7 @@
 {
   "name": "tenkit-workspace",
   "version": "1.0.0",
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.15.0",
   "private": true,
   "devDependencies": {
     "changelogithub": "^14.0.0",
