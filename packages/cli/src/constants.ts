@@ -7,8 +7,9 @@ import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
 } from '@tenkit/template-generator/styling-definitions';
+import cliPackageMetadata from '../package.json' with { type: 'json' };
 
-export const CLI_VERSION = '0.2.0-next.0';
+export const CLI_VERSION = cliPackageMetadata.version;
 export const DEFAULT_PROJECT_NAME = 'tenkit-app';
 export const DEFAULT_PUBLIC_SETUP_SLUG: PublicSetupSlug = 'white-label';
 export const DEFAULT_STYLING_CHOICE: GeneratedStylingChoice = 'bare';

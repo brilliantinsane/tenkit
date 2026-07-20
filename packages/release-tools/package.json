@@ -1,0 +1,17 @@
+{
+  "name": "@tenkit/release-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "plan": "tsx scripts/plan-release.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

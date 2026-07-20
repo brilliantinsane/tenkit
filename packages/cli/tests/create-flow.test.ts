@@ -12,7 +12,7 @@ import {
 
 import { isDirectCliRun } from '../src/adapters/workspace';
 import { createProgram } from '../src/commands/create';
-import { DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
+import { CLI_VERSION, DEFAULT_PROJECT_NAME, PROMPT_CANCELLED } from '../src/constants';
 import { normalizePackageManagerInput } from '../src/create/package-manager';
 import { runCreateFlow } from '../src/create/run-create';
 import type {
@@ -1069,7 +1069,7 @@ describe('Commander contract', () => {
     await expect(program.parseAsync(['--version'], { from: 'user' })).rejects.toMatchObject({
       code: 'commander.version',
     });
-    expect(lines.join('\n')).toContain('0.2.0-next.0');
+    expect(lines.join('\n')).toContain(CLI_VERSION);
   });
 
   test('accepts symmetric Git and install flags from Commander', async () => {
