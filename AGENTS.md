@@ -14,7 +14,7 @@ Tenkit is an open source pnpm monorepo for helping people quickly start multi-te
 ## Non-Negotiables
 
 - Use `pnpm` for package scripts and dependency management. Do not use npm, Yarn, Bun, or ad-hoc package manager commands.
-- Expo has changed. Before writing Expo code, read the exact versioned docs at `https://docs.expo.dev/versions/v56.0.0/`.
+- Expo has changed. Before writing Expo code, read the exact versioned docs at `https://docs.expo.dev/versions/v57.0.0/`.
 - Preserve Tenkit domain language. Do not collapse App Variant, Runtime Tenant, Setup Type, Example, Starter Data, Scaffold, Template, Playground, Active Setup, and Build Preparation into generic "tenant/template/app" wording.
 - Do not introduce additional public CLI surfaces, web builder, npm publishing, trusted publishing, release automation, or changelog automation unless explicitly requested.
 - Do not mutate the Playground while proving Template generation, and do not treat the Playground as generated output.
@@ -107,13 +107,14 @@ Tenkit-specific boundaries:
 
 ## Expo And React Native Rules
 
-- Use Expo SDK 56 docs and installed package versions as the source of truth.
+- Use Expo SDK 57 docs and installed package versions as the source of truth.
 - Dynamic Expo config must remain deterministic and synchronous.
 - App Variant native identity belongs in setup data and config resolution: name, slug, scheme, bundle ID, package name, native assets, theme, and EAS project.
 - EAS Project IDs are public identifiers. Do not treat them as secrets, and do not move them into EAS environment variables.
 - `APP_VARIANT_SLUG` selects an App Variant for config/build preparation. Do not use it as a Runtime Tenant selector.
 - Runtime Tenant records and Capability Profiles should not be dumped wholesale into Expo `extra`.
-- For Expo Router React Navigation theme APIs on SDK 56, import from `expo-router/react-navigation`.
+- For Expo Router React Navigation theme APIs on SDK 57, import from `expo-router/react-navigation`.
+- Playground and generated Templates must explicitly enable `experiments.typedRoutes` and `experiments.reactCompiler` in Expo config.
 - Keep native asset validation aligned with config references. If config references an asset path, tests or generated verification must prove the asset exists.
 
 ## Theming Rules
