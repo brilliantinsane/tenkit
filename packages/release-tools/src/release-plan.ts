@@ -45,7 +45,7 @@ type PlanReleaseSetInput = {
 function releaseImpact(message: string): ReleaseImpact | undefined {
   const title = message.split('\n', 1)[0] ?? '';
 
-  if (/^[a-z]+(?:\([^\n)]+\))?!:/.test(title) || /^BREAKING CHANGE:/m.test(message)) {
+  if (/^[a-z]+(?:\([^\n)]+\))?!:/.test(title) || /^BREAKING(?: CHANGE|-CHANGE):/m.test(message)) {
     return 'major';
   }
 

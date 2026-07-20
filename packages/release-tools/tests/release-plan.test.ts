@@ -146,6 +146,7 @@ describe('Release Set planning', () => {
   test.each([
     ['feat(api)!: remove legacy input', '2.0.0'],
     ['fix(api): change input\n\nBREAKING CHANGE: legacy input was removed', '2.0.0'],
+    ['fix(api): change input\n\nBREAKING-CHANGE: legacy input was removed', '2.0.0'],
     ['fix(api): preserve input', '1.2.4'],
   ])('maps %s to %s', (message, version) => {
     const plan = planReleaseSet({
