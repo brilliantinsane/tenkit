@@ -1,4 +1,4 @@
-import { RELEASE_SET_PACKAGES } from './release-set.mjs';
+import { RELEASE_SET_PACKAGES } from './release-set.ts';
 
 export type ReleaseImpact = 'patch' | 'minor' | 'major';
 

@@ -9,7 +9,7 @@ import {
   type RunCanonicalReleaseContainer,
 } from './release-container';
 import { runReleaseCommand, type RunReleaseCommand } from './release-command';
-import { RELEASE_SET_PACKAGES } from './release-set.mjs';
+import { RELEASE_SET_PACKAGES } from './release-set.ts';
 import { readPinnedReleaseToolchain } from './release-toolchain';
 
 type ExtractReleaseSourceInput = {

@@ -51,7 +51,7 @@ export async function runCanonicalReleaseContainer(
       '--tag',
       input.image,
       '--file',
-      'packages/release-tools/Dockerfile',
+      'packages/release-tools/container/Dockerfile',
       'packages/release-tools',
     ],
     cwd: input.sourceRoot,
@@ -96,7 +96,8 @@ export async function runCanonicalReleaseContainer(
       `TENKIT_PNPM_VERSION=${input.toolchain.pnpm}`,
       canonicalImageId,
       'node',
-      '/usr/local/lib/tenkit-release-tools/scripts/reproduce-release-set-in-container.mjs',
+      '--no-warnings',
+      '/usr/local/lib/tenkit-release-tools/container/reproduce-release-set.ts',
     ],
     cwd: input.sourceRoot,
   });

@@ -2,22 +2,22 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { RELEASE_SET_PACKAGES } from '../src/release-set.mjs';
+import { RELEASE_SET_PACKAGES } from '../src/release-set.ts';
 
 const workspaceRoot = '/workspace';
 const artifactRoot = '/artifacts';
 
-function exactVersion(value, description) {
-  const version = value?.trim().replace(/^v/, '');
+function exactVersion(value: unknown, description: string): string {
+  const version = typeof value === 'string' ? value.trim().replace(/^v/, '') : '';
 
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error(`${description} must be one exact major.minor.patch version.`);
   }
 
   return version;
 }
 
-function run(command, args) {
+function run(command: string, args: string[]): string {
   const result = spawnSync(command, args, {
     cwd: workspaceRoot,
     env: {
@@ -40,14 +40,21 @@ function run(command, args) {
   return result.stdout.trim().replace(/^v/, '');
 }
 
-function assertVersion(tool, expected, actual) {
+function assertVersion(tool: string, expected: string, actual: string): void {
   if (actual !== expected) {
     throw new Error(`Release Set container requires ${tool} ${expected}, found ${actual}.`);
   }
 }
 
-const rootPackage = JSON.parse(readFileSync(join(workspaceRoot, 'package.json'), 'utf8'));
-const pnpmMatch = /^pnpm@(\d+\.\d+\.\d+)$/.exec(rootPackage.packageManager ?? '');
+const rootPackage: unknown = JSON.parse(readFileSync(join(workspaceRoot, 'package.json'), 'utf8'));
+
+if (!rootPackage || typeof rootPackage !== 'object' || Array.isArray(rootPackage)) {
+  throw new Error('Release Set root package metadata must be an object.');
+}
+
+const packageManager = 'packageManager' in rootPackage ? rootPackage.packageManager : undefined;
+const pnpmMatch =
+  typeof packageManager === 'string' ? /^pnpm@(\d+\.\d+\.\d+)$/.exec(packageManager) : null;
 const sourceToolchain = {
   node: exactVersion(readFileSync(join(workspaceRoot, '.nvmrc'), 'utf8'), '.nvmrc'),
   npm: exactVersion(readFileSync(join(workspaceRoot, '.npm-version'), 'utf8'), '.npm-version'),
@@ -77,9 +84,15 @@ const version = exactVersion(process.env.TENKIT_RELEASE_VERSION, 'TENKIT_RELEASE
 
 for (const releasePackage of RELEASE_SET_PACKAGES) {
   const packageJsonPath = join(workspaceRoot, releasePackage.root, 'package.json');
-  const packageMetadata = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+  const packageMetadata: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 
-  if (packageMetadata.name !== releasePackage.name) {
+  if (
+    !packageMetadata ||
+    typeof packageMetadata !== 'object' ||
+    Array.isArray(packageMetadata) ||
+    !('name' in packageMetadata) ||
+    packageMetadata.name !== releasePackage.name
+  ) {
     throw new Error(`Expected package metadata for ${releasePackage.name}.`);
   }
 

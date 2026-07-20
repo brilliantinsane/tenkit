@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { RELEASE_SET_PACKAGES } from './release-set.mjs';
+import { RELEASE_SET_PACKAGES } from './release-set.ts';
 import type { ReleaseSetPlan } from './release-plan';
 
 type InjectReleaseSetVersionInput = {

@@ -4,11 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { promisify } from 'node:util';
 
-import { getReleaseSetPackage, RELEASE_SET_PACKAGES } from './release-set.mjs';
+import {
+  getReleaseSetPackage,
+  RELEASE_SET_PACKAGES,
+  type ReleaseSetPackageName,
+} from './release-set.ts';
 
 const execFileAsync = promisify(execFile);
-
-type ReleaseSetPackageName = (typeof RELEASE_SET_PACKAGES)[number]['name'];
 
 export type InternalReleaseDependency = {
   name: ReleaseSetPackageName;

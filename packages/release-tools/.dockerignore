@@ -1,6 +1,6 @@
 **
-!Dockerfile
-!scripts/
-!scripts/reproduce-release-set-in-container.mjs
+!container/
+!container/Dockerfile
+!container/reproduce-release-set.ts
 !src/
-!src/release-set.mjs
+!src/release-set.ts

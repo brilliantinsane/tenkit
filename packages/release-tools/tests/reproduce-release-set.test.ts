@@ -377,7 +377,7 @@ describe('canonical Release Set reproduction', () => {
         '--tag',
         'tenkit-release-reproduction:local',
         '--file',
-        'packages/release-tools/Dockerfile',
+        'packages/release-tools/container/Dockerfile',
         'packages/release-tools',
       ],
       cwd: '/tmp/release-source',
@@ -397,7 +397,8 @@ describe('canonical Release Set reproduction', () => {
         'TENKIT_PNPM_VERSION=11.15.0',
         canonicalImageId,
         'node',
-        '/usr/local/lib/tenkit-release-tools/scripts/reproduce-release-set-in-container.mjs',
+        '--no-warnings',
+        '/usr/local/lib/tenkit-release-tools/container/reproduce-release-set.ts',
       ]),
       cwd: '/tmp/release-source',
     });
