@@ -1,41 +1,41 @@
-# Release Checklist
+# Tenkit Release Architecture
 
-Tenkit publishes three npm packages:
+> Status: design approved, implementation incomplete. Do not use this procedure for a real release until the staged-publishing tickets and rehearsal are complete.
+
+Tenkit publishes one Release Set containing:
 
 - `@tenkit/template-generator`
 - `@tenkit/cli`
 - `create-tenkit`
 
-The release workflow is `.github/workflows/publish.yml`. Configure npm Trusted Publishing for each package with:
+All three packages use one shared version and one locally reviewed source SHA. The source SHA plus version is the complete Release Set identity.
+
+## Security Boundary
+
+Assume GitHub Actions, its caches, workflow token, OIDC staging authority, and outputs may be compromised. Trust the locally reviewed source commit, the maintainer's npm account and authenticator, and npm's staging and registry services.
+
+GitHub Actions may privately stage packages but cannot publish them directly. A maintainer independently reproduces the staged bytes in the same digest-pinned container, compares them with npm, and approves each package with npm 2FA.
+
+## Stable Release Flow
 
 ```text
-Organization/user: brilliantinsane
-Repository: tenkit
-Workflow filename: publish.yml
-Allowed actions: npm publish
+Draft -> Validate -> Human approval -> Candidate smoke -> Promote -> Finalize
 ```
 
-Use the `next` dist-tag for the first public release.
+1. **Draft**: manually start one GitHub workflow. It computes the shared version, runs source checks, packs in the canonical container, privately stages all three packages under `candidate`, and creates a draft GitHub Release.
+2. **Validate**: locally run the copyable `release:verify` command with the reviewed source SHA and version. It queries npm directly and requires all three reproduced artifacts to match.
+3. **Human approval**: approve Template generator, Public CLI, then create entrypoint through npm with 2FA.
+4. **Candidate smoke**: locally run one exact-version registry smoke. It verifies tags, internal dependencies, npm, pnpm, Bun, and one representative generated project.
+5. **Promote**: preview and explicitly apply the authenticated move of all three `latest` tags in dependency order.
+6. **Finalize**: open the reviewed draft GitHub Release, confirm its version and source SHA, and click **Publish release**. This creates the stable Git tag.
 
-## Local Checks
+There is no mandatory waiting period before Promotion. A maintainer may optionally leave the verified Candidate Release Set under `candidate` until it passes a desired package-age threshold.
 
-```bash
-pnpm release:check
-```
+## Operator Manual
 
-This runs source checks, generated-output proof, tarball smoke, and package dry runs. The tarball smoke intentionally uses a real temporary `pnpm install`, not an offline install, so it catches package resolution issues before publishing.
+The intentionally detailed, click-by-click procedure lives in:
 
-The local tarball smoke installs the packed packages into a temporary runner and invokes `create-tenkit` with `pnpm exec`. It cannot invoke `pnpm create tenkit@next` before `create-tenkit` exists on npm; the GitHub Action verifies the real package-manager create command after publishing to the `next` dist-tag.
+- `.scratch/staged-publishing/course/reference/operator-runbook.md`
+- `.scratch/staged-publishing/course/reference/operator-runbook.html`
 
-## Publish Flow
-
-1. Confirm `pnpm release:check` passes on `main`.
-2. Create and push a release tag, such as `v0.1.0`.
-3. Let the `Publish` GitHub Action create tarball artifacts, publish packages with provenance, smoke test `pnpm create tenkit@next`, and create the GitHub Release.
-4. Smoke test the real npm package locally as a final operator check:
-
-   ```bash
-   pnpm create tenkit@next --name smoke --setup runtime-tenants --yes --no-install --no-git
-   ```
-
-5. Promote to `latest` only after the `next` package-runner path works.
+Those local teaching files are downstream projections of ADR 0011. They must match implemented workflow labels and commands before the design warning is removed.
