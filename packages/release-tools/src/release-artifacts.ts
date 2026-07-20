@@ -12,7 +12,7 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-export type InternalReleaseDependency = {
+type InternalReleaseDependency = {
   name: ReleaseSetPackageName;
   version: string;
 };

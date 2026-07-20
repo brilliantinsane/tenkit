@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { expect, test } from 'vitest';
 
-import { runReleaseCommand } from '../src/release-command';
+import { runReleaseCommand } from '../src/run-release-command';
 
 test('forces command INIT_CWD to the disposable command workspace', async () => {
   const commandRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-command-'));

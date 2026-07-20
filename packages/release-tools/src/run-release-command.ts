@@ -4,23 +4,14 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-export type RunReleaseCommandInput = {
+type RunReleaseCommandInput = {
   command: string;
   args: readonly string[];
   cwd: string;
   env?: NodeJS.ProcessEnv;
 };
 
-export type RunReleaseCommandResult = {
-  stdout: string;
-  stderr: string;
-};
-
-export type RunReleaseCommand = (input: RunReleaseCommandInput) => Promise<RunReleaseCommandResult>;
-
-export async function runReleaseCommand(
-  input: RunReleaseCommandInput,
-): Promise<RunReleaseCommandResult> {
+export async function runReleaseCommand(input: RunReleaseCommandInput) {
   try {
     const result = await execFileAsync(input.command, [...input.args], {
       cwd: input.cwd,
@@ -50,3 +41,5 @@ export async function runReleaseCommand(
     throw new Error(`${basename(input.command)} failed.`, { cause: error });
   }
 }
+
+export type RunReleaseCommand = typeof runReleaseCommand;

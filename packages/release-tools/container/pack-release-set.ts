@@ -17,7 +17,7 @@ function exactVersion(value: unknown, description: string): string {
   return version;
 }
 
-function run(command: string, args: string[]): string {
+function runCommand(command: string, args: string[]): string {
   const result = spawnSync(command, args, {
     cwd: workspaceRoot,
     env: {
@@ -71,9 +71,9 @@ if (JSON.stringify(sourceToolchain) !== JSON.stringify(expectedToolchain)) {
 }
 
 assertVersion('Node', expectedToolchain.node, process.version.replace(/^v/, ''));
-assertVersion('npm', expectedToolchain.npm, run('npm', ['--version']));
-assertVersion('pnpm', expectedToolchain.pnpm, run('pnpm', ['--version']));
-run('pnpm', [
+assertVersion('npm', expectedToolchain.npm, runCommand('npm', ['--version']));
+assertVersion('pnpm', expectedToolchain.pnpm, runCommand('pnpm', ['--version']));
+runCommand('pnpm', [
   'install',
   '--frozen-lockfile',
   '--ignore-scripts',
@@ -100,5 +100,5 @@ for (const releasePackage of RELEASE_SET_PACKAGES) {
 }
 
 for (const releasePackage of RELEASE_SET_PACKAGES) {
-  run('pnpm', ['--filter', releasePackage.name, 'pack', '--pack-destination', artifactRoot]);
+  runCommand('pnpm', ['--filter', releasePackage.name, 'pack', '--pack-destination', artifactRoot]);
 }

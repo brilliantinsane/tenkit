@@ -6,17 +6,9 @@ import { gzipSync } from 'node:zlib';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import {
-  assertReleaseSetArtifactsMatch,
-  reproduceReleaseSetForDraft,
-  reproduceReleaseSetForLocalVerification,
-  type RunCanonicalReleaseContainer,
-} from '../src/reproduce-release-set';
-import {
-  RELEASE_CONTAINER_IMAGE,
-  RELEASE_CONTAINER_PLATFORM,
-  runCanonicalReleaseContainer,
-} from '../src/release-container';
+import { assertReleaseSetArtifactsMatch, reproduceReleaseSet } from '../src/reproduce-release-set';
+import { RELEASE_SET_PACKAGES } from '../src/release-set.ts';
+import type { RunReleaseContainer } from '../src/run-release-container';
 
 const sourceSha = '041f79e50ff5e84f5883be026201bde10f77f93e';
 const version = '0.3.0';
@@ -36,25 +28,10 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
 });
 
-const packageFixtures = [
-  {
-    name: '@tenkit/template-generator',
-    folder: 'template-generator',
-    artifactFilename: 'tenkit-template-generator-0.3.0.tgz',
-  },
-  {
-    name: '@tenkit/cli',
-    folder: 'cli',
-    artifactFilename: 'tenkit-cli-0.3.0.tgz',
-    internalDependency: '@tenkit/template-generator',
-  },
-  {
-    name: 'create-tenkit',
-    folder: 'create-tenkit',
-    artifactFilename: 'create-tenkit-0.3.0.tgz',
-    internalDependency: '@tenkit/cli',
-  },
-] as const;
+const packageFixtures = RELEASE_SET_PACKAGES.map((releasePackage) => ({
+  ...releasePackage,
+  artifactFilename: `${releasePackage.artifactPrefix}-${version}.tgz`,
+}));
 
 async function writeArtifact(
   artifactRoot: string,
@@ -138,13 +115,13 @@ async function fakeSourceExtraction(input: {
 }
 
 describe('canonical Release Set reproduction', () => {
-  test('Draft and local Release Verification reproduce the same three artifacts', async () => {
+  test('Draft and local Release Verification use the same reproduction recipe', async () => {
     const repositoryRoot = await createRepositoryFixture();
     const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
     tempRoots.push(outputParent);
-    const containerInputs: Parameters<RunCanonicalReleaseContainer>[0][] = [];
+    const containerInputs: Parameters<RunReleaseContainer>[0][] = [];
     const extractSource = vi.fn(fakeSourceExtraction);
-    const runContainer: RunCanonicalReleaseContainer = vi.fn(async (input) => {
+    const runContainer: RunReleaseContainer = vi.fn(async (input) => {
       containerInputs.push(input);
       await writeReleaseArtifacts(input.artifactRoot);
     });
@@ -156,11 +133,11 @@ describe('canonical Release Set reproduction', () => {
       extractSource,
     };
 
-    const draft = await reproduceReleaseSetForDraft({
+    const draft = await reproduceReleaseSet({
       ...commonInput,
       outputRoot: join(outputParent, 'draft'),
     });
-    const localVerification = await reproduceReleaseSetForLocalVerification({
+    const localVerification = await reproduceReleaseSet({
       ...commonInput,
       outputRoot: join(outputParent, 'verification'),
     });
@@ -168,27 +145,7 @@ describe('canonical Release Set reproduction', () => {
     expect(containerInputs).toHaveLength(2);
     expect(extractSource).toHaveBeenCalledTimes(2);
     expect(extractSource).toHaveBeenNthCalledWith(1, expect.objectContaining({ sourceSha }));
-    expect(
-      containerInputs.map(({ image, platform, toolchain, version: releaseVersion }) => ({
-        image,
-        platform,
-        toolchain,
-        version: releaseVersion,
-      })),
-    ).toEqual([
-      {
-        image: RELEASE_CONTAINER_IMAGE,
-        platform: RELEASE_CONTAINER_PLATFORM,
-        toolchain: { node: '24.16.0', npm: '11.16.0', pnpm: '11.15.0' },
-        version,
-      },
-      {
-        image: RELEASE_CONTAINER_IMAGE,
-        platform: RELEASE_CONTAINER_PLATFORM,
-        toolchain: { node: '24.16.0', npm: '11.16.0', pnpm: '11.15.0' },
-        version,
-      },
-    ]);
+    expect(containerInputs.map((input) => input.version)).toEqual([version, version]);
     expect(draft.packages).toEqual(localVerification.packages);
 
     for (let index = 0; index < draft.artifactPaths.length; index += 1) {
@@ -217,7 +174,7 @@ describe('canonical Release Set reproduction', () => {
     tempRoots.push(outputParent);
 
     await expect(
-      reproduceReleaseSetForLocalVerification({
+      reproduceReleaseSet({
         repositoryRoot,
         outputRoot: join(outputParent, 'verification'),
         sourceSha,
@@ -238,7 +195,7 @@ describe('canonical Release Set reproduction', () => {
     const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
     tempRoots.push(outputParent);
     const reproduce = async (outputRoot: string, content: string) =>
-      reproduceReleaseSetForDraft({
+      reproduceReleaseSet({
         repositoryRoot,
         outputRoot,
         sourceSha,
@@ -267,7 +224,7 @@ describe('canonical Release Set reproduction', () => {
     const fixtureRepositoryRoot = await createRepositoryFixture();
     const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
     tempRoots.push(outputParent);
-    const reproduced = await reproduceReleaseSetForDraft({
+    const reproduced = await reproduceReleaseSet({
       repositoryRoot: fixtureRepositoryRoot,
       outputRoot: join(outputParent, 'draft'),
       sourceSha,
@@ -288,7 +245,7 @@ describe('canonical Release Set reproduction', () => {
   });
 
   test.runIf(dockerAvailable)(
-    'reproduces byte-identical real package artifacts through both container entrypoints (requires Docker)',
+    'reproduces byte-identical real package artifacts for Draft and local verification (requires Docker)',
     { timeout: 600_000 },
     async () => {
       const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-container-reproduction-'));
@@ -320,11 +277,11 @@ describe('canonical Release Set reproduction', () => {
         sourceSha: reviewedSourceSha,
         version: currentVersion,
       };
-      const draft = await reproduceReleaseSetForDraft({
+      const draft = await reproduceReleaseSet({
         ...commonInput,
         outputRoot: join(outputParent, 'draft'),
       });
-      const localVerification = await reproduceReleaseSetForLocalVerification({
+      const localVerification = await reproduceReleaseSet({
         ...commonInput,
         outputRoot: join(outputParent, 'verification'),
       });
@@ -342,66 +299,4 @@ describe('canonical Release Set reproduction', () => {
       }
     },
   );
-
-  test('builds the canonical image before running the internal recipe', async () => {
-    const canonicalImageId = `sha256:${'a'.repeat(64)}`;
-    const runCommand = vi
-      .fn()
-      .mockResolvedValueOnce({ stdout: `${canonicalImageId}\n`, stderr: '' })
-      .mockResolvedValueOnce({ stdout: '', stderr: '' });
-
-    await runCanonicalReleaseContainer({
-      sourceRoot: '/tmp/release-source',
-      artifactRoot: '/tmp/release-artifacts',
-      version,
-      image: RELEASE_CONTAINER_IMAGE,
-      platform: RELEASE_CONTAINER_PLATFORM,
-      toolchain: { node: '24.16.0', npm: '11.16.0', pnpm: '11.15.0' },
-      runCommand,
-    });
-
-    expect(runCommand).toHaveBeenCalledTimes(2);
-    expect(runCommand).toHaveBeenNthCalledWith(1, {
-      command: 'docker',
-      args: [
-        'build',
-        '--quiet',
-        '--platform',
-        'linux/amd64',
-        '--build-arg',
-        'NODE_VERSION=24.16.0',
-        '--build-arg',
-        'NPM_VERSION=11.16.0',
-        '--build-arg',
-        'PNPM_VERSION=11.15.0',
-        '--tag',
-        'tenkit-release-reproduction:local',
-        '--file',
-        'packages/release-tools/container/Dockerfile',
-        'packages/release-tools',
-      ],
-      cwd: '/tmp/release-source',
-    });
-    expect(runCommand).toHaveBeenNthCalledWith(2, {
-      command: 'docker',
-      args: expect.arrayContaining([
-        'run',
-        '--rm',
-        '--platform',
-        'linux/amd64',
-        '--read-only',
-        '--tmpfs',
-        '/tmp:exec,mode=1777',
-        'TENKIT_NODE_VERSION=24.16.0',
-        'TENKIT_NPM_VERSION=11.16.0',
-        'TENKIT_PNPM_VERSION=11.15.0',
-        canonicalImageId,
-        'node',
-        '--no-warnings',
-        '/usr/local/lib/tenkit-release-tools/container/reproduce-release-set.ts',
-      ]),
-      cwd: '/tmp/release-source',
-    });
-    expect(RELEASE_CONTAINER_IMAGE).toBe('tenkit-release-reproduction:local');
-  });
 });

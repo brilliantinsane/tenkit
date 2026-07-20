@@ -18,7 +18,7 @@ export const RELEASE_SET_PACKAGES = [
   },
 ] as const;
 
-export type ReleaseSetPackage = (typeof RELEASE_SET_PACKAGES)[number];
+type ReleaseSetPackage = (typeof RELEASE_SET_PACKAGES)[number];
 export type ReleaseSetPackageName = ReleaseSetPackage['name'];
 
 export function getReleaseSetPackage(name: string): ReleaseSetPackage {

@@ -1,7 +1,7 @@
 # Canonical image shared by Draft and local Release Verification.
 # The base digest is the official Ubuntu 24.04 multi-platform manifest resolved
 # from Docker Hub on 2026-07-20. Toolchain versions are supplied from the
-# reviewed source commit by release-container.ts.
+# reviewed source commit by run-release-container.ts.
 FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 
 ARG NODE_VERSION
@@ -25,11 +25,11 @@ RUN set -eux; \
   test "$(npm --version)" = "${NPM_VERSION}"; \
   test "$(pnpm --version)" = "${PNPM_VERSION}"
 
-COPY container/reproduce-release-set.ts /usr/local/lib/tenkit-release-tools/container/
+COPY container/pack-release-set.ts /usr/local/lib/tenkit-release-tools/container/
 COPY src/release-set.ts /usr/local/lib/tenkit-release-tools/src/
 
 RUN chmod 0555 \
-  /usr/local/lib/tenkit-release-tools/container/reproduce-release-set.ts \
+  /usr/local/lib/tenkit-release-tools/container/pack-release-set.ts \
   /usr/local/lib/tenkit-release-tools/src/release-set.ts \
   && useradd --create-home verifier
 

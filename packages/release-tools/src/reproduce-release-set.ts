@@ -1,16 +1,10 @@
 import { lstat, mkdir, mkdtemp, readdir, rename, rm, unlink } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { inspectReleaseArtifact, type ReleaseArtifact } from './release-artifacts';
-import {
-  RELEASE_CONTAINER_IMAGE,
-  RELEASE_CONTAINER_PLATFORM,
-  runCanonicalReleaseContainer,
-  type RunCanonicalReleaseContainer,
-} from './release-container';
-import { runReleaseCommand, type RunReleaseCommand } from './release-command';
+import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 import { RELEASE_SET_PACKAGES } from './release-set.ts';
-import { readPinnedReleaseToolchain } from './release-toolchain';
+import { runReleaseContainer, type RunReleaseContainer } from './run-release-container';
 
 type ExtractReleaseSourceInput = {
   repositoryRoot: string;
@@ -27,11 +21,11 @@ type ReproduceReleaseSetInput = {
   sourceSha: string;
   version: string;
   extractSource?: ExtractReleaseSource;
-  runContainer?: RunCanonicalReleaseContainer;
+  runContainer?: RunReleaseContainer;
   runCommand?: RunReleaseCommand;
 };
 
-export type ReleaseSetReproduction = {
+type ReleaseSetReproduction = {
   sourceSha: string;
   version: string;
   artifactPaths: string[];
@@ -43,8 +37,6 @@ type AssertReleaseSetArtifactsMatchInput = {
   artifactPaths: readonly string[];
   expectedVersion: string;
 };
-
-export type { RunCanonicalReleaseContainer } from './release-container';
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -69,7 +61,7 @@ function validateIdentity(sourceSha: string, version: string): void {
   }
 }
 
-export async function extractReleaseSource(input: ExtractReleaseSourceInput): Promise<void> {
+async function extractReleaseSource(input: ExtractReleaseSourceInput): Promise<void> {
   const runCommand = input.runCommand ?? runReleaseCommand;
   const archivePath = `${input.sourceRoot}.tar`;
   await mkdir(input.sourceRoot, { recursive: true });
@@ -125,7 +117,7 @@ async function inspectReleaseSetArtifacts(
   );
 }
 
-async function reproduceReleaseSet(
+export async function reproduceReleaseSet(
   input: ReproduceReleaseSetInput,
 ): Promise<ReleaseSetReproduction> {
   validateIdentity(input.sourceSha, input.version);
@@ -153,18 +145,14 @@ async function reproduceReleaseSet(
       runCommand: input.runCommand,
     });
     await mkdir(artifactRoot);
-    const toolchain = await readPinnedReleaseToolchain(sourceRoot);
-    await (input.runContainer ?? runCanonicalReleaseContainer)({
+    await (input.runContainer ?? runReleaseContainer)({
       sourceRoot,
       artifactRoot,
       version: input.version,
-      image: RELEASE_CONTAINER_IMAGE,
-      platform: RELEASE_CONTAINER_PLATFORM,
-      toolchain,
       runCommand: input.runCommand,
     });
     const temporaryArtifactPaths = artifactPaths(artifactRoot, input.version);
-    const expectedFilenames = temporaryArtifactPaths.map((path) => path.split('/').at(-1)!).sort();
+    const expectedFilenames = temporaryArtifactPaths.map((path) => basename(path)).sort();
     const actualFilenames = (await readdir(artifactRoot)).sort();
 
     if (JSON.stringify(actualFilenames) !== JSON.stringify(expectedFilenames)) {
@@ -183,18 +171,6 @@ async function reproduceReleaseSet(
   } finally {
     await rm(operationRoot, { recursive: true });
   }
-}
-
-export async function reproduceReleaseSetForDraft(
-  input: ReproduceReleaseSetInput,
-): Promise<ReleaseSetReproduction> {
-  return reproduceReleaseSet(input);
-}
-
-export async function reproduceReleaseSetForLocalVerification(
-  input: ReproduceReleaseSetInput,
-): Promise<ReleaseSetReproduction> {
-  return reproduceReleaseSet(input);
 }
 
 export async function assertReleaseSetArtifactsMatch(
