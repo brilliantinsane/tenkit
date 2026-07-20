@@ -6,7 +6,6 @@ import { RELEASE_SET_PACKAGES } from '../src/release-set.mjs';
 
 const workspaceRoot = '/workspace';
 const artifactRoot = '/artifacts';
-const toolchainRoot = '/tmp/tenkit-release-toolchain';
 
 function exactVersion(value, description) {
   const version = value?.trim().replace(/^v/, '');
@@ -65,23 +64,14 @@ if (JSON.stringify(sourceToolchain) !== JSON.stringify(expectedToolchain)) {
 }
 
 assertVersion('Node', expectedToolchain.node, process.version.replace(/^v/, ''));
-run('npm', [
+assertVersion('npm', expectedToolchain.npm, run('npm', ['--version']));
+assertVersion('pnpm', expectedToolchain.pnpm, run('pnpm', ['--version']));
+run('pnpm', [
   'install',
-  '--prefix',
-  toolchainRoot,
-  '--no-package-lock',
+  '--frozen-lockfile',
   '--ignore-scripts',
-  '--no-audit',
-  '--no-fund',
-  `npm@${expectedToolchain.npm}`,
+  ...RELEASE_SET_PACKAGES.flatMap((releasePackage) => ['--filter', `${releasePackage.name}...`]),
 ]);
-assertVersion(
-  'npm',
-  expectedToolchain.npm,
-  run('node', [join(toolchainRoot, 'node_modules/npm/bin/npm-cli.js'), '--version']),
-);
-assertVersion('pnpm', expectedToolchain.pnpm, run('corepack', ['pnpm', '--version']));
-run('corepack', ['pnpm', 'install', '--frozen-lockfile', '--ignore-scripts']);
 
 const version = exactVersion(process.env.TENKIT_RELEASE_VERSION, 'TENKIT_RELEASE_VERSION');
 
@@ -97,12 +87,5 @@ for (const releasePackage of RELEASE_SET_PACKAGES) {
 }
 
 for (const releasePackage of RELEASE_SET_PACKAGES) {
-  run('corepack', [
-    'pnpm',
-    '--filter',
-    releasePackage.name,
-    'pack',
-    '--pack-destination',
-    artifactRoot,
-  ]);
+  run('pnpm', ['--filter', releasePackage.name, 'pack', '--pack-destination', artifactRoot]);
 }

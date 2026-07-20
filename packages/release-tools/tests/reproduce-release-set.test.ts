@@ -289,7 +289,7 @@ describe('canonical Release Set reproduction', () => {
 
   test.runIf(dockerAvailable)(
     'reproduces byte-identical real package artifacts through both container entrypoints (requires Docker)',
-    { timeout: 300_000 },
+    { timeout: 600_000 },
     async () => {
       const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-container-reproduction-'));
       tempRoots.push(outputParent);
@@ -343,8 +343,12 @@ describe('canonical Release Set reproduction', () => {
     },
   );
 
-  test('runs the internal recipe in one digest-pinned Linux container', async () => {
-    const runCommand = vi.fn(async () => ({ stdout: '', stderr: '' }));
+  test('builds the canonical image before running the internal recipe', async () => {
+    const canonicalImageId = `sha256:${'a'.repeat(64)}`;
+    const runCommand = vi
+      .fn()
+      .mockResolvedValueOnce({ stdout: `${canonicalImageId}\n`, stderr: '' })
+      .mockResolvedValueOnce({ stdout: '', stderr: '' });
 
     await runCanonicalReleaseContainer({
       sourceRoot: '/tmp/release-source',
@@ -356,22 +360,47 @@ describe('canonical Release Set reproduction', () => {
       runCommand,
     });
 
-    expect(runCommand).toHaveBeenCalledExactlyOnceWith({
+    expect(runCommand).toHaveBeenCalledTimes(2);
+    expect(runCommand).toHaveBeenNthCalledWith(1, {
+      command: 'docker',
+      args: [
+        'build',
+        '--quiet',
+        '--platform',
+        'linux/amd64',
+        '--build-arg',
+        'NODE_VERSION=24.16.0',
+        '--build-arg',
+        'NPM_VERSION=11.16.0',
+        '--build-arg',
+        'PNPM_VERSION=11.15.0',
+        '--tag',
+        'tenkit-release-reproduction:local',
+        '--file',
+        'packages/release-tools/Dockerfile',
+        'packages/release-tools',
+      ],
+      cwd: '/tmp/release-source',
+    });
+    expect(runCommand).toHaveBeenNthCalledWith(2, {
       command: 'docker',
       args: expect.arrayContaining([
         'run',
         '--rm',
         '--platform',
         'linux/amd64',
+        '--read-only',
+        '--tmpfs',
+        '/tmp:exec,mode=1777',
         'TENKIT_NODE_VERSION=24.16.0',
         'TENKIT_NPM_VERSION=11.16.0',
         'TENKIT_PNPM_VERSION=11.15.0',
-        RELEASE_CONTAINER_IMAGE,
+        canonicalImageId,
         'node',
-        'packages/release-tools/scripts/reproduce-release-set-in-container.mjs',
+        '/usr/local/lib/tenkit-release-tools/scripts/reproduce-release-set-in-container.mjs',
       ]),
       cwd: '/tmp/release-source',
     });
-    expect(RELEASE_CONTAINER_IMAGE).toMatch(/^node:24\.16\.0-bookworm-slim@sha256:[0-9a-f]{64}$/);
+    expect(RELEASE_CONTAINER_IMAGE).toBe('tenkit-release-reproduction:local');
   });
 });

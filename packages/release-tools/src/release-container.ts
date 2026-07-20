@@ -1,8 +1,7 @@
 import type { ReleaseToolchain } from './release-toolchain';
 import { runReleaseCommand, type RunReleaseCommand } from './release-command';
 
-export const RELEASE_CONTAINER_IMAGE =
-  'node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203';
+export const RELEASE_CONTAINER_IMAGE = 'tenkit-release-reproduction:local';
 export const RELEASE_CONTAINER_PLATFORM = 'linux/amd64';
 
 export type RunCanonicalReleaseContainerInput = {
@@ -36,6 +35,33 @@ export async function runCanonicalReleaseContainer(
   const userId = typeof process.getuid === 'function' ? process.getuid() : 1000;
   const groupId = typeof process.getgid === 'function' ? process.getgid() : 1000;
 
+  const imageBuild = await runCommand({
+    command: 'docker',
+    args: [
+      'build',
+      '--quiet',
+      '--platform',
+      input.platform,
+      '--build-arg',
+      `NODE_VERSION=${input.toolchain.node}`,
+      '--build-arg',
+      `NPM_VERSION=${input.toolchain.npm}`,
+      '--build-arg',
+      `PNPM_VERSION=${input.toolchain.pnpm}`,
+      '--tag',
+      input.image,
+      '--file',
+      'packages/release-tools/Dockerfile',
+      'packages/release-tools',
+    ],
+    cwd: input.sourceRoot,
+  });
+  const canonicalImageId = imageBuild.stdout.trim();
+
+  if (!/^sha256:[0-9a-f]{64}$/.test(canonicalImageId)) {
+    throw new Error('Canonical Release Set image build did not return one immutable image ID.');
+  }
+
   await runCommand({
     command: 'docker',
     args: [
@@ -49,6 +75,9 @@ export async function runCanonicalReleaseContainer(
       'ALL',
       '--security-opt',
       'no-new-privileges',
+      '--read-only',
+      '--tmpfs',
+      '/tmp:exec,mode=1777',
       '--mount',
       bindMount(input.sourceRoot, '/workspace'),
       '--mount',
@@ -65,9 +94,9 @@ export async function runCanonicalReleaseContainer(
       `TENKIT_NPM_VERSION=${input.toolchain.npm}`,
       '--env',
       `TENKIT_PNPM_VERSION=${input.toolchain.pnpm}`,
-      input.image,
+      canonicalImageId,
       'node',
-      'packages/release-tools/scripts/reproduce-release-set-in-container.mjs',
+      '/usr/local/lib/tenkit-release-tools/scripts/reproduce-release-set-in-container.mjs',
     ],
     cwd: input.sourceRoot,
   });
