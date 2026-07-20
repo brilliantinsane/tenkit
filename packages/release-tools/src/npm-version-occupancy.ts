@@ -84,9 +84,28 @@ export const runNpmCommand: RunNpmCommand = async (args) => {
 };
 
 export class NpmVersionOccupancy {
-  constructor(private readonly runNpm: RunNpmCommand = runNpmCommand) {}
+  private npmVersionCheck: Promise<void> | undefined;
+
+  constructor(
+    private readonly expectedNpmVersion: string,
+    private readonly runNpm: RunNpmCommand = runNpmCommand,
+  ) {}
+
+  private async requirePinnedNpm(): Promise<void> {
+    const npmVersion = await this.runNpm(['--version']);
+    const actualNpmVersion = npmVersion.stdout.trim();
+
+    if (npmVersion.exitCode !== 0 || actualNpmVersion !== this.expectedNpmVersion) {
+      throw new Error(
+        `Release Set inspection requires npm ${this.expectedNpmVersion}, but found ${actualNpmVersion || 'an unavailable npm CLI'} on PATH. Install the version pinned in .npm-version before running release:plan.`,
+      );
+    }
+  }
 
   async isPackageVersionOccupied(packageName: string, version: string): Promise<boolean> {
+    this.npmVersionCheck ??= this.requirePinnedNpm();
+    await this.npmVersionCheck;
+
     const published = await this.runNpm(['view', `${packageName}@${version}`, 'version', '--json']);
 
     if (published.exitCode === 0) {

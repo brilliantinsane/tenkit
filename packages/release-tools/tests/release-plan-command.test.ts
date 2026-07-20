@@ -1,12 +1,30 @@
 import { resolve } from 'node:path';
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { runReleasePlanCommand } from '../src/release-plan-command';
 
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
 
 describe('release:plan command', () => {
+  test('loads the repository npm pin before registry inspection', async () => {
+    const runNpmCommand = vi.fn(async () => ({
+      exitCode: 0,
+      stdout: '11.4.2\n',
+      stderr: '',
+    }));
+
+    await expect(
+      runReleasePlanCommand({
+        args: ['--', '--source', '3a10d24'],
+        workspaceRoot,
+        write() {},
+        runNpmCommand,
+      }),
+    ).rejects.toThrow(/requires npm 11\.16\.0.*found 11\.4\.2/);
+    expect(runNpmCommand).toHaveBeenCalledExactlyOnceWith(['--version']);
+  });
+
   test('prints one read-only JSON plan for the selected source revision', async () => {
     let output = '';
     const exitCode = await runReleasePlanCommand({
