@@ -1,0 +1,364 @@
+name: Draft Tenkit Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full reviewed source SHA to draft
+        required: true
+        type: string
+
+concurrency:
+  group: stable-release-set
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Release Set
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      source-sha: ${{ steps.plan.outputs.source-sha }}
+      version: ${{ steps.plan.outputs.version }}
+      template-shasum: ${{ steps.pack.outputs.template-shasum }}
+      cli-shasum: ${{ steps.pack.outputs.cli-shasum }}
+      create-shasum: ${{ steps.pack.outputs.create-shasum }}
+      template-integrity: ${{ steps.pack.outputs.template-integrity }}
+      cli-integrity: ${{ steps.pack.outputs.cli-integrity }}
+      create-integrity: ${{ steps.pack.outputs.create-integrity }}
+    steps:
+      - name: Enforce default-branch dispatch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::Draft Tenkit Release must be dispatched from $DEFAULT_BRANCH."
+            exit 1
+          fi
+
+      - name: Validate requested source SHA
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          if ! printf '%s' "$SOURCE_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::source_sha must be one full lowercase commit SHA."
+            exit 1
+          fi
+
+      - name: Checkout reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.source_sha }}
+
+      - name: Record exact source SHA
+        id: source
+        env:
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          if [ "$SOURCE_SHA" != "$REQUESTED_SOURCE_SHA" ]; then
+            echo "::error::Checked-out source $SOURCE_SHA does not match requested source $REQUESTED_SOURCE_SHA."
+            exit 1
+          fi
+          echo "Recorded Release Set source: $SOURCE_SHA"
+          echo "source-sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+
+      - name: Install pinned npm and pnpm
+        run: |
+          NPM_VERSION=$(tr -d '[:space:]' < .npm-version)
+          PNPM_VERSION=$(node -p "require('./package.json').packageManager.split('@')[1]")
+          npm install --global "npm@$NPM_VERSION"
+          corepack enable
+          corepack prepare "pnpm@$PNPM_VERSION" --activate
+          test "$(npm --version)" = "$NPM_VERSION"
+          test "$(pnpm --version)" = "$PNPM_VERSION"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Plan automatic stable Release Set version
+        id: plan
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.source.outputs.source-sha }}
+        run: |
+          PLAN_JSON=$(pnpm --silent release:plan -- --source "$SOURCE_SHA")
+          test "$(printf '%s' "$PLAN_JSON" | jq -r '.kind')" = 'release'
+          PLANNED_SOURCE_SHA=$(printf '%s' "$PLAN_JSON" | jq -r '.sourceSha')
+          VERSION=$(printf '%s' "$PLAN_JSON" | jq -r '.version')
+          test "$PLANNED_SOURCE_SHA" = "$SOURCE_SHA"
+          printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+          {
+            echo "source-sha=$PLANNED_SOURCE_SHA"
+            echo "version=$VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run comprehensive source checks
+        run: pnpm release:check
+
+      - name: Pack canonical Release Set
+        id: pack
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
+          SOURCE_SHA: ${{ steps.plan.outputs.source-sha }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          BUILD_JSON=$(pnpm --silent -F @tenkit/release-tools exec tsx \
+            "$GITHUB_WORKSPACE/.github/scripts/build-draft-release-set.ts")
+          printf '%s' "$BUILD_JSON" | jq -e \
+            --arg sourceSha "$SOURCE_SHA" \
+            --arg version "$VERSION" \
+            '.sourceSha == $sourceSha and .version == $version and (.packages | length == 3)' >/dev/null
+
+          diagnostic() {
+            printf '%s' "$BUILD_JSON" | jq -r --arg package "$1" --arg field "$2" \
+              '.packages[] | select(.name == $package) | .[$field]'
+          }
+
+          TEMPLATE_SHASUM=$(diagnostic '@tenkit/template-generator' shasum)
+          CLI_SHASUM=$(diagnostic '@tenkit/cli' shasum)
+          CREATE_SHASUM=$(diagnostic 'create-tenkit' shasum)
+          TEMPLATE_INTEGRITY=$(diagnostic '@tenkit/template-generator' integrity)
+          CLI_INTEGRITY=$(diagnostic '@tenkit/cli' integrity)
+          CREATE_INTEGRITY=$(diagnostic 'create-tenkit' integrity)
+
+          for shasum in "$TEMPLATE_SHASUM" "$CLI_SHASUM" "$CREATE_SHASUM"; do
+            printf '%s' "$shasum" | grep -Eq '^[0-9a-f]{40}$'
+          done
+          for integrity in "$TEMPLATE_INTEGRITY" "$CLI_INTEGRITY" "$CREATE_INTEGRITY"; do
+            printf '%s' "$integrity" | grep -Eq '^sha512-[A-Za-z0-9+/]+={0,2}$'
+          done
+
+          {
+            echo "template-shasum=$TEMPLATE_SHASUM"
+            echo "cli-shasum=$CLI_SHASUM"
+            echo "create-shasum=$CREATE_SHASUM"
+            echo "template-integrity=$TEMPLATE_INTEGRITY"
+            echo "cli-integrity=$CLI_INTEGRITY"
+            echo "create-integrity=$CREATE_INTEGRITY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact Release Set tarballs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: draft-release-set-${{ steps.plan.outputs.source-sha }}
+          path: release-artifacts/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  stage:
+    name: Stage Release Set on npm
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      template-stage-id: ${{ steps.stage-release-set.outputs.template-stage-id }}
+      cli-stage-id: ${{ steps.stage-release-set.outputs.cli-stage-id }}
+      create-stage-id: ${{ steps.stage-release-set.outputs.create-stage-id }}
+    steps:
+      - name: Checkout reviewed source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ needs.build.outputs.source-sha }}
+
+      - name: Setup Node without a dependency cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+
+      - name: Install pinned staging npm
+        run: |
+          NPM_VERSION=$(tr -d '[:space:]' < .npm-version)
+          npm install --global "npm@$NPM_VERSION"
+          test "$(npm --version)" = "$NPM_VERSION"
+
+      - name: Download exact Release Set tarballs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: draft-release-set-${{ needs.build.outputs.source-sha }}
+          path: release-artifacts
+
+      - name: Start private staging diagnostics
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.source-sha }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          {
+            echo '## Private staging diagnostics'
+            echo ''
+            echo 'These stage references are untrusted diagnostics. Verify directly through authenticated npm before approval or rejection.'
+            echo ''
+            echo "- Source SHA: \`$SOURCE_SHA\`"
+            echo "- Version: \`$VERSION\`"
+            echo ''
+            echo '| Package | Stage reference | Tag |'
+            echo '|---|---|---|'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stage Release Set in dependency order
+        id: stage-release-set
+        env:
+          TEMPLATE_ARTIFACT: release-artifacts/tenkit-template-generator-${{ needs.build.outputs.version }}.tgz
+          CLI_ARTIFACT: release-artifacts/tenkit-cli-${{ needs.build.outputs.version }}.tgz
+          CREATE_ARTIFACT: release-artifacts/create-tenkit-${{ needs.build.outputs.version }}.tgz
+          TEMPLATE_SHASUM: ${{ needs.build.outputs.template-shasum }}
+          CLI_SHASUM: ${{ needs.build.outputs.cli-shasum }}
+          CREATE_SHASUM: ${{ needs.build.outputs.create-shasum }}
+        run: |
+          stage_package() {
+            PACKAGE_NAME=$1
+            ARTIFACT=$2
+            EXPECTED_SHASUM=$3
+            OUTPUT_NAME=$4
+            ACTUAL_SHASUM=$(sha1sum "$ARTIFACT" | cut -d ' ' -f1)
+            test "$ACTUAL_SHASUM" = "$EXPECTED_SHASUM"
+
+            set +e
+            OUTPUT=$(npm stage publish "$ARTIFACT" --tag candidate --access public --provenance --json 2>&1)
+            STAGE_EXIT=$?
+            set -e
+
+            STAGE=$(printf '%s' "$OUTPUT" | sed -n '/^{/,$p' | jq -c '[.. | objects | select(.stageId)][0] // empty' 2>/dev/null || true)
+            STAGE_ID=$(printf '%s' "$STAGE" | jq -r '.stageId // empty')
+            STAGED_SHASUM=$(printf '%s' "$STAGE" | jq -r '.shasum // empty')
+            if printf '%s' "$STAGE_ID" | grep -Eq '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'; then
+              echo "$PACKAGE_NAME $STAGE_ID" >> "$RUNNER_TEMP/tenkit-stage-references"
+              echo "| $PACKAGE_NAME | \`$STAGE_ID\` | \`candidate\` |" >> "$GITHUB_STEP_SUMMARY"
+              echo "npm returned stage reference $STAGE_ID for $PACKAGE_NAME."
+            fi
+
+            if [ "$STAGE_EXIT" -ne 0 ]; then
+              echo "::error::npm failed while staging $PACKAGE_NAME. Raw registry output is suppressed. Discover registry state directly before rejection."
+              return "$STAGE_EXIT"
+            fi
+
+            printf '%s' "$STAGE_ID" | grep -Eq '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+            test "$STAGED_SHASUM" = "$EXPECTED_SHASUM"
+            echo "$OUTPUT_NAME=$STAGE_ID" >> "$GITHUB_OUTPUT"
+          }
+
+          stage_package '@tenkit/template-generator' "$TEMPLATE_ARTIFACT" "$TEMPLATE_SHASUM" template-stage-id
+          stage_package '@tenkit/cli' "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
+          stage_package 'create-tenkit' "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id
+
+      - name: Record partial-staging recovery instructions
+        if: ${{ always() }}
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.source-sha }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          {
+            echo ''
+            echo '### Partial-staging recovery'
+            echo ''
+            echo "- Source SHA: \`$SOURCE_SHA\`"
+            echo "- Version: \`$VERSION\`"
+            if [ -s "$RUNNER_TEMP/tenkit-stage-references" ]; then
+              echo '- Stage references recovered before failure:'
+              while read -r package_name stage_id; do
+                echo "  - $package_name: \`$stage_id\`"
+              done < "$RUNNER_TEMP/tenkit-stage-references"
+            else
+              echo '- No stage reference was recovered from npm output.'
+            fi
+            echo ''
+            echo 'If staging failed, do not retry this run or combine its stages with another run.'
+            echo 'Use authenticated npm to discover every stage created by this attempt, then reject each one with maintainer 2FA before starting a fresh Draft:'
+            echo '```bash'
+            echo 'npm stage list @tenkit/template-generator'
+            echo 'npm stage list @tenkit/cli'
+            echo 'npm stage list create-tenkit'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  describe:
+    name: Create draft GitHub Release
+    needs: [build, stage]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Materialize untrusted Draft diagnostics
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.source-sha }}
+          VERSION: ${{ needs.build.outputs.version }}
+          TEMPLATE_STAGE_ID: ${{ needs.stage.outputs.template-stage-id }}
+          CLI_STAGE_ID: ${{ needs.stage.outputs.cli-stage-id }}
+          CREATE_STAGE_ID: ${{ needs.stage.outputs.create-stage-id }}
+          TEMPLATE_INTEGRITY: ${{ needs.build.outputs.template-integrity }}
+          CLI_INTEGRITY: ${{ needs.build.outputs.cli-integrity }}
+          CREATE_INTEGRITY: ${{ needs.build.outputs.create-integrity }}
+          TEMPLATE_SHASUM: ${{ needs.build.outputs.template-shasum }}
+          CLI_SHASUM: ${{ needs.build.outputs.cli-shasum }}
+          CREATE_SHASUM: ${{ needs.build.outputs.create-shasum }}
+        run: |
+          {
+            echo "# Tenkit v$VERSION"
+            echo ''
+            echo '## Untrusted Draft diagnostics'
+            echo ''
+            echo 'Everything below is a convenience hint from GitHub Actions. Independently obtain verification evidence from npm before approving any stage.'
+            echo ''
+            echo "- Version: \`$VERSION\`"
+            echo "- Source SHA: \`$SOURCE_SHA\`"
+            echo ''
+            echo '| Package | Stage reference | Integrity | Shasum |'
+            echo '|---|---|---|---|'
+            echo "| @tenkit/template-generator | \`$TEMPLATE_STAGE_ID\` | \`$TEMPLATE_INTEGRITY\` | \`$TEMPLATE_SHASUM\` |"
+            echo "| @tenkit/cli | \`$CLI_STAGE_ID\` | \`$CLI_INTEGRITY\` | \`$CLI_SHASUM\` |"
+            echo "| create-tenkit | \`$CREATE_STAGE_ID\` | \`$CREATE_INTEGRITY\` | \`$CREATE_SHASUM\` |"
+            echo ''
+            echo '## Release Verification'
+            echo ''
+            echo '```bash'
+            echo "pnpm release:verify -- --source-sha $SOURCE_SHA --version $VERSION"
+            echo '```'
+            echo ''
+            echo 'This Release is a draft. No public npm version or stable Git tag was created.'
+          } > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create draft GitHub Release
+        id: create-release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.build.outputs.source-sha }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          DRAFT_URL=$(gh release create "v$VERSION" \
+            --draft \
+            --title "v$VERSION" \
+            --target "$SOURCE_SHA" \
+            --notes-file "$RUNNER_TEMP/release-notes.md")
+          echo "draft-url=$DRAFT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize untrusted Draft diagnostics
+        env:
+          DRAFT_URL: ${{ steps.create-release.outputs.draft-url }}
+        run: |
+          cat "$RUNNER_TEMP/release-notes.md" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ''
+            echo "Inspect the [draft GitHub Release]($DRAFT_URL)."
+          } >> "$GITHUB_STEP_SUMMARY"
