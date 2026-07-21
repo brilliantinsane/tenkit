@@ -17,7 +17,7 @@ async function createPinnedWorkspace(): Promise<string> {
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-toolchain-'));
   tempRoots.push(workspaceRoot);
   await writeFile(join(workspaceRoot, '.nvmrc'), 'v24.16.0\n');
-  await writeFile(join(workspaceRoot, '.npm-version'), '11.16.0\n');
+  await writeFile(join(workspaceRoot, '.npm-version'), '11.17.0\n');
   await writeFile(
     join(workspaceRoot, 'package.json'),
     `${JSON.stringify({ packageManager: 'pnpm@11.15.0' }, null, 2)}\n`,
@@ -60,7 +60,7 @@ describe('Release Set container', () => {
         '--build-arg',
         'NODE_VERSION=24.16.0',
         '--build-arg',
-        'NPM_VERSION=11.16.0',
+        'NPM_VERSION=11.17.0',
         '--build-arg',
         'PNPM_VERSION=11.15.0',
         '--tag',
@@ -82,7 +82,7 @@ describe('Release Set container', () => {
         '--tmpfs',
         '/tmp:exec,mode=1777',
         'TENKIT_NODE_VERSION=24.16.0',
-        'TENKIT_NPM_VERSION=11.16.0',
+        'TENKIT_NPM_VERSION=11.17.0',
         'TENKIT_PNPM_VERSION=11.15.0',
         canonicalImageId,
         '/usr/local/bin/pack-release-set.sh',

@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import { NpmVersionOccupancy } from '../src/npm-version-occupancy';
 
-const PINNED_NPM_VERSION = '11.16.0';
+const PINNED_NPM_VERSION = '11.17.0';
 const npmVersionResult = { exitCode: 0, stdout: `${PINNED_NPM_VERSION}\n`, stderr: '' };
 
 function stagedItem(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -26,7 +26,7 @@ describe('npm Release Set version occupancy', () => {
     const occupancy = new NpmVersionOccupancy(PINNED_NPM_VERSION, runNpm);
 
     await expect(occupancy.isPackageVersionOccupied('@tenkit/cli', '0.3.0')).rejects.toThrow(
-      /requires npm 11\.16\.0.*found 11\.4\.2/,
+      /requires npm 11\.17\.0.*found 11\.4\.2/,
     );
     expect(runNpm).toHaveBeenCalledExactlyOnceWith(['--version']);
   });

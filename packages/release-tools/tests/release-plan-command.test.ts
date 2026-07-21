@@ -21,7 +21,7 @@ describe('release:plan command', () => {
         write() {},
         runNpmCommand,
       }),
-    ).rejects.toThrow(/requires npm 11\.16\.0.*found 11\.4\.2/);
+    ).rejects.toThrow(/requires npm 11\.17\.0.*found 11\.4\.2/);
     expect(runNpmCommand).toHaveBeenCalledExactlyOnceWith(['--version']);
   });
 
