@@ -18,7 +18,7 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
 });
 
-function record(value: unknown, description: string): Record<string, unknown> {
+function requireRecord(value: unknown, description: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${description} must be an object.`);
   }
@@ -28,11 +28,11 @@ function record(value: unknown, description: string): Record<string, unknown> {
 
 async function readWorkflow(): Promise<Record<string, unknown>> {
   const contents = await readFile(workflowPath, 'utf8');
-  return record(parse(contents) as unknown, 'Draft workflow');
+  return requireRecord(parse(contents) as unknown, 'Draft workflow');
 }
 
 function job(workflow: Record<string, unknown>, name: string): Record<string, unknown> {
-  return record(record(workflow.jobs, 'workflow jobs')[name], `${name} job`);
+  return requireRecord(requireRecord(workflow.jobs, 'workflow jobs')[name], `${name} job`);
 }
 
 function step(workflowJob: Record<string, unknown>, name: string): Record<string, unknown> {
@@ -41,9 +41,9 @@ function step(workflowJob: Record<string, unknown>, name: string): Record<string
   }
 
   const matchingStep = workflowJob.steps.find(
-    (candidate) => record(candidate, 'workflow step').name === name,
+    (candidate) => requireRecord(candidate, 'workflow step').name === name,
   );
-  return record(matchingStep, `${name} step`);
+  return requireRecord(matchingStep, `${name} step`);
 }
 
 function shell(stepDefinition: Record<string, unknown>): string {
@@ -76,15 +76,107 @@ async function runWorkflowShell(input: {
   });
 }
 
+async function createDraftRehearsal() {
+  const workflow = await readWorkflow();
+  const stageJob = job(workflow, 'stage');
+  const createDraftReleaseJob = job(workflow, 'create-draft-release');
+  const operationRoot = await mkdtemp(join(tmpdir(), 'tenkit-draft-rehearsal-'));
+  tempRoots.push(operationRoot);
+  const fakeBin = join(operationRoot, 'bin');
+  const artifactRoot = join(operationRoot, 'release-artifacts');
+  const operationLog = join(operationRoot, 'operations.log');
+  const summary = join(operationRoot, 'summary.md');
+  const sourceSha = 'a'.repeat(40);
+  const version = '0.4.0';
+  await mkdir(fakeBin);
+  await mkdir(artifactRoot);
+  const artifacts = [
+    'tenkit-template-generator-0.4.0.tgz',
+    'tenkit-cli-0.4.0.tgz',
+    'create-tenkit-0.4.0.tgz',
+  ] as const;
+  const shasums: string[] = [];
+
+  for (const artifact of artifacts) {
+    const bytes = Buffer.from(`disposable ${artifact}`);
+    await writeFile(join(artifactRoot, artifact), bytes);
+    shasums.push(createHash('sha1').update(bytes).digest('hex'));
+  }
+
+  await writeExecutable(join(fakeBin, 'sha1sum'), '#!/bin/bash\nexec /usr/bin/shasum -a 1 "$@"\n');
+  await writeExecutable(
+    join(fakeBin, 'npm'),
+    `#!/bin/bash
+set -euo pipefail
+printf 'npm %s\\n' "$*" >> "$OPERATION_LOG"
+if [ "$1 $2" != 'stage publish' ]; then exit 64; fi
+artifact=$3
+if [[ "$artifact" != ./* ]]; then exit 69; fi
+printf 'RAW_NPM_RESPONSE_SENTINEL package-auth-details\\n'
+case "$artifact" in
+  *tenkit-template-generator*) stage_id='11111111-1111-1111-1111-111111111111' ;;
+  *tenkit-cli*) stage_id='22222222-2222-2222-2222-222222222222' ;;
+  *create-tenkit*) stage_id='33333333-3333-3333-3333-333333333333' ;;
+  *) exit 65 ;;
+esac
+shasum=$(/usr/bin/shasum -a 1 "$artifact" | cut -d ' ' -f1)
+printf '{"stageId":"%s","shasum":"%s"}\\n' "$stage_id" "$shasum"
+if [ -n "\${FAIL_ARTIFACT:-}" ] && [[ "$artifact" == *"$FAIL_ARTIFACT"* ]]; then exit 68; fi
+`,
+  );
+  await writeExecutable(
+    join(fakeBin, 'gh'),
+    `#!/bin/bash
+set -euo pipefail
+printf 'gh %s\\n' "$*" >> "$OPERATION_LOG"
+if [ "$1 $2" != 'release create' ]; then exit 66; fi
+printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
+`,
+  );
+  await writeExecutable(
+    join(fakeBin, 'git'),
+    '#!/bin/bash\nprintf \'git %s\\n\' "$*" >> "$OPERATION_LOG"\nexit 67\n',
+  );
+
+  return {
+    operationRoot,
+    fakeBin,
+    operationLog,
+    summary,
+    stageJob,
+    createDraftReleaseJob,
+    commonEnv: {
+      OPERATION_LOG: operationLog,
+      RUNNER_TEMP: operationRoot,
+      GITHUB_STEP_SUMMARY: summary,
+      SOURCE_SHA: sourceSha,
+      VERSION: version,
+    },
+    artifactEnv: {
+      TEMPLATE_ARTIFACT: `./release-artifacts/${artifacts[0]}`,
+      CLI_ARTIFACT: `./release-artifacts/${artifacts[1]}`,
+      CREATE_ARTIFACT: `./release-artifacts/${artifacts[2]}`,
+      TEMPLATE_SHASUM: shasums[0]!,
+      CLI_SHASUM: shasums[1]!,
+      CREATE_SHASUM: shasums[2]!,
+    },
+    sourceSha,
+    version,
+  };
+}
+
 describe('Draft Tenkit Release workflow', () => {
   test('records an operator-selected source SHA before automatic stable planning', async () => {
     const workflow = await readWorkflow();
-    const dispatch = record(record(workflow.on, 'workflow triggers').workflow_dispatch, 'dispatch');
-    const inputs = record(dispatch.inputs, 'dispatch inputs');
-    const concurrency = record(workflow.concurrency, 'workflow concurrency');
+    const dispatch = requireRecord(
+      requireRecord(workflow.on, 'workflow triggers').workflow_dispatch,
+      'dispatch',
+    );
+    const inputs = requireRecord(dispatch.inputs, 'dispatch inputs');
+    const concurrency = requireRecord(workflow.concurrency, 'workflow concurrency');
 
     expect(Object.keys(inputs)).toEqual(['source_sha']);
-    expect(record(inputs.source_sha, 'source SHA input')).toMatchObject({
+    expect(requireRecord(inputs.source_sha, 'source SHA input')).toMatchObject({
       required: true,
       type: 'string',
     });
@@ -94,7 +186,7 @@ describe('Draft Tenkit Release workflow', () => {
       'cancel-in-progress': false,
     });
 
-    const build = record(record(workflow.jobs, 'workflow jobs').build, 'build job');
+    const build = requireRecord(requireRecord(workflow.jobs, 'workflow jobs').build, 'build job');
     const buildSteps = build.steps;
     expect(Array.isArray(buildSteps)).toBe(true);
     const serializedBuildSteps = JSON.stringify(buildSteps);
@@ -123,7 +215,7 @@ describe('Draft Tenkit Release workflow', () => {
 
     const actions = Array.isArray(build.steps)
       ? build.steps.flatMap((step) => {
-          const uses = record(step, 'build step').uses;
+          const uses = requireRecord(step, 'build step').uses;
           return typeof uses === 'string' ? [uses] : [];
         })
       : [];
@@ -160,6 +252,7 @@ describe('Draft Tenkit Release workflow', () => {
     expect(serializedStage).not.toContain('"cache":');
     expect(serializedStage).toContain('persist-credentials\":false');
     expect(serializedStage).toContain('sha1sum');
+    expect(serializedStage.match(/\.\/release-artifacts\//g)).toHaveLength(3);
 
     expect(serializedStage.match(/npm stage publish/g)).toHaveLength(1);
     expect(serializedStage.match(/stage_package /g)).toHaveLength(3);
@@ -181,7 +274,7 @@ describe('Draft Tenkit Release workflow', () => {
 
     const actions = Array.isArray(stage.steps)
       ? stage.steps.flatMap((step) => {
-          const uses = record(step, 'stage step').uses;
+          const uses = requireRecord(step, 'stage step').uses;
           return typeof uses === 'string' ? [uses] : [];
         })
       : [];
@@ -190,213 +283,138 @@ describe('Draft Tenkit Release workflow', () => {
 
   test('creates only a draft GitHub Release from untrusted diagnostics', async () => {
     const workflow = await readWorkflow();
-    const describe = job(workflow, 'describe');
-    const serializedDescribe = JSON.stringify(describe);
+    const createDraftRelease = job(workflow, 'create-draft-release');
+    const serializedCreateDraftRelease = JSON.stringify(createDraftRelease);
 
-    expect(describe.needs).toEqual(['build', 'stage']);
-    expect(describe.permissions).toEqual({ contents: 'write' });
-    expect(serializedDescribe).not.toMatch(
+    expect(createDraftRelease.needs).toEqual(['build', 'stage']);
+    expect(createDraftRelease.permissions).toEqual({ contents: 'write' });
+    expect(serializedCreateDraftRelease).not.toMatch(
       /id-token|\bnpm (?:stage|publish|dist-tag)|actions\/checkout|git tag/,
     );
-    expect(serializedDescribe).toContain('gh release create');
-    expect(serializedDescribe).toContain('--draft');
-    expect(serializedDescribe).toMatch(/--target \\"\$SOURCE_SHA\\"/);
-    expect(serializedDescribe).toContain('Untrusted Draft diagnostics');
-    expect(serializedDescribe).toContain('pnpm release:verify -- --source-sha');
-    expect(serializedDescribe).toContain('needs.stage.outputs.template-stage-id');
-    expect(serializedDescribe).toContain('needs.stage.outputs.cli-stage-id');
-    expect(serializedDescribe).toContain('needs.stage.outputs.create-stage-id');
+    expect(serializedCreateDraftRelease).toContain('gh release create');
+    expect(serializedCreateDraftRelease).toContain('--draft');
+    expect(serializedCreateDraftRelease).toMatch(/--target \\"\$SOURCE_SHA\\"/);
+    expect(serializedCreateDraftRelease).toContain('Untrusted Draft diagnostics');
+    expect(serializedCreateDraftRelease).toContain('pnpm release:verify -- --source-sha');
+    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.template-stage-id');
+    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.cli-stage-id');
+    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.create-stage-id');
   });
 
-  test('rehearses that Draft creates only private stages and one draft Release', async () => {
-    const workflow = await readWorkflow();
-    const stageJob = job(workflow, 'stage');
-    const describeJob = job(workflow, 'describe');
-    const operationRoot = await mkdtemp(join(tmpdir(), 'tenkit-draft-rehearsal-'));
-    tempRoots.push(operationRoot);
-    const fakeBin = join(operationRoot, 'bin');
-    const artifactRoot = join(operationRoot, 'release-artifacts');
-    const operationLog = join(operationRoot, 'operations.log');
-    const stageOutput = join(operationRoot, 'stage-output');
-    const releaseOutput = join(operationRoot, 'release-output');
-    const summary = join(operationRoot, 'summary.md');
-    const sourceSha = 'a'.repeat(40);
-    const version = '0.4.0';
-    await mkdir(fakeBin);
-    await mkdir(artifactRoot);
-    const artifacts = [
-      'tenkit-template-generator-0.4.0.tgz',
-      'tenkit-cli-0.4.0.tgz',
-      'create-tenkit-0.4.0.tgz',
-    ];
-    const shasums: string[] = [];
-
-    for (const artifact of artifacts) {
-      const bytes = Buffer.from(`disposable ${artifact}`);
-      await writeFile(join(artifactRoot, artifact), bytes);
-      shasums.push(createHash('sha1').update(bytes).digest('hex'));
-    }
-
-    await writeExecutable(
-      join(fakeBin, 'sha1sum'),
-      '#!/bin/bash\nexec /usr/bin/shasum -a 1 "$@"\n',
-    );
-    await writeExecutable(
-      join(fakeBin, 'npm'),
-      `#!/bin/bash
-set -euo pipefail
-printf 'npm %s\\n' "$*" >> "$OPERATION_LOG"
-if [ "$1 $2" != 'stage publish' ]; then exit 64; fi
-artifact=$3
-printf 'RAW_NPM_RESPONSE_SENTINEL package-auth-details\\n'
-case "$artifact" in
-  *tenkit-template-generator*) stage_id='11111111-1111-1111-1111-111111111111' ;;
-  *tenkit-cli*) stage_id='22222222-2222-2222-2222-222222222222' ;;
-  *create-tenkit*) stage_id='33333333-3333-3333-3333-333333333333' ;;
-  *) exit 65 ;;
-esac
-shasum=$(/usr/bin/shasum -a 1 "$artifact" | cut -d ' ' -f1)
-printf '{"stageId":"%s","shasum":"%s"}\\n' "$stage_id" "$shasum"
-if [ -n "\${FAIL_ARTIFACT:-}" ] && [[ "$artifact" == *"$FAIL_ARTIFACT"* ]]; then exit 68; fi
-`,
-    );
-    await writeExecutable(
-      join(fakeBin, 'gh'),
-      `#!/bin/bash
-set -euo pipefail
-printf 'gh %s\\n' "$*" >> "$OPERATION_LOG"
-if [ "$1 $2" != 'release create' ]; then exit 66; fi
-printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
-`,
-    );
-    await writeExecutable(
-      join(fakeBin, 'git'),
-      '#!/bin/bash\nprintf \'git %s\\n\' "$*" >> "$OPERATION_LOG"\nexit 67\n',
-    );
-
-    const commonEnv = {
-      OPERATION_LOG: operationLog,
-      RUNNER_TEMP: operationRoot,
-      GITHUB_STEP_SUMMARY: summary,
-      SOURCE_SHA: sourceSha,
-      VERSION: version,
-    };
+  test('rehearses successful private staging and one draft Release', async () => {
+    const rehearsal = await createDraftRehearsal();
     const stageExecution = await runWorkflowShell({
-      script: shell(step(stageJob, 'Stage Release Set in dependency order')),
-      cwd: operationRoot,
-      fakeBin,
+      script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+      cwd: rehearsal.operationRoot,
+      fakeBin: rehearsal.fakeBin,
       env: {
-        ...commonEnv,
-        GITHUB_OUTPUT: stageOutput,
-        TEMPLATE_ARTIFACT: join(artifactRoot, artifacts[0]!),
-        CLI_ARTIFACT: join(artifactRoot, artifacts[1]!),
-        CREATE_ARTIFACT: join(artifactRoot, artifacts[2]!),
-        TEMPLATE_SHASUM: shasums[0]!,
-        CLI_SHASUM: shasums[1]!,
-        CREATE_SHASUM: shasums[2]!,
+        ...rehearsal.commonEnv,
+        ...rehearsal.artifactEnv,
+        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
       },
     });
     expect(stageExecution.stdout).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
     await runWorkflowShell({
-      script: shell(step(stageJob, 'Record partial-staging recovery instructions')),
-      cwd: operationRoot,
-      fakeBin,
-      env: commonEnv,
+      script: shell(step(rehearsal.stageJob, 'Record partial-staging recovery instructions')),
+      cwd: rehearsal.operationRoot,
+      fakeBin: rehearsal.fakeBin,
+      env: rehearsal.commonEnv,
     });
     await runWorkflowShell({
-      script: shell(step(describeJob, 'Materialize untrusted Draft diagnostics')),
-      cwd: operationRoot,
-      fakeBin,
+      script: shell(
+        step(rehearsal.createDraftReleaseJob, 'Materialize untrusted Draft diagnostics'),
+      ),
+      cwd: rehearsal.operationRoot,
+      fakeBin: rehearsal.fakeBin,
       env: {
-        ...commonEnv,
+        ...rehearsal.commonEnv,
         TEMPLATE_STAGE_ID: '11111111-1111-1111-1111-111111111111',
         CLI_STAGE_ID: '22222222-2222-2222-2222-222222222222',
         CREATE_STAGE_ID: '33333333-3333-3333-3333-333333333333',
         TEMPLATE_INTEGRITY: 'sha512-template',
         CLI_INTEGRITY: 'sha512-cli',
         CREATE_INTEGRITY: 'sha512-create',
-        TEMPLATE_SHASUM: shasums[0]!,
-        CLI_SHASUM: shasums[1]!,
-        CREATE_SHASUM: shasums[2]!,
+        TEMPLATE_SHASUM: rehearsal.artifactEnv.TEMPLATE_SHASUM,
+        CLI_SHASUM: rehearsal.artifactEnv.CLI_SHASUM,
+        CREATE_SHASUM: rehearsal.artifactEnv.CREATE_SHASUM,
       },
     });
     await runWorkflowShell({
-      script: shell(step(describeJob, 'Create draft GitHub Release')),
-      cwd: operationRoot,
-      fakeBin,
+      script: shell(step(rehearsal.createDraftReleaseJob, 'Create draft GitHub Release')),
+      cwd: rehearsal.operationRoot,
+      fakeBin: rehearsal.fakeBin,
       env: {
-        ...commonEnv,
-        GITHUB_OUTPUT: releaseOutput,
+        ...rehearsal.commonEnv,
+        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'release-output'),
         GH_REPO: 'opx/tenkit',
         GH_TOKEN: 'disposable-token',
       },
     });
 
-    const operations = (await readFile(operationLog, 'utf8')).trim().split('\n');
+    const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
     expect(operations).toHaveLength(4);
     expect(
       operations.filter((operation) => operation.startsWith('npm stage publish')),
     ).toHaveLength(3);
     expect(operations.join('\n')).not.toMatch(/npm (?:publish|stage approve|dist-tag)|^git tag/m);
     expect(operations.filter((operation) => operation.startsWith('gh release create'))).toEqual([
-      expect.stringMatching(new RegExp(`--draft .*--target ${sourceSha} .*--notes-file`)),
+      expect.stringMatching(new RegExp(`--draft .*--target ${rehearsal.sourceSha} .*--notes-file`)),
     ]);
-    await expect(readFile(summary, 'utf8')).resolves.toContain(`Source SHA: \`${sourceSha}\``);
-    await expect(readFile(summary, 'utf8')).resolves.toContain(`Version: \`${version}\``);
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
+      `Source SHA: \`${rehearsal.sourceSha}\``,
+    );
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
+      `Version: \`${rehearsal.version}\``,
+    );
+  });
 
-    const partialRoot = join(operationRoot, 'partial');
-    const partialLog = join(partialRoot, 'operations.log');
-    const partialOutput = join(partialRoot, 'stage-output');
-    const partialSummary = join(partialRoot, 'summary.md');
-    await mkdir(partialRoot);
+  test('rehearses partial-staging recovery without retrying or creating a Release', async () => {
+    const rehearsal = await createDraftRehearsal();
     const partialEnv = {
-      ...commonEnv,
-      OPERATION_LOG: partialLog,
-      RUNNER_TEMP: partialRoot,
-      GITHUB_STEP_SUMMARY: partialSummary,
-      GITHUB_OUTPUT: partialOutput,
+      ...rehearsal.commonEnv,
+      ...rehearsal.artifactEnv,
+      GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
       FAIL_ARTIFACT: 'tenkit-cli',
-      TEMPLATE_ARTIFACT: join(artifactRoot, artifacts[0]!),
-      CLI_ARTIFACT: join(artifactRoot, artifacts[1]!),
-      CREATE_ARTIFACT: join(artifactRoot, artifacts[2]!),
-      TEMPLATE_SHASUM: shasums[0]!,
-      CLI_SHASUM: shasums[1]!,
-      CREATE_SHASUM: shasums[2]!,
     };
     let partialOutputLog = '';
 
     try {
       await runWorkflowShell({
-        script: shell(step(stageJob, 'Stage Release Set in dependency order')),
-        cwd: operationRoot,
-        fakeBin,
+        script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
         env: partialEnv,
       });
       throw new Error('Partial staging rehearsal unexpectedly succeeded.');
     } catch (error) {
-      const failure = record(error, 'partial staging failure');
+      const failure = requireRecord(error, 'partial staging failure');
       partialOutputLog = typeof failure.stdout === 'string' ? failure.stdout : '';
     }
 
     await runWorkflowShell({
-      script: shell(step(stageJob, 'Record partial-staging recovery instructions')),
-      cwd: operationRoot,
-      fakeBin,
+      script: shell(step(rehearsal.stageJob, 'Record partial-staging recovery instructions')),
+      cwd: rehearsal.operationRoot,
+      fakeBin: rehearsal.fakeBin,
       env: partialEnv,
     });
     expect(partialOutputLog).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
     expect(partialOutputLog).toContain(
       'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
     );
-    await expect(readFile(partialSummary, 'utf8')).resolves.toContain(
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
       '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
     );
-    await expect(readFile(partialSummary, 'utf8')).resolves.toContain(
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
       '@tenkit/cli: `22222222-2222-2222-2222-222222222222`',
     );
-    await expect(readFile(partialSummary, 'utf8')).resolves.toContain('npm stage list @tenkit/cli');
-    await expect(readFile(partialSummary, 'utf8')).resolves.toContain(
-      `Source SHA: \`${sourceSha}\``,
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
+      'npm stage list @tenkit/cli',
     );
+    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
+      `Source SHA: \`${rehearsal.sourceSha}\``,
+    );
+    const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
+    expect(operations).toHaveLength(2);
+    expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
   });
 });

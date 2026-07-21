@@ -219,9 +219,9 @@ jobs:
       - name: Stage Release Set in dependency order
         id: stage-release-set
         env:
-          TEMPLATE_ARTIFACT: release-artifacts/tenkit-template-generator-${{ needs.build.outputs.version }}.tgz
-          CLI_ARTIFACT: release-artifacts/tenkit-cli-${{ needs.build.outputs.version }}.tgz
-          CREATE_ARTIFACT: release-artifacts/create-tenkit-${{ needs.build.outputs.version }}.tgz
+          TEMPLATE_ARTIFACT: ./release-artifacts/tenkit-template-generator-${{ needs.build.outputs.version }}.tgz
+          CLI_ARTIFACT: ./release-artifacts/tenkit-cli-${{ needs.build.outputs.version }}.tgz
+          CREATE_ARTIFACT: ./release-artifacts/create-tenkit-${{ needs.build.outputs.version }}.tgz
           TEMPLATE_SHASUM: ${{ needs.build.outputs.template-shasum }}
           CLI_SHASUM: ${{ needs.build.outputs.cli-shasum }}
           CREATE_SHASUM: ${{ needs.build.outputs.create-shasum }}
@@ -292,7 +292,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  describe:
+  create-draft-release:
     name: Create draft GitHub Release
     needs: [build, stage]
     runs-on: ubuntu-24.04
