@@ -321,7 +321,7 @@ async function verifyPrivateStage(input: {
   }
 
   const downloadResult = await input.runNpmCommand({
-    args: ['stage', 'download', viewedStage.id],
+    args: ['stage', 'download', viewedStage.id, '--json=false'],
     cwd: input.registryArtifactRoot,
   });
 

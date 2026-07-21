@@ -686,7 +686,9 @@ describe('release:verify command', () => {
 
     await expect(harness.execute()).resolves.toBe(0);
     const npmArgs = harness.runNpmCommand.mock.calls.map(([input]) => [...input.args]);
-    expect(npmArgs.filter((args) => args[0] === 'stage' && args[1] === 'download')).toHaveLength(3);
+    const downloadArgs = npmArgs.filter((args) => args[0] === 'stage' && args[1] === 'download');
+    expect(downloadArgs).toHaveLength(3);
+    expect(downloadArgs.every((args) => args.includes('--json=false'))).toBe(true);
     expect(npmArgs).not.toEqual(
       expect.arrayContaining([
         expect.arrayContaining(['publish']),
