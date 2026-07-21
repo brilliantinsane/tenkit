@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "plan": "tsx scripts/plan-release.ts",
+    "verify": "tsx scripts/verify-release.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false"
   },
