@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "draft:build": "tsx scripts/build-draft-release-set.ts",
     "plan": "tsx scripts/plan-release.ts",
     "smoke": "pnpm -F @tenkit/template-generator build && tsx scripts/smoke-candidate.ts",
     "verify": "tsx scripts/verify-release.ts",

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -9,8 +9,13 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
 
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
+const githubRoot = resolve(workspaceRoot, '.github');
 const workflowPath = resolve(workspaceRoot, '.github/workflows/release-draft.yml');
-const draftBuildEntrypoint = resolve(workspaceRoot, '.github/scripts/build-draft-release-set.ts');
+const releaseToolsPackagePath = resolve(workspaceRoot, 'packages/release-tools/package.json');
+const draftBuildEntrypoint = resolve(
+  workspaceRoot,
+  'packages/release-tools/scripts/build-draft-release-set.ts',
+);
 const execFileAsync = promisify(execFile);
 const tempRoots: string[] = [];
 
@@ -203,11 +208,24 @@ describe('Draft Tenkit Release workflow', () => {
     const workflow = await readWorkflow();
     const build = job(workflow, 'build');
     const serializedBuild = JSON.stringify(build);
+    const githubFiles = await readdir(githubRoot, { recursive: true });
+    const releaseToolsPackage = requireRecord(
+      JSON.parse(await readFile(releaseToolsPackagePath, 'utf8')) as unknown,
+      'release-tools package metadata',
+    );
+    const releaseToolsScripts = requireRecord(
+      releaseToolsPackage.scripts,
+      'release-tools package scripts',
+    );
 
     expect(build.permissions).toEqual({ contents: 'read' });
     expect(serializedBuild).toMatch(/pnpm (?:--silent )?release:plan/);
     expect(serializedBuild).toContain('pnpm release:check');
-    expect(serializedBuild).toContain('.github/scripts/build-draft-release-set.ts');
+    expect(serializedBuild).toContain('pnpm --silent -F @tenkit/release-tools draft:build');
+    expect(releaseToolsScripts['draft:build']).toBe('tsx scripts/build-draft-release-set.ts');
+    expect(githubFiles.filter((file) => file.endsWith('.ts'))).toEqual([]);
+    expect(serializedBuild).not.toContain('build-draft-release-set.ts');
+    expect(serializedBuild).not.toContain('exec tsx');
     expect(serializedBuild).not.toContain('tsx -e');
     expect(serializedBuild).not.toContain("?? ''");
     expect(serializedBuild).toContain('release-artifacts/*.tgz');

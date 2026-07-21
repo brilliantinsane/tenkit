@@ -9,10 +9,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": [
-    "../../.github/scripts/build-draft-release-set.ts",
-    "scripts/**/*.ts",
-    "src/**/*.ts",
-    "tests/**/*.ts"
-  ]
+  "include": ["scripts/**/*.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

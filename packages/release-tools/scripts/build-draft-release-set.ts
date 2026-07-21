@@ -1,4 +1,4 @@
-import { buildDraftReleaseSet } from '../../packages/release-tools/src/draft-release-set.ts';
+import { buildDraftReleaseSet } from '../src/draft-release-set.ts';
 
 function requireEnvironmentVariable(name: 'SOURCE_SHA' | 'VERSION' | 'WORKSPACE_ROOT'): string {
   const value = process.env[name];

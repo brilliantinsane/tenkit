@@ -117,8 +117,7 @@ jobs:
           SOURCE_SHA: ${{ steps.plan.outputs.source-sha }}
           VERSION: ${{ steps.plan.outputs.version }}
         run: |
-          BUILD_JSON=$(pnpm --silent -F @tenkit/release-tools exec tsx \
-            "$GITHUB_WORKSPACE/.github/scripts/build-draft-release-set.ts")
+          BUILD_JSON=$(pnpm --silent -F @tenkit/release-tools draft:build)
           printf '%s' "$BUILD_JSON" | jq -e \
             --arg sourceSha "$SOURCE_SHA" \
             --arg version "$VERSION" \
