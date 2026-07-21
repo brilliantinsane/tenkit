@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "plan": "tsx scripts/plan-release.ts",
-    "smoke": "tsx scripts/smoke-candidate.ts",
+    "smoke": "pnpm -F @tenkit/template-generator build && tsx scripts/smoke-candidate.ts",
     "verify": "tsx scripts/verify-release.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false"
   },
   "devDependencies": {
+    "@tenkit/template-generator": "workspace:*",
     "@types/node": "^25.9.3",
     "tsx": "^4.22.4",
     "typescript": "~6.0.3",

@@ -8,6 +8,7 @@ export async function runGeneratedAppCommand(
   command: string,
   args: string[],
   env?: Record<string, string>,
+  inheritProcessEnv = true,
 ): Promise<void> {
   const commandText = [command, ...args].join(' ');
   const envKeysText = env ? ` with env keys: ${Object.keys(env).join(', ')}` : '';
@@ -15,7 +16,10 @@ export async function runGeneratedAppCommand(
   try {
     await execFileAsync(command, args, {
       cwd,
-      env: env ? { ...process.env, ...env } : process.env,
+      env: {
+        ...(inheritProcessEnv ? process.env : {}),
+        ...env,
+      },
       maxBuffer: 10 * 1024 * 1024,
     });
   } catch (error) {

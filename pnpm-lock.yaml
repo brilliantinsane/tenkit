@@ -311,6 +311,9 @@ importers:
 
   packages/release-tools:
     devDependencies:
+      '@tenkit/template-generator':
+        specifier: workspace:*
+        version: link:../template-generator
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.5

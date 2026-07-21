@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path';
 
 import { describe, expect, test, vi } from 'vitest';
 
+import type { VerifyGeneratedProjectOptions } from '@tenkit/template-generator/local-proof';
+
 import {
   runCandidateSmokeCommand,
   type RunCandidateSmokeExternalCommand,
@@ -18,6 +20,7 @@ type HarnessOptions = {
   candidateVersions?: Partial<Record<ReleaseSetPackageName, string | undefined>>;
   dependencyVersions?: Partial<Record<ReleaseSetPackageName, string>>;
   failCommand?: 'npm launcher' | 'pnpm launcher' | 'bun launcher' | 'generation';
+  failGeneratedProjectVerification?: boolean;
   latestVersions?: Partial<Record<ReleaseSetPackageName, string | undefined>>;
   publishedAt?: Partial<Record<ReleaseSetPackageName, string | undefined>>;
 };
@@ -88,6 +91,11 @@ function createHarness(options: HarnessOptions = {}) {
     return { stdout: `Created ${projectName}\n`, stderr: '' };
   });
   let output = '';
+  const verifyGeneratedProject = vi.fn(async (_input: VerifyGeneratedProjectOptions) => {
+    if (options.failGeneratedProjectVerification) {
+      throw new Error('generated project typecheck failed');
+    }
+  });
 
   return {
     calls,
@@ -100,8 +108,10 @@ function createHarness(options: HarnessOptions = {}) {
         },
         runCommand,
         now: () => new Date('2026-07-21T12:00:00.000Z'),
+        verifyGeneratedProject,
       }),
     getOutput: () => output,
+    verifyGeneratedProject,
   };
 }
 
@@ -143,7 +153,7 @@ describe('release:smoke command', () => {
           '--styling',
           'bare',
           '--package-manager',
-          'npm',
+          'pnpm',
           '--yes',
           '--no-install',
           '--no-git',
@@ -157,7 +167,25 @@ describe('release:smoke command', () => {
       expect(cwd.startsWith(workspaceRoot)).toBe(false);
       expect(env?.INIT_CWD).toBe(cwd);
       expect(env?.npm_config_registry).toBe('https://registry.npmjs.org/');
+      expect(env).not.toHaveProperty('HOME');
+      expect(env).not.toHaveProperty('NODE_OPTIONS');
+      expect(env).not.toHaveProperty('NPM_TOKEN');
+      expect(env).not.toHaveProperty('npm_package_name');
+      expect(env?.PATH?.split(':').some((path) => path.startsWith(workspaceRoot))).toBe(false);
     }
+
+    expect(harness.verifyGeneratedProject).toHaveBeenCalledOnce();
+    expect(harness.verifyGeneratedProject).toHaveBeenCalledWith({
+      targetDir: expect.stringMatching(/representative-generation\/tenkit-candidate-smoke$/),
+      setupType: 'single-app-runtime-tenants',
+      packageManager: 'pnpm',
+      env: expect.not.objectContaining({
+        HOME: expect.anything(),
+        NODE_OPTIONS: expect.anything(),
+        npm_package_name: expect.anything(),
+      }),
+      inheritProcessEnv: false,
+    });
 
     expect(
       harness.calls.some(({ args }) =>
@@ -220,6 +248,14 @@ describe('release:smoke command', () => {
 
     await expect(harness.execute()).rejects.toThrow(
       /Generated output: representative Candidate create flow failed/,
+    );
+  });
+
+  test('distinguishes malformed representative generated output', async () => {
+    const harness = createHarness({ failGeneratedProjectVerification: true });
+
+    await expect(harness.execute()).rejects.toThrow(
+      /Generated output: representative Candidate create flow failed. generated project typecheck failed/,
     );
   });
 

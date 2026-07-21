@@ -6,6 +6,11 @@ import { resolve } from 'pathe';
 import { generateProject, type GenerateProjectConfig } from './generator';
 import { writeProject, type WriteProjectOverwriteMode, type WriteProjectResult } from './writer';
 
+export {
+  verifyGeneratedProject,
+  type VerifyGeneratedProjectOptions,
+} from './generated-project-verification';
+
 export type GeneratedProjectGitMode = false | 'init' | 'commit';
 
 export type RunGenerationProofOptions = GenerateProjectConfig & {

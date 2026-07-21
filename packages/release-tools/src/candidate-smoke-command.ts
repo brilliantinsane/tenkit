@@ -1,31 +1,20 @@
-import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { promisify } from 'node:util';
+import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
+
+import {
+  verifyGeneratedProject as verifyGeneratedProjectFromLocalProof,
+  type VerifyGeneratedProjectOptions,
+} from '@tenkit/template-generator/local-proof';
 
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set';
+import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 
-const execFileAsync = promisify(execFile);
 const PUBLIC_REGISTRY = 'https://registry.npmjs.org/';
 const DEFAULT_PNPM_MINIMUM_RELEASE_AGE_MINUTES = 24 * 60;
 const REPRESENTATIVE_PROJECT_NAME = 'tenkit-candidate-smoke';
 
-type ExternalCommandInput = {
-  command: string;
-  args: readonly string[];
-  cwd: string;
-  env?: NodeJS.ProcessEnv;
-};
-
-type ExternalCommandResult = {
-  stdout: string;
-  stderr: string;
-};
-
-export type RunCandidateSmokeExternalCommand = (
-  input: ExternalCommandInput,
-) => Promise<ExternalCommandResult>;
+export type RunCandidateSmokeExternalCommand = RunReleaseCommand;
 
 type RunCandidateSmokeCommandInput = {
   args: readonly string[];
@@ -33,6 +22,7 @@ type RunCandidateSmokeCommandInput = {
   write(message: string): void;
   runCommand?: RunCandidateSmokeExternalCommand;
   now?: () => Date;
+  verifyGeneratedProject?: (options: VerifyGeneratedProjectOptions) => Promise<void>;
 };
 
 type CandidatePackageMetadata = {
@@ -167,9 +157,42 @@ function assertPreviousLatestState(metadata: readonly CandidatePackageMetadata[]
   }
 }
 
-function isolatedEnvironment(cwd: string): NodeJS.ProcessEnv {
+const ALLOWED_PROCESS_ENV_KEYS = [
+  'CI',
+  'COLORTERM',
+  'ComSpec',
+  'FORCE_COLOR',
+  'LANG',
+  'LC_ALL',
+  'NO_COLOR',
+  'PATHEXT',
+  'SystemRoot',
+  'TERM',
+  'WINDIR',
+] as const;
+
+function isInsideWorkspace(path: string, workspaceRoot: string): boolean {
+  const relativePath = relative(resolve(workspaceRoot), resolve(path));
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+}
+
+function isolatedEnvironment(workspaceRoot: string, cwd: string): Record<string, string> {
+  const environment = Object.fromEntries(
+    ALLOWED_PROCESS_ENV_KEYS.flatMap((key) =>
+      process.env[key] === undefined ? [] : [[key, process.env[key]!]],
+    ),
+  );
+  const executablePath = process.env.PATH?.split(delimiter)
+    .filter((path) => path !== '' && !isInsideWorkspace(path, workspaceRoot))
+    .join(delimiter);
+
+  if (!executablePath) {
+    throw new Error('Candidate Smoke requires a non-workspace executable PATH.');
+  }
+
   return {
-    ...process.env,
+    ...environment,
+    PATH: executablePath,
     INIT_CWD: cwd,
     npm_config_registry: PUBLIC_REGISTRY,
     npm_config_cache: join(cwd, '.npm-cache'),
@@ -184,107 +207,95 @@ function hasExactVersionLine(output: string, version: string): boolean {
   return output.split(/\r?\n/).some((line) => line.trim() === version);
 }
 
-export const runCandidateSmokeExternalCommand: RunCandidateSmokeExternalCommand = async (input) => {
-  try {
-    const result = await execFileAsync(input.command, [...input.args], {
-      cwd: input.cwd,
-      env: input.env,
-      encoding: 'utf8',
-      maxBuffer: 20 * 1024 * 1024,
-    });
-
-    return { stdout: result.stdout, stderr: result.stderr };
-  } catch (error) {
-    const diagnostic =
-      error && typeof error === 'object' && 'stderr' in error && typeof error.stderr === 'string'
-        ? error.stderr.replaceAll(input.cwd, '<candidate-smoke-dir>').trim()
-        : '';
-    throw new Error(`${input.command} failed${diagnostic ? `: ${diagnostic}` : '.'}`, {
-      cause: error,
-    });
-  }
-};
-
 export async function runCandidateSmokeCommand(
   input: RunCandidateSmokeCommandInput,
 ): Promise<number> {
   const version = parseArguments(input.args);
-  const runCommand = input.runCommand ?? runCandidateSmokeExternalCommand;
+  const runCommand = input.runCommand ?? runReleaseCommand;
+  const verifyGeneratedProject =
+    input.verifyGeneratedProject ?? verifyGeneratedProjectFromLocalProof;
   const now = (input.now ?? (() => new Date()))();
   const metadata: CandidatePackageMetadata[] = [];
-
-  for (const releasePackage of RELEASE_SET_PACKAGES) {
-    let commandResult: ExternalCommandResult;
-
-    try {
-      commandResult = await runCommand({
-        command: 'npm',
-        args: [
-          'view',
-          `${releasePackage.name}@${version}`,
-          'name',
-          'version',
-          'dependencies',
-          'dist-tags',
-          'time',
-          '--json',
-        ],
-        cwd: input.workspaceRoot,
-        env: { ...process.env, npm_config_registry: PUBLIC_REGISTRY },
-      });
-      metadata.push(
-        parseCandidateMetadata(
-          parseJson(commandResult.stdout, `${releasePackage.name} Candidate metadata`),
-          releasePackage.name,
-          version,
-        ),
-      );
-    } catch (error) {
-      throw new Error(
-        `Candidate tags: incomplete for ${releasePackage.name}@${version}. ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error },
-      );
-    }
-  }
-
-  assertInternalDependencies(metadata, version);
-  assertPreviousLatestState(metadata, version);
-
-  const missingPublicationTime = metadata.find(({ publishedAt }) => publishedAt === undefined);
-
-  if (missingPublicationTime) {
-    throw new Error(
-      `Package-age visibility: ${missingPublicationTime.packageName}@${version} has no valid public publication timestamp.`,
-    );
-  }
-
-  const youngestPublication = new Date(
-    Math.max(...metadata.map(({ publishedAt }) => publishedAt!.getTime())),
-  );
-
-  if (youngestPublication.getTime() > now.getTime()) {
-    throw new Error('Package-age visibility: npm returned a future publication timestamp.');
-  }
-
-  const fullVisibilityAt = new Date(
-    youngestPublication.getTime() + DEFAULT_PNPM_MINIMUM_RELEASE_AGE_MINUTES * 60_000,
-  );
   const operationRoot = await mkdtemp(join(tmpdir(), 'tenkit-candidate-smoke-'));
 
   try {
+    const metadataRoot = join(operationRoot, 'registry-metadata');
+    await mkdir(metadataRoot);
+
+    for (const releasePackage of RELEASE_SET_PACKAGES) {
+      let commandResult;
+
+      try {
+        commandResult = await runCommand({
+          command: 'npm',
+          args: [
+            'view',
+            `${releasePackage.name}@${version}`,
+            'name',
+            'version',
+            'dependencies',
+            'dist-tags',
+            'time',
+            '--json',
+          ],
+          cwd: metadataRoot,
+          env: isolatedEnvironment(input.workspaceRoot, metadataRoot),
+          errorDetail: 'none',
+          inheritProcessEnv: false,
+        });
+        metadata.push(
+          parseCandidateMetadata(
+            parseJson(commandResult.stdout, `${releasePackage.name} Candidate metadata`),
+            releasePackage.name,
+            version,
+          ),
+        );
+      } catch (error) {
+        throw new Error(
+          `Candidate tags: incomplete for ${releasePackage.name}@${version}. ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        );
+      }
+    }
+
+    assertInternalDependencies(metadata, version);
+    assertPreviousLatestState(metadata, version);
+
+    const missingPublicationTime = metadata.find(({ publishedAt }) => publishedAt === undefined);
+
+    if (missingPublicationTime) {
+      throw new Error(
+        `Package-age visibility: ${missingPublicationTime.packageName}@${version} has no valid public publication timestamp.`,
+      );
+    }
+
+    const youngestPublication = new Date(
+      Math.max(...metadata.map(({ publishedAt }) => publishedAt!.getTime())),
+    );
+
+    if (youngestPublication.getTime() > now.getTime()) {
+      throw new Error('Package-age visibility: npm returned a future publication timestamp.');
+    }
+
+    const fullVisibilityAt = new Date(
+      youngestPublication.getTime() + DEFAULT_PNPM_MINIMUM_RELEASE_AGE_MINUTES * 60_000,
+    );
+
     for (const launcher of LAUNCHERS) {
       const launcherRoot = join(operationRoot, `${launcher.command}-launcher`);
       await mkdir(launcherRoot);
       await mkdir(join(launcherRoot, '.bun-create'));
 
-      let result: ExternalCommandResult;
+      let result;
 
       try {
         result = await runCommand({
           command: launcher.command,
           args: launcher.args(version),
           cwd: launcherRoot,
-          env: isolatedEnvironment(launcherRoot),
+          env: isolatedEnvironment(input.workspaceRoot, launcherRoot),
+          errorDetail: 'none',
+          inheritProcessEnv: false,
         });
       } catch (error) {
         throw new Error(
@@ -317,25 +328,26 @@ export async function runCandidateSmokeCommand(
           '--styling',
           'bare',
           '--package-manager',
-          'npm',
+          'pnpm',
           '--yes',
           '--no-install',
           '--no-git',
         ],
         cwd: generationRoot,
-        env: isolatedEnvironment(generationRoot),
+        env: isolatedEnvironment(input.workspaceRoot, generationRoot),
+        errorDetail: 'none',
+        inheritProcessEnv: false,
       });
-      const generatedPackageJson = parseJson(
-        await readFile(join(generationRoot, REPRESENTATIVE_PROJECT_NAME, 'package.json'), 'utf8'),
-        'representative generated project package.json',
-      );
-
-      if (
-        !isRecord(generatedPackageJson) ||
-        generatedPackageJson.name !== REPRESENTATIVE_PROJECT_NAME
-      ) {
-        throw new Error('representative project package identity mismatch.');
-      }
+      await verifyGeneratedProject({
+        targetDir: join(generationRoot, REPRESENTATIVE_PROJECT_NAME),
+        setupType: 'single-app-runtime-tenants',
+        packageManager: 'pnpm',
+        env: isolatedEnvironment(
+          input.workspaceRoot,
+          join(generationRoot, REPRESENTATIVE_PROJECT_NAME),
+        ),
+        inheritProcessEnv: false,
+      });
     } catch (error) {
       throw new Error(
         `Generated output: representative Candidate create flow failed. ${error instanceof Error ? error.message : String(error)}`,

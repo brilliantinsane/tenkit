@@ -3,11 +3,7 @@ import { tmpdir } from 'node:os';
 import fs from 'fs-extra';
 import { join } from 'pathe';
 
-import { runGeneratedAppCommand } from './generated-app-command-runner';
-import {
-  deriveAppVariantIdentities,
-  getGeneratedSetupTypeDefinition,
-} from './generated-setup-type-definitions';
+import { verifyGeneratedProject } from './generated-project-verification';
 import { type GeneratedSetupType, type GeneratedStylingChoice } from './generator';
 import { runGenerationProof } from './local-proof';
 
@@ -42,23 +38,12 @@ export async function verifyGeneratedApp({
       workspaceRoot,
     });
 
-    await runGeneratedAppCommand(targetDir, 'pnpm', ['install']);
-    await runGeneratedAppCommand(targetDir, 'pnpm', ['run', 'typecheck']);
-    await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config']);
-
-    const setupTypeDefinition = getGeneratedSetupTypeDefinition(setupType);
-    const resolvedNames = setupTypeDefinition.appVariants.map(
-      ({ defaultName }, index) => appVariantNames?.[index] ?? defaultName,
-    );
-    const remainingAppVariantSlugs = deriveAppVariantIdentities(resolvedNames)
-      .slice(1)
-      .map(({ slug }) => slug);
-
-    for (const appVariantSlug of remainingAppVariantSlugs) {
-      await runGeneratedAppCommand(targetDir, 'pnpm', ['expo:config'], {
-        APP_VARIANT_SLUG: appVariantSlug,
-      });
-    }
+    await verifyGeneratedProject({
+      targetDir,
+      setupType,
+      packageManager: 'pnpm',
+      appVariantNames,
+    });
 
     console.log(`Verified generated ${setupType} Expo app with ${stylingChoice} Styling.`);
   } finally {
