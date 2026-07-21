@@ -1,4 +1,4 @@
-name: Draft Tenkit Release
+name: Draft Release
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
         run: |
           if [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
-            echo "::error::Draft Tenkit Release must be dispatched from $DEFAULT_BRANCH."
+            echo "::error::Draft Release must be dispatched from $DEFAULT_BRANCH."
             exit 1
           fi
 
