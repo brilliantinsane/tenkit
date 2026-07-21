@@ -25,12 +25,9 @@ RUN set -eux; \
   test "$(npm --version)" = "${NPM_VERSION}"; \
   test "$(pnpm --version)" = "${PNPM_VERSION}"
 
-COPY container/pack-release-set.ts /usr/local/lib/tenkit-release-tools/container/
-COPY src/release-set.ts /usr/local/lib/tenkit-release-tools/src/
+COPY container/pack-release-set.sh /usr/local/bin/
 
-RUN chmod 0555 \
-  /usr/local/lib/tenkit-release-tools/container/pack-release-set.ts \
-  /usr/local/lib/tenkit-release-tools/src/release-set.ts \
+RUN chmod 0555 /usr/local/bin/pack-release-set.sh \
   && useradd --create-home verifier
 
 USER verifier

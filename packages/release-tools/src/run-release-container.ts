@@ -146,9 +146,7 @@ export async function runReleaseContainer(input: RunReleaseContainerInput): Prom
       '--env',
       `TENKIT_PNPM_VERSION=${toolchain.pnpm}`,
       canonicalImageId,
-      'node',
-      '--no-warnings',
-      '/usr/local/lib/tenkit-release-tools/container/pack-release-set.ts',
+      '/usr/local/bin/pack-release-set.sh',
     ],
     cwd: input.sourceRoot,
   });

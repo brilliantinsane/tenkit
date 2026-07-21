@@ -1,6 +1,4 @@
 **
 !container/
 !container/Dockerfile
-!container/pack-release-set.ts
-!src/
-!src/release-set.ts
+!container/pack-release-set.sh

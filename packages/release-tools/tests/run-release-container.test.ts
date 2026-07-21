@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -26,10 +26,12 @@ async function createPinnedWorkspace(): Promise<string> {
 }
 
 describe('Release Set container', () => {
-  test('includes the canonical packing program in the Docker build context', async () => {
+  test('includes the canonical shell entrypoint in the Docker build context', async () => {
     const dockerignore = await readFile(join(releaseToolsRoot, '.dockerignore'), 'utf8');
+    const containerFiles = await readdir(join(releaseToolsRoot, 'container'));
 
-    expect(dockerignore.split(/\r?\n/)).toContain('!container/pack-release-set.ts');
+    expect(dockerignore.split(/\r?\n/)).toContain('!container/pack-release-set.sh');
+    expect(containerFiles.filter((file) => /\.(?:mjs|ts)$/.test(file))).toEqual([]);
   });
 
   test('builds the image with the source toolchain before running its packing program', async () => {
@@ -83,12 +85,11 @@ describe('Release Set container', () => {
         'TENKIT_NPM_VERSION=11.16.0',
         'TENKIT_PNPM_VERSION=11.15.0',
         canonicalImageId,
-        'node',
-        '--no-warnings',
-        '/usr/local/lib/tenkit-release-tools/container/pack-release-set.ts',
+        '/usr/local/bin/pack-release-set.sh',
       ]),
       cwd: sourceRoot,
     });
+    expect(runCommand.mock.calls[1]?.[0].args.at(-1)).toBe('/usr/local/bin/pack-release-set.sh');
   });
 
   test('reports invalid root package metadata at the toolchain boundary', async () => {
