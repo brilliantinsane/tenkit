@@ -1,7 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-
 import { NpmVersionOccupancy, type RunNpmCommand } from './npm-version-occupancy';
+import { readPinnedNpmVersion } from './npm-version-pin';
 import { planReleaseSetFromRepository } from './plan-release-set-from-repository';
 
 type RunReleasePlanCommandInput = {
@@ -11,26 +9,6 @@ type RunReleasePlanCommandInput = {
   isPackageVersionOccupied?(packageName: string, version: string): Promise<boolean>;
   runNpmCommand?: RunNpmCommand;
 };
-
-async function readPinnedNpmVersion(workspaceRoot: string): Promise<string> {
-  let contents: string;
-
-  try {
-    contents = await readFile(join(workspaceRoot, '.npm-version'), 'utf8');
-  } catch (error) {
-    throw new Error('Unable to read the Release Set npm CLI pin from .npm-version.', {
-      cause: error,
-    });
-  }
-
-  const version = contents.trim().replace(/^v/, '');
-
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error('.npm-version must contain one exact major.minor.patch version.');
-  }
-
-  return version;
-}
 
 function parseSourceRevision(args: readonly string[]): string {
   const commandArgs = args[0] === '--' ? args.slice(1) : args;

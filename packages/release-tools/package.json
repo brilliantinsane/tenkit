@@ -4,14 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "draft:build": "tsx scripts/build-draft-release-set.ts",
     "plan": "tsx scripts/plan-release.ts",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit --pretty false"
+    "smoke": "pnpm -F @tenkit/template-generator build && tsx scripts/smoke-candidate.ts",
+    "verify": "tsx scripts/verify-release.ts",
+    "test": "pnpm -F @tenkit/template-generator build && vitest run",
+    "typecheck": "pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false"
   },
   "devDependencies": {
+    "@tenkit/template-generator": "workspace:*",
     "@types/node": "^25.9.3",
     "tsx": "^4.22.4",
     "typescript": "~6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.0"
   }
 }

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 
 import { prepareReleaseSetVersion } from '../src/prepare-release-set-version';
-import { RELEASE_SET_PACKAGES } from '../src/release-set';
+import { RELEASE_SET_PACKAGES } from '../src/release-set.ts';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const tempRoots: string[] = [];

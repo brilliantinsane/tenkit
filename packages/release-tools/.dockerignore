@@ -1,0 +1,4 @@
+**
+!container/
+!container/Dockerfile
+!container/pack-release-set.sh
