@@ -1,12 +1,13 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { runReleaseContainer } from '../src/run-release-container';
 
 const tempRoots: string[] = [];
+const releaseToolsRoot = resolve(import.meta.dirname, '..');
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
@@ -25,6 +26,12 @@ async function createPinnedWorkspace(): Promise<string> {
 }
 
 describe('Release Set container', () => {
+  test('includes the canonical packing program in the Docker build context', async () => {
+    const dockerignore = await readFile(join(releaseToolsRoot, '.dockerignore'), 'utf8');
+
+    expect(dockerignore.split(/\r?\n/)).toContain('!container/pack-release-set.ts');
+  });
+
   test('builds the image with the source toolchain before running its packing program', async () => {
     const sourceRoot = await createPinnedWorkspace();
     const canonicalImageId = `sha256:${'a'.repeat(64)}`;

@@ -696,4 +696,16 @@ describe('release:verify command', () => {
       ]),
     );
   });
+
+  test('queries npmjs regardless of inherited npm registry configuration', async () => {
+    const harness = await createVerificationHarness(['private', 'private', 'private']);
+
+    await expect(harness.execute()).resolves.toBe(0);
+
+    for (const [input] of harness.runNpmCommand.mock.calls) {
+      if (input.args[0] !== '--version') {
+        expect(input.args).toContain('https://registry.npmjs.org/');
+      }
+    }
+  });
 });

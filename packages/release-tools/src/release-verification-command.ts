@@ -10,6 +10,7 @@ import { reproduceReleaseSet as reproduceCanonicalReleaseSet } from './reproduce
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set';
 
 const execFileAsync = promisify(execFile);
+const PUBLIC_REGISTRY = 'https://registry.npmjs.org/';
 const EXPECTED_STAGE_ACTOR = 'tenkit-release';
 const EXPECTED_STAGE_ACTOR_TYPE = 'trusted automation';
 const EXPECTED_STAGE_TAG = 'candidate';
@@ -484,7 +485,15 @@ export async function runReleaseVerificationCommand(
 ): Promise<number> {
   const identity = parseArguments(input.args);
   await assertPathIsDirectory(input.workspaceRoot);
-  const runNpmCommand = input.runNpmCommand ?? runReleaseVerificationNpmCommand;
+  const executeNpmCommand = input.runNpmCommand ?? runReleaseVerificationNpmCommand;
+  const runNpmCommand: RunReleaseVerificationNpmCommand = (command) =>
+    executeNpmCommand({
+      ...command,
+      args:
+        command.args[0] === '--version'
+          ? command.args
+          : [...command.args, '--registry', PUBLIC_REGISTRY],
+    });
   const pinnedNpmVersion = await readPinnedNpmVersion(input.workspaceRoot);
   const npmVersion = await runNpmCommand({ args: ['--version'], cwd: input.workspaceRoot });
 
