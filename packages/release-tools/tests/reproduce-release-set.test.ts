@@ -99,7 +99,7 @@ async function createRepositoryFixture(): Promise<string> {
   const repositoryRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-repository-fixture-'));
   tempRoots.push(repositoryRoot);
   await writeFile(join(repositoryRoot, '.nvmrc'), 'v24.16.0\n');
-  await writeFile(join(repositoryRoot, '.npm-version'), '11.16.0\n');
+  await writeFile(join(repositoryRoot, '.npm-version'), '11.17.0\n');
   await writeFile(
     join(repositoryRoot, 'package.json'),
     `${JSON.stringify({ packageManager: 'pnpm@11.15.0' })}\n`,

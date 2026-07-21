@@ -186,7 +186,7 @@ async function createVerificationHarness(
     const args = [...input.args];
 
     if (args[0] === '--version') {
-      return { exitCode: 0, stdout: '11.16.0\n', stderr: '' };
+      return { exitCode: 0, stdout: '11.17.0\n', stderr: '' };
     }
 
     if (args[0] === 'view' && args[1]?.includes(`@${version}`)) {
@@ -317,7 +317,7 @@ describe('release:verify command', () => {
       const args = [...input.args];
 
       if (args[0] === '--version') {
-        return { exitCode: 0, stdout: '11.16.0\n', stderr: '' };
+        return { exitCode: 0, stdout: '11.17.0\n', stderr: '' };
       }
 
       if (args[0] === 'view') {
@@ -410,7 +410,7 @@ describe('release:verify command', () => {
       const args = [...input.args];
 
       if (args[0] === '--version') {
-        return { exitCode: 0, stdout: '11.16.0\n', stderr: '' };
+        return { exitCode: 0, stdout: '11.17.0\n', stderr: '' };
       }
 
       if (args[0] === 'view' && args[1] === `@tenkit/template-generator@${version}`) {
