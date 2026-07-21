@@ -170,7 +170,7 @@ printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
   };
 }
 
-describe('Draft Tenkit Release workflow', () => {
+describe('Draft Release workflow', () => {
   test('records an operator-selected source SHA before automatic stable planning', async () => {
     const workflow = await readWorkflow();
     const dispatch = requireRecord(
@@ -180,6 +180,7 @@ describe('Draft Tenkit Release workflow', () => {
     const inputs = requireRecord(dispatch.inputs, 'dispatch inputs');
     const concurrency = requireRecord(workflow.concurrency, 'workflow concurrency');
 
+    expect(workflow.name).toBe('Draft Release');
     expect(Object.keys(inputs)).toEqual(['source_sha']);
     expect(requireRecord(inputs.source_sha, 'source SHA input')).toMatchObject({
       required: true,
