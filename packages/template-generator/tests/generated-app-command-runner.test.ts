@@ -27,7 +27,9 @@ test('generated app verification can avoid inheriting process environment', asyn
       '-e',
       'if (process.env.HOME || process.env.npm_package_name || process.env.NODE_OPTIONS) process.exit(1)',
     ],
-    { SAFE_VALUE: 'preserved' },
-    false,
+    {
+      env: { SAFE_VALUE: 'preserved' },
+      inheritProcessEnv: false,
+    },
   );
 });

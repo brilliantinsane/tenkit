@@ -3,13 +3,18 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
+export type GeneratedAppCommandOptions = {
+  env?: Record<string, string>;
+  inheritProcessEnv?: boolean;
+};
+
 export async function runGeneratedAppCommand(
   cwd: string,
   command: string,
   args: string[],
-  env?: Record<string, string>,
-  inheritProcessEnv = true,
+  options: GeneratedAppCommandOptions = {},
 ): Promise<void> {
+  const { env, inheritProcessEnv = true } = options;
   const commandText = [command, ...args].join(' ');
   const envKeysText = env ? ` with env keys: ${Object.keys(env).join(', ')}` : '';
 

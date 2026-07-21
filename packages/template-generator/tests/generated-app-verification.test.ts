@@ -27,9 +27,17 @@ test('generated app verification evaluates every White Label App Variant', async
 
   const targetDir = expect.any(String);
   expect(runGeneratedAppCommand.mock.calls).toEqual([
-    [targetDir, 'pnpm', ['install'], undefined, undefined],
-    [targetDir, 'pnpm', ['run', 'typecheck'], undefined, undefined],
-    [targetDir, 'pnpm', ['run', 'expo:config'], undefined, undefined],
-    [targetDir, 'pnpm', ['run', 'expo:config'], { APP_VARIANT_SLUG: 'south-brand' }, undefined],
+    [targetDir, 'pnpm', ['install'], { env: undefined, inheritProcessEnv: undefined }],
+    [targetDir, 'pnpm', ['run', 'typecheck'], { env: undefined, inheritProcessEnv: undefined }],
+    [targetDir, 'pnpm', ['run', 'expo:config'], { env: undefined, inheritProcessEnv: undefined }],
+    [
+      targetDir,
+      'pnpm',
+      ['run', 'expo:config'],
+      {
+        env: { APP_VARIANT_SLUG: 'south-brand' },
+        inheritProcessEnv: undefined,
+      },
+    ],
   ]);
 });

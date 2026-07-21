@@ -22,21 +22,18 @@ export async function verifyGeneratedProject({
   env,
   inheritProcessEnv,
 }: VerifyGeneratedProjectOptions): Promise<void> {
-  await runGeneratedAppCommand(targetDir, packageManager, ['install'], env, inheritProcessEnv);
-  await runGeneratedAppCommand(
-    targetDir,
-    packageManager,
-    ['run', 'typecheck'],
-    env,
-    inheritProcessEnv,
-  );
-  await runGeneratedAppCommand(
-    targetDir,
-    packageManager,
-    ['run', 'expo:config'],
-    env,
-    inheritProcessEnv,
-  );
+  const runVerificationCommand = (
+    args: string[],
+    commandEnv: Record<string, string> | undefined = env,
+  ) =>
+    runGeneratedAppCommand(targetDir, packageManager, args, {
+      env: commandEnv,
+      inheritProcessEnv,
+    });
+
+  await runVerificationCommand(['install']);
+  await runVerificationCommand(['run', 'typecheck']);
+  await runVerificationCommand(['run', 'expo:config']);
 
   const setupTypeDefinition = getGeneratedSetupTypeDefinition(setupType);
   const resolvedNames = setupTypeDefinition.appVariants.map(
@@ -47,12 +44,9 @@ export async function verifyGeneratedProject({
     .map(({ slug }) => slug);
 
   for (const appVariantSlug of remainingAppVariantSlugs) {
-    await runGeneratedAppCommand(
-      targetDir,
-      packageManager,
-      ['run', 'expo:config'],
-      { ...env, APP_VARIANT_SLUG: appVariantSlug },
-      inheritProcessEnv,
-    );
+    await runVerificationCommand(['run', 'expo:config'], {
+      ...env,
+      APP_VARIANT_SLUG: appVariantSlug,
+    });
   }
 }

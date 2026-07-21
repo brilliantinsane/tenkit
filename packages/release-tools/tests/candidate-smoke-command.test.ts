@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 
 import { describe, expect, test, vi } from 'vitest';
 
@@ -163,7 +163,7 @@ describe('release:smoke command', () => {
     expect(new Set(launcherAndGenerationCalls.map(({ cwd }) => cwd))).toHaveLength(4);
 
     for (const { cwd, env } of launcherAndGenerationCalls) {
-      expect(cwd.startsWith(`${tmpdir()}/tenkit-candidate-smoke-`)).toBe(true);
+      expect(cwd.startsWith(join(tmpdir(), 'tenkit-candidate-smoke-'))).toBe(true);
       expect(cwd.startsWith(workspaceRoot)).toBe(false);
       expect(env?.INIT_CWD).toBe(cwd);
       expect(env?.npm_config_registry).toBe('https://registry.npmjs.org/');
@@ -171,12 +171,20 @@ describe('release:smoke command', () => {
       expect(env).not.toHaveProperty('NODE_OPTIONS');
       expect(env).not.toHaveProperty('NPM_TOKEN');
       expect(env).not.toHaveProperty('npm_package_name');
-      expect(env?.PATH?.split(':').some((path) => path.startsWith(workspaceRoot))).toBe(false);
+      expect(env?.PATH?.split(delimiter).some((path) => path.startsWith(workspaceRoot))).toBe(
+        false,
+      );
     }
 
     expect(harness.verifyGeneratedProject).toHaveBeenCalledOnce();
+    const verifiedProject = harness.verifyGeneratedProject.mock.calls[0]![0];
+    expect(
+      verifiedProject.targetDir.endsWith(
+        join('representative-generation', 'tenkit-candidate-smoke'),
+      ),
+    ).toBe(true);
     expect(harness.verifyGeneratedProject).toHaveBeenCalledWith({
-      targetDir: expect.stringMatching(/representative-generation\/tenkit-candidate-smoke$/),
+      targetDir: verifiedProject.targetDir,
       setupType: 'single-app-runtime-tenants',
       packageManager: 'pnpm',
       env: expect.not.objectContaining({
