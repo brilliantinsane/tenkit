@@ -74,9 +74,6 @@ test('packed Public CLI --version equals its injected package version', async ()
   const plan = await planReleaseSetFromRepository({
     workspaceRoot,
     sourceRevision: '3a10d24',
-    async isPackageVersionOccupied() {
-      return false;
-    },
   });
   expect(plan.kind).toBe('release');
   if (plan.kind === 'no-release') {

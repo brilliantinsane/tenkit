@@ -24,7 +24,6 @@ describe('Release Set planning', () => {
             ],
           },
         ],
-        occupiedVersions: [],
       }),
     ).toEqual({
       kind: 'release',
@@ -70,7 +69,6 @@ describe('Release Set planning', () => {
           paths: [path],
         },
       ],
-      occupiedVersions: [],
     });
 
     expect(plan.kind).toBe('release');
@@ -97,7 +95,6 @@ describe('Release Set planning', () => {
             paths,
           },
         ],
-        occupiedVersions: [],
       }),
     ).toEqual({
       kind: 'no-release',
@@ -135,7 +132,6 @@ describe('Release Set planning', () => {
           paths: ['pnpm-lock.yaml'],
         },
       ],
-      occupiedVersions: [],
     });
 
     expect(plan.kind).toBe('release');
@@ -163,32 +159,9 @@ describe('Release Set planning', () => {
           paths: ['packages/create-tenkit/src/index.ts'],
         },
       ],
-      occupiedVersions: [],
     });
 
     expect(plan.kind).toBe('release');
     expect(plan.kind === 'release' ? plan.version : undefined).toBe(version);
-  });
-
-  test('automatically selects the next unused version during occupied-version recovery', () => {
-    const plan = planReleaseSet({
-      sourceSha: '2222222222222222222222222222222222222222',
-      previousStableTag: {
-        name: 'v1.2.3',
-        version: '1.2.3',
-        sha: '1111111111111111111111111111111111111111',
-      },
-      commits: [
-        {
-          sha: '2222222222222222222222222222222222222222',
-          message: 'feat(cli): add capability',
-          paths: ['packages/cli/src/cli.ts'],
-        },
-      ],
-      occupiedVersions: ['1.3.0', '1.3.1'],
-    });
-
-    expect(plan.kind).toBe('release');
-    expect(plan.kind === 'release' ? plan.version : undefined).toBe('1.3.2');
   });
 });

@@ -83,7 +83,6 @@ jobs:
       - name: Plan automatic stable Release Set version
         id: plan
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
           SOURCE_SHA: ${{ steps.source.outputs.source-sha }}
         run: |
           PLAN_JSON=$(pnpm --silent release:plan -- --source "$SOURCE_SHA")
@@ -251,7 +250,7 @@ jobs:
           stage_package '@tenkit/cli' "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
           stage_package 'create-tenkit' "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id
 
-      - name: Record partial-staging recovery instructions
+      - name: Record staging recovery instructions
         if: ${{ always() }}
         env:
           SOURCE_SHA: ${{ needs.build.outputs.source-sha }}
@@ -259,7 +258,7 @@ jobs:
         run: |
           {
             echo ''
-            echo '### Partial-staging recovery'
+            echo '### Staging recovery'
             echo ''
             echo "- Source SHA: \`$SOURCE_SHA\`"
             echo "- Version: \`$VERSION\`"
@@ -272,13 +271,19 @@ jobs:
               echo '- No stage reference was recovered from npm output.'
             fi
             echo ''
-            echo 'If staging failed, do not retry this run or combine its stages with another run.'
-            echo 'Use authenticated npm to discover every stage created by this attempt, then reject each one with maintainer 2FA before starting a fresh Draft:'
+            echo 'If staging failed, classify the same-version registry state before changing or retrying anything:'
             echo '```bash'
+            echo "npm view @tenkit/template-generator@$VERSION version"
+            echo "npm view @tenkit/cli@$VERSION version"
+            echo "npm view create-tenkit@$VERSION version"
             echo 'npm stage list @tenkit/template-generator'
             echo 'npm stage list @tenkit/cli'
             echo 'npm stage list create-tenkit'
             echo '```'
+            echo ''
+            echo '1. If any same-version package is public, stop and follow the partial-public Release Set fix-forward procedure. Do not retry Draft or attempt to reject a public version.'
+            echo '2. If this run created no private stage and all three existing private stages belong to one complete, valid earlier Release Set, continue that earlier attempt.'
+            echo '3. Otherwise, reject all same-version private stages across the current and earlier attempts with maintainer 2FA before starting a fresh Draft. Do not combine stages from different attempts.'
           } >> "$GITHUB_STEP_SUMMARY"
 
   create-draft-release:

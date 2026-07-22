@@ -29,6 +29,8 @@ Draft -> Validate -> Human approval -> Candidate smoke -> Promote -> Finalize
 5. **Promote**: preview and explicitly apply the authenticated move of all three `latest` tags in dependency order.
 6. **Finalize**: open the reviewed draft GitHub Release, confirm its version and source SHA, and click **Publish release**. This creates the stable Git tag.
 
+Draft derives the version only from Git history and uses no npm credential while planning. If npm reports that the version is already staged or public, Draft stops. A private collision must be inspected and rejected with maintainer authentication before retrying the same Git-derived version. Recovery after part of a Release Set is already public is a separate fix-forward procedure and is not silently handled by Draft.
+
 There is no mandatory waiting period before Promotion. A maintainer may optionally leave the verified Candidate Release Set under `candidate` until it passes a desired package-age threshold.
 
 ## Operator Manual

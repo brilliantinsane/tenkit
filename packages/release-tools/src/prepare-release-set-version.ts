@@ -6,7 +6,6 @@ type PrepareReleaseSetVersionInput = {
   workspaceRoot: string;
   isolatedWorkspaceRoot: string;
   sourceRevision: string;
-  isPackageVersionOccupied(packageName: string, version: string): Promise<boolean>;
 };
 
 type PlannedReleaseSet = Extract<ReleaseSetPlan, { kind: 'release' }>;

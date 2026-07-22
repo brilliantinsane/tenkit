@@ -240,6 +240,7 @@ describe('Draft Release workflow', () => {
     expect(serializedBuild).not.toContain("?? ''");
     expect(serializedBuild).toContain('release-artifacts/*.tgz');
     expect(serializedBuild).not.toMatch(/id-token|contents":"write|npm stage|gh release/);
+    expect(serializedBuild).not.toMatch(/NPM_READ_TOKEN|NODE_AUTH_TOKEN|secrets\./);
 
     const actions = Array.isArray(build.steps)
       ? build.steps.flatMap((step) => {
@@ -297,7 +298,15 @@ describe('Draft Release workflow', () => {
     expect(serializedStage).toContain('npm stage list @tenkit/template-generator');
     expect(serializedStage).toContain('npm stage list @tenkit/cli');
     expect(serializedStage).toContain('npm stage list create-tenkit');
-    expect(serializedStage).toContain('do not retry this run or combine its stages');
+    expect(serializedStage).toContain('all three existing private stages belong to one complete');
+    expect(serializedStage).toContain('continue that earlier attempt');
+    expect(serializedStage).toContain(
+      'reject all same-version private stages across the current and earlier attempts',
+    );
+    expect(serializedStage).toContain(
+      'follow the partial-public Release Set fix-forward procedure',
+    );
+    expect(serializedStage).toContain('Do not retry Draft or attempt to reject a public version');
     expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
 
     const actions = Array.isArray(stage.steps)
@@ -343,7 +352,7 @@ describe('Draft Release workflow', () => {
     });
     expect(stageExecution.stdout).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
     await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Record partial-staging recovery instructions')),
+      script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
       cwd: rehearsal.operationRoot,
       fakeBin: rehearsal.fakeBin,
       env: rehearsal.commonEnv,
@@ -420,7 +429,7 @@ describe('Draft Release workflow', () => {
     }
 
     await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Record partial-staging recovery instructions')),
+      script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
       cwd: rehearsal.operationRoot,
       fakeBin: rehearsal.fakeBin,
       env: partialEnv,
