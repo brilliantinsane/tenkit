@@ -11,7 +11,7 @@ import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set'
 
 const execFileAsync = promisify(execFile);
 const PUBLIC_REGISTRY = 'https://registry.npmjs.org/';
-const EXPECTED_STAGE_ACTOR = 'tenkit-release';
+const EXPECTED_STAGE_ACTOR = 'GitHub Actions';
 const EXPECTED_STAGE_ACTOR_TYPE = 'trusted automation';
 const EXPECTED_STAGE_TAG = 'candidate';
 
