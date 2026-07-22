@@ -31,9 +31,6 @@ test('injects the version planned from source history into an isolated release w
     workspaceRoot: repositoryRoot,
     isolatedWorkspaceRoot,
     sourceRevision: '3a10d24',
-    async isPackageVersionOccupied() {
-      return false;
-    },
   });
 
   expect(plan.version).toBe('0.3.0');

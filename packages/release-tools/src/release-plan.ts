@@ -39,7 +39,6 @@ type PlanReleaseSetInput = {
   sourceSha: string;
   previousStableTag: StableTag;
   commits: readonly ReleaseCommitInput[];
-  occupiedVersions: readonly string[];
 };
 
 function releaseImpact(message: string): ReleaseImpact | undefined {
@@ -121,12 +120,7 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
       impactRank[commit.impact] > impactRank[highest] ? commit.impact : highest,
     'patch',
   );
-  const occupiedVersions = new Set(input.occupiedVersions);
-  let version = bumpVersion(input.previousStableTag.version, highestImpact);
-
-  while (occupiedVersions.has(version)) {
-    version = bumpVersion(version, 'patch');
-  }
+  const version = bumpVersion(input.previousStableTag.version, highestImpact);
 
   return {
     kind: 'release',

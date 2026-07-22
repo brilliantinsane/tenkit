@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import { readReleaseHistory } from '../src/git-release-history';
-import { planReleaseSetFromRepository } from '../src/plan-release-set-from-repository';
 import { planReleaseSet } from '../src/release-plan';
 
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
@@ -15,10 +14,7 @@ describe('Git Release Set history', () => {
       workspaceRoot,
       sourceRevision: '3a10d24',
     });
-    const plan = planReleaseSet({
-      ...history,
-      occupiedVersions: [],
-    });
+    const plan = planReleaseSet(history);
 
     expect(history.sourceSha).toBe(acceptanceSourceSha);
     expect(history.previousStableTag.name).toBe('v0.2.0');
@@ -41,26 +37,5 @@ describe('Git Release Set history', () => {
         ? plan.contributingCommits.find((commit) => commit.sha === acceptanceSourceSha)?.impact
         : undefined,
     ).toBe('minor');
-  });
-
-  test('checks every public package and advances past an occupied version', async () => {
-    const checkedPackages: string[] = [];
-    const plan = await planReleaseSetFromRepository({
-      workspaceRoot,
-      sourceRevision: '3a10d24',
-      async isPackageVersionOccupied(packageName, version) {
-        checkedPackages.push(`${packageName}@${version}`);
-        return packageName === '@tenkit/template-generator' && version === '0.3.0';
-      },
-    });
-
-    expect(plan.kind).toBe('release');
-    expect(plan.kind === 'release' ? plan.version : undefined).toBe('0.3.1');
-    expect(checkedPackages).toEqual([
-      '@tenkit/template-generator@0.3.0',
-      '@tenkit/template-generator@0.3.1',
-      '@tenkit/cli@0.3.1',
-      'create-tenkit@0.3.1',
-    ]);
   });
 });

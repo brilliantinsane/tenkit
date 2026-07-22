@@ -1,13 +1,9 @@
-import { NpmVersionOccupancy, type RunNpmCommand } from './npm-version-occupancy';
-import { readPinnedNpmVersion } from './npm-version-pin';
 import { planReleaseSetFromRepository } from './plan-release-set-from-repository';
 
 type RunReleasePlanCommandInput = {
   args: readonly string[];
   workspaceRoot: string;
   write(message: string): void;
-  isPackageVersionOccupied?(packageName: string, version: string): Promise<boolean>;
-  runNpmCommand?: RunNpmCommand;
 };
 
 function parseSourceRevision(args: readonly string[]): string {
@@ -26,21 +22,9 @@ function parseSourceRevision(args: readonly string[]): string {
 
 export async function runReleasePlanCommand(input: RunReleasePlanCommandInput): Promise<number> {
   const sourceRevision = parseSourceRevision(input.args);
-  let isPackageVersionOccupied = input.isPackageVersionOccupied;
-
-  if (!isPackageVersionOccupied) {
-    const npmVersionOccupancy = new NpmVersionOccupancy(
-      await readPinnedNpmVersion(input.workspaceRoot),
-      input.runNpmCommand,
-    );
-    isPackageVersionOccupied =
-      npmVersionOccupancy.isPackageVersionOccupied.bind(npmVersionOccupancy);
-  }
-
   const plan = await planReleaseSetFromRepository({
     workspaceRoot: input.workspaceRoot,
     sourceRevision,
-    isPackageVersionOccupied,
   });
 
   input.write(`${JSON.stringify(plan, null, 2)}\n`);
