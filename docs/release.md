@@ -22,7 +22,7 @@ GitHub Actions may privately stage packages but cannot publish them directly. A 
 Draft -> Validate -> Human approval -> Candidate smoke -> Promote -> Finalize
 ```
 
-1. **Draft**: manually start one GitHub workflow. It computes the shared version, runs source checks, packs in the canonical container, privately stages all three packages under `candidate`, and creates a draft GitHub Release.
+1. **Draft**: manually start one GitHub workflow from the default branch with no custom inputs. GitHub snapshots that commit automatically; the workflow computes the shared version, runs source checks, packs in the canonical container, privately stages all three packages under `candidate`, and creates a draft GitHub Release.
 2. **Validate**: locally run the copyable `release:verify` command with the reviewed source SHA and version. It queries npm directly and requires all three reproduced artifacts to match.
 3. **Human approval**: approve Template generator, Public CLI, then create entrypoint through npm with 2FA.
 4. **Candidate smoke**: locally run one exact-version registry smoke. It verifies tags, internal dependencies, npm, pnpm, Bun, and one representative generated project.

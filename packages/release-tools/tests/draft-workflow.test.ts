@@ -171,21 +171,16 @@ printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
 }
 
 describe('Draft Release workflow', () => {
-  test('records an operator-selected source SHA before automatic stable planning', async () => {
+  test('captures the default-branch dispatch SHA before automatic stable planning', async () => {
     const workflow = await readWorkflow();
     const dispatch = requireRecord(
       requireRecord(workflow.on, 'workflow triggers').workflow_dispatch,
       'dispatch',
     );
-    const inputs = requireRecord(dispatch.inputs, 'dispatch inputs');
     const concurrency = requireRecord(workflow.concurrency, 'workflow concurrency');
 
     expect(workflow.name).toBe('Draft Release');
-    expect(Object.keys(inputs)).toEqual(['source_sha']);
-    expect(requireRecord(inputs.source_sha, 'source SHA input')).toMatchObject({
-      required: true,
-      type: 'string',
-    });
+    expect(dispatch).toEqual({});
     expect(workflow.permissions).toEqual({ contents: 'read' });
     expect(concurrency).toEqual({
       group: 'stable-release-set',
@@ -195,9 +190,23 @@ describe('Draft Release workflow', () => {
     const build = requireRecord(requireRecord(workflow.jobs, 'workflow jobs').build, 'build job');
     const buildSteps = build.steps;
     expect(Array.isArray(buildSteps)).toBe(true);
+    const enforceDefaultBranch = step(build, 'Enforce default-branch dispatch');
+    const checkout = step(build, 'Checkout captured source');
+    const recordSource = step(build, 'Record exact source SHA');
     const serializedBuildSteps = JSON.stringify(buildSteps);
     expect(serializedBuildSteps).toContain('github.event.repository.default_branch');
-    expect(serializedBuildSteps).toContain('inputs.source_sha');
+    expect(serializedBuildSteps).not.toContain('inputs.source_sha');
+    expect(serializedBuildSteps).not.toContain('Validate requested source SHA');
+    expect(
+      requireRecord(enforceDefaultBranch.env, 'default-branch guard environment').DISPATCH_REF,
+    ).toBe('${{ github.ref }}');
+    expect(enforceDefaultBranch.run).toContain('refs/heads/$DEFAULT_BRANCH');
+    expect(requireRecord(checkout.with, 'captured source checkout inputs').ref).toBe(
+      '${{ github.sha }}',
+    );
+    expect(requireRecord(recordSource.env, 'record source environment').DISPATCH_SOURCE_SHA).toBe(
+      '${{ github.sha }}',
+    );
     expect(serializedBuildSteps).toContain('steps.source.outputs.source-sha');
     expect(serializedBuildSteps.indexOf('Record exact source SHA')).toBeLessThan(
       serializedBuildSteps.indexOf('Plan automatic stable Release Set version'),
