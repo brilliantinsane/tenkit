@@ -303,10 +303,14 @@ describe('Draft Release workflow', () => {
     expect(serializedStage).toContain(
       'reject all same-version private stages across the current and earlier attempts',
     );
+    expect(serializedStage).toContain('Do not retry Draft or attempt to reject a public version');
     expect(serializedStage).toContain(
+      'Record the complete public and private registry state for repository-owner review',
+    );
+    expect(serializedStage).toContain('Partial-public recovery is not implemented yet');
+    expect(serializedStage).not.toContain(
       'follow the partial-public Release Set fix-forward procedure',
     );
-    expect(serializedStage).toContain('Do not retry Draft or attempt to reject a public version');
     expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
 
     const actions = Array.isArray(stage.steps)
