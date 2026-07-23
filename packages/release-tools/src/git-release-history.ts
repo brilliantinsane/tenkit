@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import type { ReleaseCommitInput, StableTag } from './release-plan';
 
 type ReadReleaseHistoryInput = {
@@ -28,13 +29,16 @@ function runGit(workspaceRoot: string, args: readonly string[]): string {
 }
 
 function parseStableTag(tagName: string): readonly [number, number, number] | undefined {
-  const match = /^v(\d+)\.(\d+)\.(\d+)$/.exec(tagName);
+  const versionParts = tagName.startsWith('v')
+    ? parseExactStableVersion(tagName.slice(1))
+    : undefined;
 
-  if (!match) {
+  if (!versionParts) {
     return undefined;
   }
 
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+  const [major, minor, patch] = versionParts;
+  return [Number(major), Number(minor), Number(patch)];
 }
 
 function compareVersions(

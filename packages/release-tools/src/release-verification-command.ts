@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import { inspectReleaseArtifact, type ReleaseArtifact } from './release-artifacts';
 import { readPinnedNpmVersion } from './npm-version-pin';
 import { reproduceReleaseSet as reproduceCanonicalReleaseSet } from './reproduce-release-set';
@@ -93,7 +94,7 @@ function parseArguments(args: readonly string[]): { sourceSha: string; version: 
     throw new Error('Release Verification requires one full lowercase source SHA.');
   }
 
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!parseExactStableVersion(version)) {
     throw new Error('Release Verification requires one exact stable major.minor.patch version.');
   }
 

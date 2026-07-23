@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import {
   PUBLIC_NPM_REGISTRY,
   PublicCandidatePackageError,
@@ -49,7 +50,7 @@ function parseArguments(args: readonly string[]): PromotionArguments {
     commandArgs[2] === '--apply';
   const version = commandArgs[1];
 
-  if ((!validPreview && !validApply) || !version || !/^\d+\.\d+\.\d+$/.test(version)) {
+  if ((!validPreview && !validApply) || !version || !parseExactStableVersion(version)) {
     throw new Error(
       'Usage: pnpm release:promote -- --version <exact-major.minor.patch-version> [--apply]',
     );
@@ -117,7 +118,7 @@ function assertForwardLatestState(
 
   if (
     previousLatestVersion !== undefined &&
-    (!/^\d+\.\d+\.\d+$/.test(previousLatestVersion) ||
+    (!parseExactStableVersion(previousLatestVersion) ||
       compareVersions(previousLatestVersion, version) >= 0)
   ) {
     throw new Error(

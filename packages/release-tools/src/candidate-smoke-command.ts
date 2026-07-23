@@ -7,6 +7,7 @@ import {
   type VerifyGeneratedProjectOptions,
 } from '@tenkit/template-generator/local-proof';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import {
   PUBLIC_NPM_REGISTRY,
   PublicCandidatePackageError,
@@ -60,7 +61,7 @@ function parseArguments(args: readonly string[]): string {
     commandArgs.length !== 2 ||
     commandArgs[0] !== '--version' ||
     !commandArgs[1] ||
-    !/^\d+\.\d+\.\d+$/.test(commandArgs[1])
+    !parseExactStableVersion(commandArgs[1])
   ) {
     throw new Error('Usage: pnpm release:smoke -- --version <exact-major.minor.patch-version>');
   }

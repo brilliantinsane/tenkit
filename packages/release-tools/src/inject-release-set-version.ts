@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import { RELEASE_SET_PACKAGES } from './release-set.ts';
 import type { ReleaseSetPlan } from './release-plan';
 
@@ -10,7 +11,7 @@ type InjectReleaseSetVersionInput = {
 };
 
 function validateVersion(version: string): void {
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!parseExactStableVersion(version)) {
     throw new Error(
       `Release Set version ${JSON.stringify(version)} must use major.minor.patch format.`,
     );
