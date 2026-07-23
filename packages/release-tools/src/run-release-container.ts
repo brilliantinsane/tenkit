@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 
 const RELEASE_CONTAINER_IMAGE = 'tenkit-release-reproduction:local';
@@ -16,7 +17,7 @@ type RunReleaseContainerInput = {
 function exactVersion(contents: string, source: string): string {
   const version = contents.trim().replace(/^v/, '');
 
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!parseExactStableVersion(version)) {
     throw new Error(`${source} must specify one exact major.minor.patch version.`);
   }
 
@@ -54,10 +55,12 @@ async function readPinnedToolchain(sourceRoot: string) {
   }
 
   const packageManager = (rootPackageMetadata as Record<string, unknown>).packageManager;
-  const pnpmMatch =
-    typeof packageManager === 'string' ? /^pnpm@(\d+\.\d+\.\d+)$/.exec(packageManager) : null;
+  const pnpmVersion =
+    typeof packageManager === 'string' && packageManager.startsWith('pnpm@')
+      ? packageManager.slice('pnpm@'.length)
+      : undefined;
 
-  if (!pnpmMatch?.[1]) {
+  if (!pnpmVersion || !parseExactStableVersion(pnpmVersion)) {
     throw new Error(
       'package.json#packageManager must pin one exact pnpm major.minor.patch version.',
     );
@@ -66,7 +69,7 @@ async function readPinnedToolchain(sourceRoot: string) {
   return {
     node: exactVersion(nodePin, '.nvmrc'),
     npm: exactVersion(npmPin, '.npm-version'),
-    pnpm: pnpmMatch[1],
+    pnpm: pnpmVersion,
   };
 }
 

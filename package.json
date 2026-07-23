@@ -30,6 +30,7 @@
     "verify:matrix": "pnpm -F @tenkit/cli verify:matrix",
     "pack:dry-run": "pnpm -F @tenkit/template-generator pack:dry-run && pnpm -F @tenkit/cli pack:dry-run && pnpm -F create-tenkit pack:dry-run",
     "release:plan": "pnpm -F @tenkit/release-tools plan",
+    "release:promote": "pnpm -F @tenkit/release-tools promote",
     "release:smoke": "pnpm -F @tenkit/release-tools smoke",
     "release:verify": "pnpm -F @tenkit/release-tools verify",
     "release:notes": "node scripts/generate-release-notes.mjs",

@@ -38,6 +38,10 @@ test('workspace root is a private command router rather than an Expo app package
     workspacePackageJson.scripts?.['release:plan'],
     'pnpm -F @tenkit/release-tools plan',
   );
+  assert.equal(
+    workspacePackageJson.scripts?.['release:promote'],
+    'pnpm -F @tenkit/release-tools promote',
+  );
   assert.equal(workspacePackageJson.scripts?.proof, 'pnpm -F @tenkit/template-generator proof');
   assert.equal(workspacePackageJson.scripts?.verify, 'pnpm -F @tenkit/template-generator verify');
   assert.equal(

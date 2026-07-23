@@ -1,6 +1,7 @@
 import { lstat, mkdir, mkdtemp, readdir, rename, rm, unlink } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
+import { parseExactStableVersion } from './exact-stable-version';
 import { inspectReleaseArtifact, type ReleaseArtifact } from './release-artifacts';
 import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 import { RELEASE_SET_PACKAGES } from './release-set.ts';
@@ -56,7 +57,7 @@ function validateIdentity(sourceSha: string, version: string): void {
     throw new Error('Release Set reproduction requires one full lowercase source SHA.');
   }
 
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!parseExactStableVersion(version)) {
     throw new Error('Release Set reproduction requires one exact major.minor.patch version.');
   }
 }

@@ -7,10 +7,15 @@ import {
   type VerifyGeneratedProjectOptions,
 } from '@tenkit/template-generator/local-proof';
 
-import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set';
+import { parseExactStableVersion } from './exact-stable-version';
+import {
+  PUBLIC_NPM_REGISTRY,
+  PublicCandidatePackageError,
+  readPublicCandidateReleaseSet,
+  type PublicCandidatePackageMetadata,
+} from './public-candidate-release-set';
 import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 
-const PUBLIC_REGISTRY = 'https://registry.npmjs.org/';
 const DEFAULT_PNPM_MINIMUM_RELEASE_AGE_MINUTES = 24 * 60;
 const REPRESENTATIVE_PROJECT_NAME = 'tenkit-candidate-smoke';
 
@@ -23,13 +28,6 @@ type RunCandidateSmokeCommandInput = {
   runCommand?: RunCandidateSmokeExternalCommand;
   now?: () => Date;
   verifyGeneratedProject?: (options: VerifyGeneratedProjectOptions) => Promise<void>;
-};
-
-type CandidatePackageMetadata = {
-  packageName: ReleaseSetPackageName;
-  latestVersion?: string;
-  publishedAt?: Date;
-  dependencies: Record<string, string>;
 };
 
 type Launcher = {
@@ -56,10 +54,6 @@ const LAUNCHERS: readonly Launcher[] = [
   },
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
 function parseArguments(args: readonly string[]): string {
   const commandArgs = args[0] === '--' ? args.slice(1) : args;
 
@@ -67,7 +61,7 @@ function parseArguments(args: readonly string[]): string {
     commandArgs.length !== 2 ||
     commandArgs[0] !== '--version' ||
     !commandArgs[1] ||
-    !/^\d+\.\d+\.\d+$/.test(commandArgs[1])
+    !parseExactStableVersion(commandArgs[1])
   ) {
     throw new Error('Usage: pnpm release:smoke -- --version <exact-major.minor.patch-version>');
   }
@@ -75,75 +69,10 @@ function parseArguments(args: readonly string[]): string {
   return commandArgs[1];
 }
 
-function parseJson(output: string, description: string): unknown {
-  try {
-    return JSON.parse(output) as unknown;
-  } catch (error) {
-    throw new Error(`npm returned invalid JSON for ${description}.`, { cause: error });
-  }
-}
-
-function parseCandidateMetadata(
-  value: unknown,
-  packageName: ReleaseSetPackageName,
+function assertPreviousLatestState(
+  metadata: readonly PublicCandidatePackageMetadata[],
   version: string,
-): CandidatePackageMetadata {
-  if (!isRecord(value) || value.name !== packageName || value.version !== version) {
-    throw new Error(`public package identity mismatch for ${packageName}@${version}.`);
-  }
-
-  const distTags = value['dist-tags'];
-
-  if (!isRecord(distTags) || distTags.candidate !== version) {
-    throw new Error(
-      `${packageName} candidate tag expected ${version}, found ${String(isRecord(distTags) ? distTags.candidate : undefined)}.`,
-    );
-  }
-
-  const time = value.time;
-  const publishedAtValue = isRecord(time) ? time[version] : undefined;
-  const publishedAt =
-    typeof publishedAtValue === 'string' ? new Date(publishedAtValue) : new Date(Number.NaN);
-
-  const dependencies = isRecord(value.dependencies)
-    ? Object.fromEntries(
-        Object.entries(value.dependencies).filter(
-          (entry): entry is [string, string] => typeof entry[1] === 'string',
-        ),
-      )
-    : {};
-
-  return {
-    packageName,
-    ...(typeof distTags.latest === 'string' ? { latestVersion: distTags.latest } : {}),
-    ...(!Number.isNaN(publishedAt.getTime()) ? { publishedAt } : {}),
-    dependencies,
-  };
-}
-
-function assertInternalDependencies(
-  metadata: readonly CandidatePackageMetadata[],
-  version: string,
-): void {
-  for (const releasePackage of RELEASE_SET_PACKAGES) {
-    if (!('internalDependency' in releasePackage)) {
-      continue;
-    }
-
-    const packageMetadata = metadata.find(
-      ({ packageName }) => packageName === releasePackage.name,
-    )!;
-    const actualVersion = packageMetadata.dependencies[releasePackage.internalDependency];
-
-    if (actualVersion !== version) {
-      throw new Error(
-        `Dependency drift: ${releasePackage.name}@${version} must depend on ${releasePackage.internalDependency}@${version}, found ${String(actualVersion)}.`,
-      );
-    }
-  }
-}
-
-function assertPreviousLatestState(metadata: readonly CandidatePackageMetadata[], version: string) {
+) {
   const latestVersions = new Set(metadata.map(({ latestVersion }) => latestVersion));
 
   if (metadata.some(({ latestVersion }) => latestVersion === version)) {
@@ -194,7 +123,7 @@ function isolatedEnvironment(workspaceRoot: string, cwd: string): Record<string,
     ...environment,
     PATH: executablePath,
     INIT_CWD: cwd,
-    npm_config_registry: PUBLIC_REGISTRY,
+    npm_config_registry: PUBLIC_NPM_REGISTRY,
     npm_config_cache: join(cwd, '.npm-cache'),
     npm_config_yes: 'true',
     XDG_CACHE_HOME: join(cwd, '.cache'),
@@ -215,50 +144,34 @@ export async function runCandidateSmokeCommand(
   const verifyGeneratedProject =
     input.verifyGeneratedProject ?? verifyGeneratedProjectFromLocalProof;
   const now = (input.now ?? (() => new Date()))();
-  const metadata: CandidatePackageMetadata[] = [];
   const operationRoot = await mkdtemp(join(tmpdir(), 'tenkit-candidate-smoke-'));
 
   try {
     const metadataRoot = join(operationRoot, 'registry-metadata');
     await mkdir(metadataRoot);
+    let metadata: PublicCandidatePackageMetadata[];
 
-    for (const releasePackage of RELEASE_SET_PACKAGES) {
-      let commandResult;
-
-      try {
-        commandResult = await runCommand({
-          command: 'npm',
-          args: [
-            'view',
-            `${releasePackage.name}@${version}`,
-            'name',
-            'version',
-            'dependencies',
-            'dist-tags',
-            'time',
-            '--json',
-          ],
-          cwd: metadataRoot,
-          env: isolatedEnvironment(input.workspaceRoot, metadataRoot),
-          errorDetail: 'none',
-          inheritProcessEnv: false,
-        });
-        metadata.push(
-          parseCandidateMetadata(
-            parseJson(commandResult.stdout, `${releasePackage.name} Candidate metadata`),
-            releasePackage.name,
-            version,
-          ),
-        );
-      } catch (error) {
-        throw new Error(
-          `Candidate tags: incomplete for ${releasePackage.name}@${version}. ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        );
-      }
+    try {
+      metadata = await readPublicCandidateReleaseSet({
+        version,
+        cwd: metadataRoot,
+        env: isolatedEnvironment(input.workspaceRoot, metadataRoot),
+        runNpmCommand: runCommand,
+        errorDetail: 'none',
+        inheritProcessEnv: false,
+      });
+    } catch (error) {
+      const packageName =
+        error instanceof PublicCandidatePackageError ? error.packageName : 'unknown package';
+      const failure =
+        error instanceof PublicCandidatePackageError && error.kind === 'dependency'
+          ? 'Dependency drift'
+          : `Candidate tags: incomplete for ${packageName}@${version}`;
+      throw new Error(`${failure}. ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      });
     }
 
-    assertInternalDependencies(metadata, version);
     assertPreviousLatestState(metadata, version);
 
     const missingPublicationTime = metadata.find(({ publishedAt }) => publishedAt === undefined);

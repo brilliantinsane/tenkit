@@ -221,7 +221,7 @@ describe('release:smoke command', () => {
     });
 
     await expect(harness.execute()).rejects.toThrow(
-      'Dependency drift: @tenkit/cli@0.3.0 must depend on @tenkit/template-generator@0.3.0, found 0.2.0.',
+      /Dependency drift.*@tenkit\/cli dependency @tenkit\/template-generator expected 0\.3\.0, found 0\.2\.0/,
     );
   });
 

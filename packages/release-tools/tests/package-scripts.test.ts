@@ -27,6 +27,7 @@ describe('release-tools package commands', () => {
   test('build workspace package exports before direct tests and typechecking', async () => {
     const scripts = await readPackageScripts();
 
+    expect(scripts.promote).toBe('tsx scripts/promote-release.ts');
     expect(scripts.test).toBe('pnpm -F @tenkit/template-generator build && vitest run');
     expect(scripts.typecheck).toBe(
       'pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false',

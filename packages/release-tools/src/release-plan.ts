@@ -1,3 +1,4 @@
+import { parseExactStableVersion } from './exact-stable-version';
 import { RELEASE_SET_PACKAGES } from './release-set.ts';
 
 export type ReleaseImpact = 'patch' | 'minor' | 'major';
@@ -66,13 +67,13 @@ function isReleaseRelevant(paths: readonly string[]): boolean {
 }
 
 function bumpVersion(version: string, impact: ReleaseImpact): string {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  const versionParts = parseExactStableVersion(version);
 
-  if (!match) {
+  if (!versionParts) {
     throw new Error(`Stable version ${JSON.stringify(version)} must use major.minor.patch format.`);
   }
 
-  const [, majorText, minorText, patchText] = match;
+  const [majorText, minorText, patchText] = versionParts;
   const major = Number(majorText);
   const minor = Number(minorText);
   const patch = Number(patchText);

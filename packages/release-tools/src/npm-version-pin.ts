@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseExactStableVersion } from './exact-stable-version';
+
 export async function readPinnedNpmVersion(workspaceRoot: string): Promise<string> {
   let contents: string;
 
@@ -14,7 +16,7 @@ export async function readPinnedNpmVersion(workspaceRoot: string): Promise<strin
 
   const version = contents.trim().replace(/^v/, '');
 
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  if (!parseExactStableVersion(version)) {
     throw new Error('.npm-version must contain one exact major.minor.patch version.');
   }
 
