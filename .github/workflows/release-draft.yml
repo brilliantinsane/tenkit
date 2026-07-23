@@ -281,7 +281,9 @@ jobs:
             echo 'npm stage list create-tenkit'
             echo '```'
             echo ''
-            echo '1. If any same-version package is public, stop. Do not retry Draft or attempt to reject a public version. Record the complete public and private registry state for repository-owner review. Partial-public recovery is not implemented yet.'
+            echo 'Find stage IDs in npm Staged Packages, authenticated npm stage list output, or a Release Verification report. Never copy them from an agent conversation. Prefer npm Staged Packages for manual rejection.'
+            echo ''
+            echo '1. If any same-version package is public, stop. Do not retry Draft or attempt to reject a public version. Record the complete public and private registry state for repository-owner review, then follow the partial-public fix-forward procedure in the operator runbook. The reviewed fix commit must include `Release-Fix-Forward: <public-version>` so tokenless Draft planning selects the next patch version.'
             echo '2. If this run created no private stage and all three existing private stages belong to one complete, valid earlier Release Set, continue that earlier attempt.'
             echo '3. Otherwise, reject all same-version private stages across the current and earlier attempts with maintainer 2FA before starting a fresh Draft. Do not combine stages from different attempts.'
           } >> "$GITHUB_STEP_SUMMARY"

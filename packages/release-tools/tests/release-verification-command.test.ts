@@ -375,8 +375,11 @@ describe('release:verify command', () => {
 
     expect(output).toContain('Release Verification: PASS');
     expect(output).toContain('State: fully private');
+    expect(output).toContain('Mode: approval');
     expect(output).toContain('Next approval: @tenkit/template-generator');
-    expect(output).toContain(`npm stage approve ${stageId(0)}`);
+    expect(output).toContain('Next action: Open npm Staged Packages');
+    expect(output).toContain('with 2FA');
+    expect(output).not.toContain('npm stage approve');
     expect(output).toContain(`integrity: ${local.packages[0]!.integrity}`);
     expect(output).toContain(`shasum: ${local.packages[0]!.shasum}`);
     expect(runNpmCommand.mock.calls.map(([input]) => input.args.slice(0, 2))).not.toContainEqual([
@@ -500,8 +503,10 @@ describe('release:verify command', () => {
     expect(output).toContain('Release Verification: PASS');
     expect(output).toContain('State: partial Candidate');
     expect(output).toContain('@tenkit/template-generator: public Candidate');
+    expect(output).toContain('Mode: resume approval');
     expect(output).toContain('Next approval: @tenkit/cli');
-    expect(output).toContain(`npm stage approve ${stageId(1)}`);
+    expect(output).toContain('Next action: Open npm Staged Packages');
+    expect(output).not.toContain('npm stage approve');
   });
 
   test('stops when public Candidate state violates dependency approval order', async () => {
@@ -611,9 +616,23 @@ describe('release:verify command', () => {
 
     await expect(harness.execute()).resolves.toBe(0);
     expect(harness.getOutput()).toContain('State: complete Candidate');
+    expect(harness.getOutput()).toContain('Mode: Candidate Smoke');
     expect(harness.getOutput()).toContain('Next action: pnpm release:smoke -- --version 0.3.0');
     expect(harness.getOutput()).not.toContain('npm stage approve');
   });
+
+  test.each(['--stage-id', '--integrity', '--shasum', '--draft-source-sha'])(
+    'rejects untrusted Draft argument %s',
+    async (argument) => {
+      await expect(
+        runReleaseVerificationCommand({
+          args: ['--source-sha', sourceSha, '--version', version, argument, 'untrusted'],
+          workspaceRoot,
+          write() {},
+        }),
+      ).rejects.toThrow(/Usage: pnpm release:verify/);
+    },
+  );
 
   test.each([
     [

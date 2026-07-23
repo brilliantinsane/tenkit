@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 
-import { parseExactStableVersion } from './exact-stable-version';
+import { compareExactStableVersions, parseExactStableVersion } from './exact-stable-version';
 import type { ReleaseCommitInput, StableTag } from './release-plan';
 
 type ReadReleaseHistoryInput = {
@@ -28,32 +28,9 @@ function runGit(workspaceRoot: string, args: readonly string[]): string {
   }
 }
 
-function parseStableTag(tagName: string): readonly [number, number, number] | undefined {
-  const versionParts = tagName.startsWith('v')
-    ? parseExactStableVersion(tagName.slice(1))
-    : undefined;
-
-  if (!versionParts) {
-    return undefined;
-  }
-
-  const [major, minor, patch] = versionParts;
-  return [Number(major), Number(minor), Number(patch)];
-}
-
-function compareVersions(
-  left: readonly [number, number, number],
-  right: readonly [number, number, number],
-): number {
-  for (let index = 0; index < left.length; index += 1) {
-    const difference = left[index] - right[index];
-
-    if (difference !== 0) {
-      return difference;
-    }
-  }
-
-  return 0;
+function parseStableTag(tagName: string): string | undefined {
+  const version = tagName.startsWith('v') ? tagName.slice(1) : undefined;
+  return version && parseExactStableVersion(version) ? version : undefined;
 }
 
 function latestStableTag(workspaceRoot: string, sourceSha: string): StableTag {
@@ -61,10 +38,10 @@ function latestStableTag(workspaceRoot: string, sourceSha: string): StableTag {
     .split('\n')
     .filter(Boolean)
     .flatMap((name) => {
-      const versionParts = parseStableTag(name);
-      return versionParts ? [{ name, versionParts }] : [];
+      const version = parseStableTag(name);
+      return version ? [{ name, version }] : [];
     })
-    .sort((left, right) => compareVersions(right.versionParts, left.versionParts));
+    .sort((left, right) => compareExactStableVersions(right.version, left.version));
   const latest = stableTags[0];
 
   if (!latest) {
