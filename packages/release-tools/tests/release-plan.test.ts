@@ -170,6 +170,38 @@ describe('Release Set planning', () => {
     );
   });
 
+  test('accepts fix-forward alongside another terminal commit trailer', () => {
+    const plan = planReleaseSet({
+      sourceSha: '3333333333333333333333333333333333333333',
+      previousStableTag: {
+        name: 'v0.2.0',
+        version: '0.2.0',
+        sha: '1111111111111111111111111111111111111111',
+      },
+      commits: [
+        {
+          sha: '2222222222222222222222222222222222222222',
+          message: 'feat(cli): add generated choices',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+        {
+          sha: '3333333333333333333333333333333333333333',
+          message:
+            'fix(cli): repair generated choices\n\nRelease-Fix-Forward: 0.3.0\nSigned-off-by: Maintainer <maintainer@example.com>',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+      ],
+    });
+
+    expect(plan).toEqual(
+      expect.objectContaining({
+        kind: 'release',
+        version: '0.3.1',
+        fixForwardFromVersion: '0.3.0',
+      }),
+    );
+  });
+
   test('continues fix-forward versioning after another partially public attempt', () => {
     const plan = planReleaseSet({
       sourceSha: '4444444444444444444444444444444444444444',
@@ -227,6 +259,88 @@ describe('Release Set planning', () => {
         ],
       }),
     ).toThrow(expectedMessage);
+  });
+
+  test('rejects fix-forward text outside the final commit trailer block', () => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '2222222222222222222222222222222222222222',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          {
+            sha: '2222222222222222222222222222222222222222',
+            message:
+              'fix(cli): repair release\n\nRelease-Fix-Forward: 0.3.0\n\nThis paragraph continues the commit body.',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/final commit trailer block/);
+  });
+
+  test('rejects fix-forward without a blank separator before the trailer block', () => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '2222222222222222222222222222222222222222',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          {
+            sha: '2222222222222222222222222222222222222222',
+            message: 'fix: repair release\nRelease-Fix-Forward: 0.3.0',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/final commit trailer block/);
+  });
+
+  test('rejects a multiline fix-forward trailer value', () => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '2222222222222222222222222222222222222222',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          {
+            sha: '2222222222222222222222222222222222222222',
+            message:
+              'fix(cli): repair release\n\nRelease-Fix-Forward: 0.3.0\n invalid continuation',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/exact stable version/);
+  });
+
+  test('rejects an orphan continuation before the fix-forward trailer', () => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '2222222222222222222222222222222222222222',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          {
+            sha: '2222222222222222222222222222222222222222',
+            message: 'fix(cli): repair release\n\n orphan continuation\nRelease-Fix-Forward: 0.3.0',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/final commit trailer block/);
   });
 
   test.each([

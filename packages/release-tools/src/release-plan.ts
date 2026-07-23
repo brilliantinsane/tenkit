@@ -90,21 +90,72 @@ function bumpVersion(version: string, impact: ReleaseImpact): string {
   return `${major}.${minor}.${patch + 1}`;
 }
 
-function readFixForwardVersion(message: string): string | undefined {
-  const trailerLines = message
-    .split('\n')
-    .slice(1)
-    .filter((line) => line.startsWith('Release-Fix-Forward:'));
+type CommitTrailer = {
+  readonly token: string;
+  readonly value: string;
+};
 
-  if (trailerLines.length === 0) {
+function readTerminalTrailers(message: string): readonly CommitTrailer[] {
+  const lines = message.trimEnd().split('\n');
+  let terminalParagraphStart = lines.length - 1;
+
+  while (terminalParagraphStart > 0 && lines[terminalParagraphStart - 1]!.trim() !== '') {
+    terminalParagraphStart -= 1;
+  }
+
+  if (terminalParagraphStart === 0) {
+    return [];
+  }
+
+  const terminalParagraph = lines.slice(terminalParagraphStart);
+  const trailers: CommitTrailer[] = [];
+
+  for (const line of terminalParagraph) {
+    const trailerMatch = /^([A-Za-z0-9][A-Za-z0-9 _-]*):[ \t]*(.*)$/.exec(line);
+
+    if (trailerMatch) {
+      trailers.push({
+        token: trailerMatch[1]!,
+        value: trailerMatch[2]!,
+      });
+      continue;
+    }
+
+    if (!/^[ \t]+\S/.test(line) || trailers.length === 0) {
+      return [];
+    }
+
+    const previousTrailer = trailers[trailers.length - 1]!;
+    trailers[trailers.length - 1] = {
+      ...previousTrailer,
+      value: `${previousTrailer.value}\n${line.trim()}`,
+    };
+  }
+
+  return trailers;
+}
+
+function readFixForwardVersion(message: string): string | undefined {
+  const matchingLines = message
+    .split('\n')
+    .filter((line) => line.startsWith('Release-Fix-Forward:'));
+  const fixForwardTrailers = readTerminalTrailers(message).filter(
+    (trailer) => trailer.token === 'Release-Fix-Forward',
+  );
+
+  if (matchingLines.length !== fixForwardTrailers.length) {
+    throw new Error('Release-Fix-Forward must appear in the final commit trailer block.');
+  }
+
+  if (fixForwardTrailers.length === 0) {
     return undefined;
   }
 
-  if (trailerLines.length !== 1) {
+  if (fixForwardTrailers.length !== 1) {
     throw new Error('A release commit may contain only one Release-Fix-Forward trailer.');
   }
 
-  const version = trailerLines[0]!.slice('Release-Fix-Forward:'.length).trim();
+  const version = fixForwardTrailers[0]!.value.trim();
 
   if (!parseExactStableVersion(version)) {
     throw new Error('Release-Fix-Forward must name one exact stable version.');
