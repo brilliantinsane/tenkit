@@ -139,6 +139,160 @@ describe('Release Set planning', () => {
     expect(plan.kind === 'release' ? plan.contributingCommits : []).toHaveLength(2);
   });
 
+  test('fixes forward from a partially public version through reviewed Git history', () => {
+    const plan = planReleaseSet({
+      sourceSha: '3333333333333333333333333333333333333333',
+      previousStableTag: {
+        name: 'v0.2.0',
+        version: '0.2.0',
+        sha: '1111111111111111111111111111111111111111',
+      },
+      commits: [
+        {
+          sha: '2222222222222222222222222222222222222222',
+          message: 'feat(cli): add generated choices',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+        {
+          sha: '3333333333333333333333333333333333333333',
+          message: 'fix(cli): repair generated choices\n\nRelease-Fix-Forward: 0.3.0',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+      ],
+    });
+
+    expect(plan).toEqual(
+      expect.objectContaining({
+        kind: 'release',
+        version: '0.3.1',
+        fixForwardFromVersion: '0.3.0',
+      }),
+    );
+  });
+
+  test('continues fix-forward versioning after another partially public attempt', () => {
+    const plan = planReleaseSet({
+      sourceSha: '4444444444444444444444444444444444444444',
+      previousStableTag: {
+        name: 'v0.2.0',
+        version: '0.2.0',
+        sha: '1111111111111111111111111111111111111111',
+      },
+      commits: [
+        {
+          sha: '2222222222222222222222222222222222222222',
+          message: 'feat(cli): add generated choices',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+        {
+          sha: '3333333333333333333333333333333333333333',
+          message: 'fix(cli): repair generated choices\n\nRelease-Fix-Forward: 0.3.0',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+        {
+          sha: '4444444444444444444444444444444444444444',
+          message: 'fix(cli): repair the recovery\n\nRelease-Fix-Forward: 0.3.1',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+      ],
+    });
+
+    expect(plan).toEqual(
+      expect.objectContaining({
+        kind: 'release',
+        version: '0.3.2',
+        fixForwardFromVersion: '0.3.1',
+      }),
+    );
+  });
+
+  test.each([
+    ['Release-Fix-Forward: next', /exact stable version/],
+    ['Release-Fix-Forward: 0.1.9', /newer than 0\.2\.0/],
+  ])('rejects invalid fix-forward trailer %s', (trailer, expectedMessage) => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '2222222222222222222222222222222222222222',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          {
+            sha: '2222222222222222222222222222222222222222',
+            message: `fix(cli): repair release\n\n${trailer}`,
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(expectedMessage);
+  });
+
+  test.each([
+    {
+      sha: '2222222222222222222222222222222222222222',
+      message: 'chore(cli): document recovery\n\nRelease-Fix-Forward: 0.3.0',
+      paths: ['packages/cli/README.md'],
+    },
+    {
+      sha: '2222222222222222222222222222222222222222',
+      message: 'fix(web): document recovery\n\nRelease-Fix-Forward: 0.3.0',
+      paths: ['apps/web/app/page.tsx'],
+    },
+  ])('rejects a fix-forward trailer on an ineligible commit', (commit) => {
+    expect(() =>
+      planReleaseSet({
+        sourceSha: '3333333333333333333333333333333333333333',
+        previousStableTag: {
+          name: 'v0.2.0',
+          version: '0.2.0',
+          sha: '1111111111111111111111111111111111111111',
+        },
+        commits: [
+          commit,
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): repair release',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/valid only on a release-relevant Conventional Commit/);
+  });
+
+  test.each([
+    ['0.1.9', '0.3.0'],
+    ['0.3.1', '0.3.0'],
+    ['0.3.0', '0.3.0'],
+  ])(
+    'rejects a stale or non-monotonic fix-forward sequence from %s to %s',
+    (firstVersion, secondVersion) => {
+      expect(() =>
+        planReleaseSet({
+          sourceSha: '3333333333333333333333333333333333333333',
+          previousStableTag: {
+            name: 'v0.2.0',
+            version: '0.2.0',
+            sha: '1111111111111111111111111111111111111111',
+          },
+          commits: [
+            {
+              sha: '2222222222222222222222222222222222222222',
+              message: `fix(cli): first repair\n\nRelease-Fix-Forward: ${firstVersion}`,
+              paths: ['packages/cli/src/cli.ts'],
+            },
+            {
+              sha: '3333333333333333333333333333333333333333',
+              message: `fix(cli): second repair\n\nRelease-Fix-Forward: ${secondVersion}`,
+              paths: ['packages/cli/src/cli.ts'],
+            },
+          ],
+        }),
+      ).toThrow(/must be newer than/);
+    },
+  );
+
   test.each([
     ['feat(api)!: remove legacy input', '2.0.0'],
     ['fix(api): change input\n\nBREAKING CHANGE: legacy input was removed', '2.0.0'],

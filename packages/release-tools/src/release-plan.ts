@@ -1,4 +1,4 @@
-import { parseExactStableVersion } from './exact-stable-version';
+import { compareExactStableVersions, parseExactStableVersion } from './exact-stable-version';
 import { RELEASE_SET_PACKAGES } from './release-set.ts';
 
 export type ReleaseImpact = 'patch' | 'minor' | 'major';
@@ -33,6 +33,7 @@ export type ReleaseSetPlan =
       sourceSha: string;
       previousStableTag: StableTag;
       version: string;
+      fixForwardFromVersion?: string;
       contributingCommits: readonly ContributingReleaseCommit[];
     };
 
@@ -89,11 +90,42 @@ function bumpVersion(version: string, impact: ReleaseImpact): string {
   return `${major}.${minor}.${patch + 1}`;
 }
 
-export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
-  const contributingCommits = input.commits.flatMap((commit) => {
-    const impact = releaseImpact(commit.message);
+function readFixForwardVersion(message: string): string | undefined {
+  const trailerLines = message
+    .split('\n')
+    .slice(1)
+    .filter((line) => line.startsWith('Release-Fix-Forward:'));
 
-    if (!impact || !isReleaseRelevant(commit.paths)) {
+  if (trailerLines.length === 0) {
+    return undefined;
+  }
+
+  if (trailerLines.length !== 1) {
+    throw new Error('A release commit may contain only one Release-Fix-Forward trailer.');
+  }
+
+  const version = trailerLines[0]!.slice('Release-Fix-Forward:'.length).trim();
+
+  if (!parseExactStableVersion(version)) {
+    throw new Error('Release-Fix-Forward must name one exact stable version.');
+  }
+
+  return version;
+}
+
+export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
+  const plannedCommits = input.commits.flatMap((commit) => {
+    const impact = releaseImpact(commit.message);
+    const releaseRelevant = isReleaseRelevant(commit.paths);
+    const fixForwardFromVersion = readFixForwardVersion(commit.message);
+
+    if (fixForwardFromVersion && (!impact || !releaseRelevant)) {
+      throw new Error(
+        'Release-Fix-Forward is valid only on a release-relevant Conventional Commit.',
+      );
+    }
+
+    if (!impact || !releaseRelevant) {
       return [];
     }
 
@@ -103,9 +135,13 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
         title: commit.message.split('\n', 1)[0] ?? '',
         paths: commit.paths,
         impact,
+        fixForwardFromVersion,
       },
     ];
   });
+  const contributingCommits = plannedCommits.map(
+    ({ fixForwardFromVersion: _fixForwardFromVersion, ...commit }) => commit,
+  );
 
   if (contributingCommits.length === 0) {
     return {
@@ -121,13 +157,41 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
       impactRank[commit.impact] > impactRank[highest] ? commit.impact : highest,
     'patch',
   );
-  const version = bumpVersion(input.previousStableTag.version, highestImpact);
+  const normalVersion = bumpVersion(input.previousStableTag.version, highestImpact);
+  let fixForwardFromVersion: string | undefined;
+
+  for (const plannedCommit of plannedCommits) {
+    const nextFixForwardVersion = plannedCommit.fixForwardFromVersion;
+
+    if (!nextFixForwardVersion) {
+      continue;
+    }
+
+    const previousVersion = fixForwardFromVersion ?? input.previousStableTag.version;
+
+    if (compareExactStableVersions(nextFixForwardVersion, previousVersion) <= 0) {
+      throw new Error(
+        `Release-Fix-Forward version ${nextFixForwardVersion} must be newer than ${previousVersion}.`,
+      );
+    }
+
+    fixForwardFromVersion = nextFixForwardVersion;
+  }
+
+  const fixForwardVersion = fixForwardFromVersion
+    ? bumpVersion(fixForwardFromVersion, 'patch')
+    : undefined;
+  const version =
+    fixForwardVersion && compareExactStableVersions(fixForwardVersion, normalVersion) > 0
+      ? fixForwardVersion
+      : normalVersion;
 
   return {
     kind: 'release',
     sourceSha: input.sourceSha,
     previousStableTag: input.previousStableTag,
     version,
+    ...(fixForwardFromVersion ? { fixForwardFromVersion } : {}),
     contributingCommits,
   };
 }

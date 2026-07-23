@@ -307,10 +307,15 @@ describe('Draft Release workflow', () => {
     expect(serializedStage).toContain(
       'Record the complete public and private registry state for repository-owner review',
     );
-    expect(serializedStage).toContain('Partial-public recovery is not implemented yet');
-    expect(serializedStage).not.toContain(
-      'follow the partial-public Release Set fix-forward procedure',
+    expect(serializedStage).toContain(
+      'follow the partial-public fix-forward procedure in the operator runbook',
     );
+    expect(serializedStage).toContain('Release-Fix-Forward');
+    expect(serializedStage).toContain('npm Staged Packages');
+    expect(serializedStage).toContain(
+      'authenticated npm stage list output, or a Release Verification report',
+    );
+    expect(serializedStage).not.toContain('Partial-public recovery is not implemented yet');
     expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
 
     const actions = Array.isArray(stage.steps)

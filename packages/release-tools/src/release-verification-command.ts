@@ -596,12 +596,12 @@ export async function runReleaseVerificationCommand(
     const stages = registryPackages.filter(
       (registryPackage): registryPackage is StagedReleasePackage => 'id' in registryPackage,
     );
-    const state =
+    const verificationMode =
       publicCount === 0
-        ? 'fully private'
+        ? { state: 'fully private', mode: 'approval' }
         : publicCount === RELEASE_SET_PACKAGES.length
-          ? 'complete Candidate'
-          : 'partial Candidate';
+          ? { state: 'complete Candidate', mode: 'Candidate Smoke' }
+          : { state: 'partial Candidate', mode: 'resume approval' };
     const nextStage = stages[0];
 
     input.write(
@@ -609,7 +609,8 @@ export async function runReleaseVerificationCommand(
         'Release Verification: PASS',
         `Source SHA: ${identity.sourceSha}`,
         `Version: ${identity.version}`,
-        `State: ${state}`,
+        `State: ${verificationMode.state}`,
+        `Mode: ${verificationMode.mode}`,
         ...registryPackages.flatMap((registryPackage) => [
           'id' in registryPackage
             ? `${registryPackage.packageName}: private stage ${registryPackage.id} by ${registryPackage.actor} (${registryPackage.actorType})`
@@ -618,7 +619,10 @@ export async function runReleaseVerificationCommand(
           `  shasum: ${registryPackage.shasum}`,
         ]),
         ...(nextStage
-          ? [`Next approval: ${nextStage.packageName}`, `npm stage approve ${nextStage.id}`]
+          ? [
+              `Next approval: ${nextStage.packageName}`,
+              `Next action: Open npm Staged Packages, inspect ${nextStage.packageName}@${identity.version}, and approve it with 2FA.`,
+            ]
           : [`Next action: pnpm release:smoke -- --version ${identity.version}`]),
         '',
       ].join('\n'),
