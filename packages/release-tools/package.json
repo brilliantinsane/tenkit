@@ -6,6 +6,7 @@
   "scripts": {
     "draft:build": "tsx scripts/build-draft-release-set.ts",
     "plan": "tsx scripts/plan-release.ts",
+    "promote": "tsx scripts/promote-release.ts",
     "smoke": "pnpm -F @tenkit/template-generator build && tsx scripts/smoke-candidate.ts",
     "verify": "tsx scripts/verify-release.ts",
     "test": "pnpm -F @tenkit/template-generator build && vitest run",
