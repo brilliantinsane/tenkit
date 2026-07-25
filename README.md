@@ -117,7 +117,7 @@ Build Preparation selects an App Variant. Runtime Tenant selection, when a setup
 Clone the repo:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/brilliantinsane/tenkit.git
 cd tenkit
 ```
 
