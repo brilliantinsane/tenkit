@@ -92,6 +92,44 @@ describe('Release Set container', () => {
     expect(runCommand.mock.calls[1]?.[0].args.at(-1)).toBe('/usr/local/bin/pack-release-set.sh');
   });
 
+  test('passes an exact RC version without weakening Stable toolchain pins', async () => {
+    const sourceRoot = await createPinnedWorkspace();
+    const canonicalImageId = `sha256:${'b'.repeat(64)}`;
+    const runCommand = vi
+      .fn()
+      .mockResolvedValueOnce({ stdout: `${canonicalImageId}\n`, stderr: '' })
+      .mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+    await runReleaseContainer({
+      sourceRoot,
+      artifactRoot: '/tmp/release-artifacts',
+      version: '0.4.0-rc.2',
+      runCommand,
+    });
+
+    expect(runCommand.mock.calls[0]?.[0].args).toEqual(
+      expect.arrayContaining(['NPM_VERSION=11.17.0', 'PNPM_VERSION=11.15.0']),
+    );
+    expect(runCommand.mock.calls[1]?.[0].args).toEqual(
+      expect.arrayContaining(['TENKIT_RELEASE_VERSION=0.4.0-rc.2', 'TENKIT_NPM_VERSION=11.17.0']),
+    );
+  });
+
+  test('rejects a noncanonical Release Set version before building', async () => {
+    const sourceRoot = await createPinnedWorkspace();
+    const runCommand = vi.fn();
+
+    await expect(
+      runReleaseContainer({
+        sourceRoot,
+        artifactRoot: '/tmp/release-artifacts',
+        version: '0.4.0-next.1',
+        runCommand,
+      }),
+    ).rejects.toThrow(/exact Stable or RC version/);
+    expect(runCommand).not.toHaveBeenCalled();
+  });
+
   test('reports invalid root package metadata at the toolchain boundary', async () => {
     const sourceRoot = await createPinnedWorkspace();
     await writeFile(join(sourceRoot, 'package.json'), '{invalid json');

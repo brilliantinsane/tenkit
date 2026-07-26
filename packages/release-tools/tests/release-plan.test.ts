@@ -1,11 +1,136 @@
 import { describe, expect, test } from 'vitest';
 
-import { planReleaseSet } from '../src/release-plan';
+import {
+  planReleaseSet as planChannelReleaseSet,
+  type PlanReleaseSetInput,
+} from '../src/release-plan';
+
+function planStableReleaseSet(
+  input: Omit<PlanReleaseSetInput, 'channel' | 'releaseCandidateTags'>,
+) {
+  return planChannelReleaseSet({
+    channel: 'stable',
+    releaseCandidateTags: [],
+    ...input,
+  });
+}
 
 describe('Release Set planning', () => {
+  const baseHistory = {
+    sourceSha: '2222222222222222222222222222222222222222',
+    previousStableTag: {
+      name: 'v1.2.3',
+      version: '1.2.3',
+      sha: '1111111111111111111111111111111111111111',
+    },
+    commits: [
+      {
+        sha: '2222222222222222222222222222222222222222',
+        message: 'feat(cli): add release behavior',
+        paths: ['packages/cli/src/cli.ts'],
+      },
+    ],
+  } as const;
+
+  test('returns the complete Stable Release Plan', () => {
+    expect(
+      planChannelReleaseSet({ channel: 'stable', releaseCandidateTags: [], ...baseHistory }),
+    ).toEqual(
+      expect.objectContaining({
+        kind: 'release',
+        channel: 'stable',
+        version: '1.3.0',
+        npmDistTag: 'latest',
+        gitTag: 'v1.3.0',
+        githubReleaseType: 'release',
+        sourceSha: baseHistory.sourceSha,
+        dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+      }),
+    );
+  });
+
+  test('starts an RC target at rc.1', () => {
+    expect(
+      planChannelReleaseSet({ channel: 'rc', releaseCandidateTags: [], ...baseHistory }),
+    ).toEqual(
+      expect.objectContaining({
+        kind: 'release',
+        channel: 'rc',
+        version: '1.3.0-rc.1',
+        npmDistTag: 'next',
+        gitTag: 'v1.3.0-rc.1',
+        githubReleaseType: 'prerelease',
+      }),
+    );
+  });
+
+  test('increments only RC tags for the computed target', () => {
+    expect(
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [
+          {
+            name: 'v1.3.0-rc.1',
+            version: '1.3.0-rc.1',
+          },
+          {
+            name: 'v1.3.0-rc.3',
+            version: '1.3.0-rc.3',
+          },
+          {
+            name: 'v2.0.0-rc.8',
+            version: '2.0.0-rc.8',
+          },
+        ],
+        ...baseHistory,
+      }),
+    ).toEqual(expect.objectContaining({ version: '1.3.0-rc.4' }));
+  });
+
+  test('restarts RC numbering when the semantic target changes', () => {
+    expect(
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [
+          {
+            name: 'v1.2.4-rc.7',
+            version: '1.2.4-rc.7',
+          },
+        ],
+        ...baseHistory,
+      }),
+    ).toEqual(expect.objectContaining({ version: '1.3.0-rc.1' }));
+  });
+
+  test('rejects Release-Fix-Forward for RC planning', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [],
+        ...baseHistory,
+        commits: [
+          {
+            ...baseHistory.commits[0],
+            message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 1.3.0',
+          },
+        ],
+      }),
+    ).toThrow(/Stable planning/);
+  });
+
+  test('rejects an invalid channel instead of falling back', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'preview',
+        releaseCandidateTags: [],
+        ...baseHistory,
+      } as never),
+    ).toThrow(/stable or rc/);
+  });
+
   test('treats commit 3a10d24 as a minor signal because it changed a public package root', () => {
     expect(
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '3a10d24d0de14a4a0b175b58e046ecbc00a996f3',
         previousStableTag: {
           name: 'v0.2.0',
@@ -27,6 +152,7 @@ describe('Release Set planning', () => {
       }),
     ).toEqual({
       kind: 'release',
+      channel: 'stable',
       sourceSha: '3a10d24d0de14a4a0b175b58e046ecbc00a996f3',
       previousStableTag: {
         name: 'v0.2.0',
@@ -34,6 +160,10 @@ describe('Release Set planning', () => {
         sha: 'a7d7a733e82d33f3a75f567756c96b247c54b155',
       },
       version: '0.3.0',
+      npmDistTag: 'latest',
+      gitTag: 'v0.3.0',
+      githubReleaseType: 'release',
+      dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
       contributingCommits: [
         {
           sha: '3a10d24d0de14a4a0b175b58e046ecbc00a996f3',
@@ -55,7 +185,7 @@ describe('Release Set planning', () => {
     'packages/cli/src/cli.ts',
     'packages/create-tenkit/package.json',
   ])('treats %s as release-relevant', (path) => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '2222222222222222222222222222222222222222',
       previousStableTag: {
         name: 'v1.2.3',
@@ -81,7 +211,7 @@ describe('Release Set planning', () => {
     { paths: ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.nvmrc'] },
   ])('returns no release for excluded paths: $paths', ({ paths }) => {
     expect(
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v1.2.3',
@@ -108,7 +238,7 @@ describe('Release Set planning', () => {
   });
 
   test('keeps a mixed commit relevant and lets the highest semantic impact win', () => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '4444444444444444444444444444444444444444',
       previousStableTag: {
         name: 'v1.2.3',
@@ -140,7 +270,7 @@ describe('Release Set planning', () => {
   });
 
   test('fixes forward from a partially public version through reviewed Git history', () => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '3333333333333333333333333333333333333333',
       previousStableTag: {
         name: 'v0.2.0',
@@ -171,7 +301,7 @@ describe('Release Set planning', () => {
   });
 
   test('accepts fix-forward alongside another terminal commit trailer', () => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '3333333333333333333333333333333333333333',
       previousStableTag: {
         name: 'v0.2.0',
@@ -203,7 +333,7 @@ describe('Release Set planning', () => {
   });
 
   test('continues fix-forward versioning after another partially public attempt', () => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '4444444444444444444444444444444444444444',
       previousStableTag: {
         name: 'v0.2.0',
@@ -243,7 +373,7 @@ describe('Release Set planning', () => {
     ['Release-Fix-Forward: 0.1.9', /newer than 0\.2\.0/],
   ])('rejects invalid fix-forward trailer %s', (trailer, expectedMessage) => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v0.2.0',
@@ -263,7 +393,7 @@ describe('Release Set planning', () => {
 
   test('rejects fix-forward text outside the final commit trailer block', () => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v0.2.0',
@@ -284,7 +414,7 @@ describe('Release Set planning', () => {
 
   test('rejects fix-forward without a blank separator before the trailer block', () => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v0.2.0',
@@ -304,7 +434,7 @@ describe('Release Set planning', () => {
 
   test('rejects a multiline fix-forward trailer value', () => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v0.2.0',
@@ -325,7 +455,7 @@ describe('Release Set planning', () => {
 
   test('rejects an orphan continuation before the fix-forward trailer', () => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '2222222222222222222222222222222222222222',
         previousStableTag: {
           name: 'v0.2.0',
@@ -356,7 +486,7 @@ describe('Release Set planning', () => {
     },
   ])('rejects a fix-forward trailer on an ineligible commit', (commit) => {
     expect(() =>
-      planReleaseSet({
+      planStableReleaseSet({
         sourceSha: '3333333333333333333333333333333333333333',
         previousStableTag: {
           name: 'v0.2.0',
@@ -383,7 +513,7 @@ describe('Release Set planning', () => {
     'rejects a stale or non-monotonic fix-forward sequence from %s to %s',
     (firstVersion, secondVersion) => {
       expect(() =>
-        planReleaseSet({
+        planStableReleaseSet({
           sourceSha: '3333333333333333333333333333333333333333',
           previousStableTag: {
             name: 'v0.2.0',
@@ -413,7 +543,7 @@ describe('Release Set planning', () => {
     ['fix(api): change input\n\nBREAKING-CHANGE: legacy input was removed', '2.0.0'],
     ['fix(api): preserve input', '1.2.4'],
   ])('maps %s to %s', (message, version) => {
-    const plan = planReleaseSet({
+    const plan = planStableReleaseSet({
       sourceSha: '2222222222222222222222222222222222222222',
       previousStableTag: {
         name: 'v1.2.3',

@@ -1,4 +1,5 @@
 import { planReleaseSetFromRepository } from './plan-release-set-from-repository';
+import type { ReleaseChannel } from './release-plan';
 
 type RunReleasePlanCommandInput = {
   args: readonly string[];
@@ -6,25 +7,50 @@ type RunReleasePlanCommandInput = {
   write(message: string): void;
 };
 
-function parseSourceRevision(args: readonly string[]): string {
+type ReleasePlanCommandOptions = {
+  channel: ReleaseChannel;
+  sourceRevision: string;
+};
+
+const USAGE = 'Usage: pnpm release:plan -- --channel <stable|rc> [--source <git-revision>]';
+
+function parseOptions(args: readonly string[]): ReleasePlanCommandOptions {
   const commandArgs = args[0] === '--' ? args.slice(1) : args;
+  let channel: ReleaseChannel | undefined;
+  let sourceRevision = 'HEAD';
+  let sourceSpecified = false;
 
-  if (commandArgs.length === 0) {
-    return 'HEAD';
+  for (let index = 0; index < commandArgs.length; index += 2) {
+    const name = commandArgs[index];
+    const value = commandArgs[index + 1];
+
+    if (name === '--channel' && (value === 'stable' || value === 'rc') && !channel) {
+      channel = value;
+      continue;
+    }
+
+    if (name === '--source' && value && !sourceSpecified) {
+      sourceRevision = value;
+      sourceSpecified = true;
+      continue;
+    }
+
+    throw new Error(USAGE);
   }
 
-  if (commandArgs.length === 2 && commandArgs[0] === '--source' && commandArgs[1]) {
-    return commandArgs[1];
+  if (!channel) {
+    throw new Error(USAGE);
   }
 
-  throw new Error('Usage: pnpm release:plan -- [--source <git-revision>]');
+  return { channel, sourceRevision };
 }
 
 export async function runReleasePlanCommand(input: RunReleasePlanCommandInput): Promise<number> {
-  const sourceRevision = parseSourceRevision(input.args);
+  const options = parseOptions(input.args);
   const plan = await planReleaseSetFromRepository({
+    channel: options.channel,
     workspaceRoot: input.workspaceRoot,
-    sourceRevision,
+    sourceRevision: options.sourceRevision,
   });
 
   input.write(`${JSON.stringify(plan, null, 2)}\n`);

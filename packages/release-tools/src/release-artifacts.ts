@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { promisify } from 'node:util';
 
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
 import { getReleaseSetPackage, type ReleaseSetPackageName } from './release-set.ts';
 import {
   readExactInternalReleaseSetDependencies,
@@ -38,6 +39,10 @@ function metadataRecord(value: unknown, description: string): Record<string, unk
 export async function inspectReleaseArtifact(
   input: InspectReleaseArtifactInput,
 ): Promise<ReleaseArtifact> {
+  if (!parseExactReleaseSetVersion(input.expectedVersion)) {
+    throw new Error('Release artifact inspection requires one exact Stable or RC version.');
+  }
+
   const releasePackage = getReleaseSetPackage(input.expectedName);
   const expectedFilename = `${releasePackage.artifactPrefix}-${input.expectedVersion}.tgz`;
   const artifactFilename = basename(input.artifactPath);

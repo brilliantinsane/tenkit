@@ -1,12 +1,19 @@
 import { compareExactStableVersions, parseExactStableVersion } from './exact-stable-version';
-import { RELEASE_SET_PACKAGES } from './release-set.ts';
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
+import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set.ts';
 
 export type ReleaseImpact = 'patch' | 'minor' | 'major';
+export type ReleaseChannel = 'stable' | 'rc';
 
 export type StableTag = {
   name: string;
   version: string;
   sha: string;
+};
+
+export type ReleaseCandidateTag = {
+  name: string;
+  version: string;
 };
 
 export type ReleaseCommitInput = {
@@ -33,13 +40,20 @@ export type ReleaseSetPlan =
       sourceSha: string;
       previousStableTag: StableTag;
       version: string;
+      channel: ReleaseChannel;
+      npmDistTag: 'latest' | 'next';
+      gitTag: string;
+      githubReleaseType: 'release' | 'prerelease';
+      dependencyApprovalOrder: readonly ReleaseSetPackageName[];
       fixForwardFromVersion?: string;
       contributingCommits: readonly ContributingReleaseCommit[];
     };
 
-type PlanReleaseSetInput = {
+export type PlanReleaseSetInput = {
+  channel: ReleaseChannel;
   sourceSha: string;
   previousStableTag: StableTag;
+  releaseCandidateTags: readonly ReleaseCandidateTag[];
   commits: readonly ReleaseCommitInput[];
 };
 
@@ -165,6 +179,10 @@ function readFixForwardVersion(message: string): string | undefined {
 }
 
 export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
+  if (input.channel !== 'stable' && input.channel !== 'rc') {
+    throw new Error('Release channel must be stable or rc.');
+  }
+
   const plannedCommits = input.commits.flatMap((commit) => {
     const impact = releaseImpact(commit.message);
     const releaseRelevant = isReleaseRelevant(commit.paths);
@@ -178,6 +196,10 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
 
     if (!impact || !releaseRelevant) {
       return [];
+    }
+
+    if (fixForwardFromVersion && input.channel === 'rc') {
+      throw new Error('Release-Fix-Forward is valid only for Stable planning.');
     }
 
     return [
@@ -232,17 +254,58 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
   const fixForwardVersion = fixForwardFromVersion
     ? bumpVersion(fixForwardFromVersion, 'patch')
     : undefined;
-  const version =
+  const targetVersion =
     fixForwardVersion && compareExactStableVersions(fixForwardVersion, normalVersion) > 0
       ? fixForwardVersion
       : normalVersion;
+  const version =
+    input.channel === 'stable'
+      ? targetVersion
+      : `${targetVersion}-rc.${nextReleaseCandidateOrdinal(
+          input.releaseCandidateTags,
+          targetVersion,
+        )}`;
 
   return {
     kind: 'release',
+    channel: input.channel,
     sourceSha: input.sourceSha,
     previousStableTag: input.previousStableTag,
     version,
+    npmDistTag: input.channel === 'stable' ? 'latest' : 'next',
+    gitTag: `v${version}`,
+    githubReleaseType: input.channel === 'stable' ? 'release' : 'prerelease',
+    dependencyApprovalOrder: RELEASE_SET_PACKAGES.map((releasePackage) => releasePackage.name),
     ...(fixForwardFromVersion ? { fixForwardFromVersion } : {}),
     contributingCommits,
   };
+}
+
+function nextReleaseCandidateOrdinal(
+  releaseCandidateTags: readonly ReleaseCandidateTag[],
+  targetVersion: string,
+): number {
+  let greatestOrdinal = 0;
+
+  for (const tag of releaseCandidateTags) {
+    const parsedVersion = parseExactReleaseSetVersion(tag.version);
+
+    if (parsedVersion?.channel !== 'rc' || tag.name !== `v${tag.version}`) {
+      throw new Error(
+        `Release Candidate Git tag ${JSON.stringify(tag.name)} has invalid identity metadata.`,
+      );
+    }
+
+    if (parsedVersion.targetVersion === targetVersion) {
+      greatestOrdinal = Math.max(greatestOrdinal, parsedVersion.ordinal);
+    }
+  }
+
+  if (greatestOrdinal === Number.MAX_SAFE_INTEGER) {
+    throw new Error(
+      `Release Candidate ordinal for target ${targetVersion} exceeds the supported range.`,
+    );
+  }
+
+  return greatestOrdinal + 1;
 }

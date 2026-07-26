@@ -16,7 +16,7 @@ describe('release:plan command', () => {
   test('prints one Git-derived JSON plan for the selected source revision', async () => {
     let output = '';
     const exitCode = await runReleasePlanCommand({
-      args: ['--', '--source', '3a10d24'],
+      args: ['--', '--channel', 'stable', '--source', '3a10d24'],
       workspaceRoot,
       write(message) {
         output += message;
@@ -44,7 +44,7 @@ describe('release:plan command', () => {
 
       const { stdout } = await execFileAsync(
         process.execPath,
-        ['--import', 'tsx/esm', planReleaseEntrypoint, '--source', '3a10d24'],
+        ['--import', 'tsx/esm', planReleaseEntrypoint, '--channel', 'rc', '--source', '3a10d24'],
         {
           cwd: resolve(import.meta.dirname, '..'),
           env: {
@@ -59,8 +59,9 @@ describe('release:plan command', () => {
       expect(JSON.parse(stdout)).toEqual(
         expect.objectContaining({
           kind: 'release',
+          channel: 'rc',
           sourceSha: '3a10d24d0de14a4a0b175b58e046ecbc00a996f3',
-          version: '0.3.0',
+          version: '0.3.0-rc.1',
         }),
       );
       await expect(access(sentinelPath)).rejects.toMatchObject({ code: 'ENOENT' });
@@ -78,4 +79,17 @@ describe('release:plan command', () => {
       }),
     ).rejects.toThrow(/Usage: pnpm release:plan/);
   });
+
+  test.each([{ args: [] }, { args: ['--channel', 'preview'] }])(
+    'rejects a missing or invalid channel: $args',
+    async ({ args }) => {
+      await expect(
+        runReleasePlanCommand({
+          args,
+          workspaceRoot,
+          write() {},
+        }),
+      ).rejects.toThrow(/Usage: pnpm release:plan/);
+    },
+  );
 });

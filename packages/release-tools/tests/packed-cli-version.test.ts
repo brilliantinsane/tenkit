@@ -33,7 +33,10 @@ function run(command: string, args: readonly string[], cwd: string): void {
   }
 }
 
-test('packed Public CLI --version equals its injected package version', async () => {
+test.each([
+  ['stable', '0.3.0'],
+  ['rc', '0.3.0-rc.1'],
+] as const)('packed %s Public CLI reports %s', async (channel, expectedVersion) => {
   const releaseWorkspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-packed-cli-version-'));
   tempRoots.push(releaseWorkspaceRoot);
   const releasePackagesRoot = join(releaseWorkspaceRoot, 'packages');
@@ -63,7 +66,15 @@ test('packed Public CLI --version equals its injected package version', async ()
     await mkdir(packageRoot, { recursive: true });
     await writeFile(
       join(packageRoot, 'package.json'),
-      `${JSON.stringify({ name, version: '0.2.0' }, null, 2)}\n`,
+      `${JSON.stringify(
+        {
+          name,
+          version: '0.2.0',
+          ...(folder === 'create-tenkit' ? { dependencies: { '@tenkit/cli': 'workspace:*' } } : {}),
+        },
+        null,
+        2,
+      )}\n`,
     );
   }
 
@@ -72,6 +83,7 @@ test('packed Public CLI --version equals its injected package version', async ()
     "packages:\n  - 'packages/*'\n",
   );
   const plan = await planReleaseSetFromRepository({
+    channel,
     workspaceRoot,
     sourceRevision: '3a10d24',
   });
@@ -79,6 +91,7 @@ test('packed Public CLI --version equals its injected package version', async ()
   if (plan.kind === 'no-release') {
     throw new Error('Expected acceptance fixture 3a10d24 to produce a Release Set version.');
   }
+  expect(plan.version).toBe(expectedVersion);
   await injectReleaseSetVersion({ isolatedWorkspaceRoot: releaseWorkspaceRoot, plan });
 
   run(
@@ -111,7 +124,10 @@ test('packed Public CLI --version equals its injected package version', async ()
     },
   );
 
-  expect(version.status).toBe(0);
+  expect({
+    status: version.status,
+    stderr: version.stderr.replaceAll(releaseWorkspaceRoot, '<release-workspace>'),
+  }).toEqual({ status: 0, stderr: '' });
   expect(version.stdout.trim()).toBe(plan.version);
   expect(packedMetadata.version).toBe(plan.version);
 });

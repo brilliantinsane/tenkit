@@ -1,9 +1,16 @@
 import { execFileSync } from 'node:child_process';
 
 import { compareExactStableVersions, parseExactStableVersion } from './exact-stable-version';
-import type { ReleaseCommitInput, StableTag } from './release-plan';
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
+import type {
+  ReleaseCandidateTag,
+  ReleaseChannel,
+  ReleaseCommitInput,
+  StableTag,
+} from './release-plan';
 
 type ReadReleaseHistoryInput = {
+  channel: ReleaseChannel;
   workspaceRoot: string;
   sourceRevision: string;
 };
@@ -11,6 +18,7 @@ type ReadReleaseHistoryInput = {
 export type ReleaseHistory = {
   sourceSha: string;
   previousStableTag: StableTag;
+  releaseCandidateTags: readonly ReleaseCandidateTag[];
   commits: readonly ReleaseCommitInput[];
 };
 
@@ -77,6 +85,27 @@ function changedPaths(workspaceRoot: string, parentSha: string, commitSha: strin
   return output.toString('utf8').split('\0').filter(Boolean).sort();
 }
 
+function releaseCandidateTags(workspaceRoot: string, sourceSha: string): ReleaseCandidateTag[] {
+  return runGit(workspaceRoot, ['tag', '--merged', sourceSha, '--list', 'v*-rc.*'])
+    .split('\n')
+    .filter(Boolean)
+    .map((name) => {
+      const version = name.startsWith('v') ? name.slice(1) : '';
+      const parsedVersion = parseExactReleaseSetVersion(version);
+
+      if (parsedVersion?.channel !== 'rc') {
+        throw new Error(
+          `Git tag ${JSON.stringify(name)} is an invalid Release Candidate tag. Expected vX.Y.Z-rc.N with N starting at 1.`,
+        );
+      }
+
+      return {
+        name,
+        version,
+      };
+    });
+}
+
 export function readReleaseHistory(input: ReadReleaseHistoryInput): ReleaseHistory {
   const sourceSha = runGit(input.workspaceRoot, [
     'rev-parse',
@@ -113,6 +142,8 @@ export function readReleaseHistory(input: ReadReleaseHistoryInput): ReleaseHisto
   return {
     sourceSha,
     previousStableTag,
+    releaseCandidateTags:
+      input.channel === 'rc' ? releaseCandidateTags(input.workspaceRoot, sourceSha) : [],
     commits,
   };
 }

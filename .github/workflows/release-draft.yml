@@ -85,7 +85,7 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.source.outputs.source-sha }}
         run: |
-          PLAN_JSON=$(pnpm --silent release:plan -- --source "$SOURCE_SHA")
+          PLAN_JSON=$(pnpm --silent release:plan -- --channel stable --source "$SOURCE_SHA")
           test "$(printf '%s' "$PLAN_JSON" | jq -r '.kind')" = 'release'
           PLANNED_SOURCE_SHA=$(printf '%s' "$PLAN_JSON" | jq -r '.sourceSha')
           VERSION=$(printf '%s' "$PLAN_JSON" | jq -r '.version')
