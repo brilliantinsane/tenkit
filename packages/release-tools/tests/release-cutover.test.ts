@@ -9,6 +9,88 @@ const workflowRoot = resolve(workspaceRoot, '.github/workflows');
 const legacyWorkflowPath = resolve(workflowRoot, 'publish.yml');
 const legacyReleaseNotesScriptPath = resolve(workspaceRoot, 'scripts/generate-release-notes.mjs');
 const legacyReleaseNotesConfigPath = resolve(workspaceRoot, 'changelogithub.config.mjs');
+const retiredReleaseToolPaths = [
+  'packages/release-tools/scripts/promote-release.ts',
+  'packages/release-tools/scripts/smoke-candidate.ts',
+  'packages/release-tools/src/candidate-smoke-command.ts',
+  'packages/release-tools/src/promotion-command.ts',
+  'packages/release-tools/src/public-candidate-release-set.ts',
+  'packages/release-tools/tests/candidate-smoke-command.test.ts',
+  'packages/release-tools/tests/promotion-command.test.ts',
+].map((path) => resolve(workspaceRoot, path));
+const activeReleaseDocumentationPaths = [
+  resolve(workspaceRoot, 'package.json'),
+  resolve(workspaceRoot, 'README.md'),
+  resolve(workspaceRoot, 'CONTEXT.md'),
+  resolve(workspaceRoot, 'docs/release.md'),
+  resolve(workspaceRoot, 'docs/adr/0012-adopt-direct-stable-and-rc-release-sets.md'),
+  resolve(workspaceRoot, 'packages/release-tools/package.json'),
+];
+const localOperatorGuidancePaths = [
+  resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/maintainer-guide.md'),
+  resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/maintainer-guide.html'),
+  resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/recovery-reference.md'),
+];
+const retiredOperationalPatterns = [
+  /\brelease:(?:promote|smoke)\b/,
+  /\b(?:promote-release|smoke-candidate|promotion-command|candidate-smoke-command|public-candidate-release-set)\b/,
+  /\b(?:runPromotionCommand|runCandidateSmokeCommand|readPublicCandidateReleaseSet|PublicCandidatePackage(?:Error|Metadata))\b/,
+  /\b(?:Candidate Smoke|Candidate tags|Promotion (?:preview|apply)|Manual Finalize):/,
+  /(?<!Release )\bCandidate[- ](?:state|handoff|tags?)\b/,
+  /(?<!Release )\bCandidate\b[^\n.!?]{0,100}\b(?:approval complete|hand[ -]?off|next action|proceed|ready for)\b/i,
+  /\bPromotion step\b/,
+  /\b(?:next action:?\s*|proceed to\s+|hand[ -]?off to\s+|ready for\s+)(?:the\s+)?promot(?:e|ion)\b/i,
+  /\bFinalize (?:publication|step|the release)\b/,
+  /\b(?:next action|proceed|continue|then|now|must|should|ready)\b[^\n.!?]{0,100}\bFinalize\b/i,
+  /\b(?:run|perform|start|continue|resume|complete|apply|execute|use)\s+(?:the\s+)?(?:Candidate Smoke|Promotion|Finalize)\b/i,
+  /\bFinalize:/,
+  /\bname:\s*(?:Candidate Smoke|Promotion|Finalize)\b/,
+  /\b(?:complete|partial|public) Candidate\b/,
+  /\bdist-tags\.candidate\b/,
+  /\b(?:[A-Z_]*TAG|[A-Za-z]*Tag|tag)\s*(?:=|:)\s*['"]candidate['"]/,
+  /['"]?candidate['"]?\s*:/,
+  /['"]candidate['"]/,
+  /--tag(?:=|\s+)candidate\b/,
+  /\bnpm dist-tag add\b[^\n]*\blatest\b/,
+  /(?:--mode(?:=|\s+)|\bmode\s*[:=]\s*['"]?)candidate\b/,
+] as const;
+
+async function existingLocalOperatorGuidancePaths(): Promise<string[]> {
+  const paths = await Promise.all(
+    localOperatorGuidancePaths.map(async (path) => {
+      try {
+        await access(path);
+        return path;
+      } catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+          return undefined;
+        }
+
+        throw error;
+      }
+    }),
+  );
+
+  return paths.filter((path): path is string => path !== undefined);
+}
+
+async function activeReleaseArchitecturePaths(): Promise<string[]> {
+  const roots = [
+    workflowRoot,
+    resolve(workspaceRoot, 'packages/release-tools/container'),
+    resolve(workspaceRoot, 'packages/release-tools/scripts'),
+    resolve(workspaceRoot, 'packages/release-tools/src'),
+  ];
+  const entries = await Promise.all(
+    roots.map(async (root) => (await readdir(root)).map((filename) => resolve(root, filename))),
+  );
+
+  return [
+    ...activeReleaseDocumentationPaths,
+    ...(await existingLocalOperatorGuidancePaths()),
+    ...entries.flat(),
+  ].sort();
+}
 
 function isWorkflowFilename(filename: string): boolean {
   return filename.endsWith('.yml') || filename.endsWith('.yaml');
@@ -23,6 +105,28 @@ function requireRecord(value: unknown, description: string): Record<string, unkn
 }
 
 describe('release workflow cutover', () => {
+  test('removes Candidate Smoke and Promotion release-tool files', async () => {
+    await Promise.all(
+      retiredReleaseToolPaths.map(async (path) => {
+        await expect(access(path)).rejects.toMatchObject({ code: 'ENOENT' });
+      }),
+    );
+  });
+
+  test('keeps retired release behavior out of active architecture surfaces', async () => {
+    const activePaths = await activeReleaseArchitecturePaths();
+
+    for (const path of activePaths) {
+      expect(path).not.toMatch(/(?:candidate-smoke|promotion|finalize)/i);
+
+      const source = await readFile(path, 'utf8');
+
+      for (const retiredPattern of retiredOperationalPatterns) {
+        expect(source, path).not.toMatch(retiredPattern);
+      }
+    }
+  });
+
   test('removes the combined publishing workflow after replacement checks exist', async () => {
     await expect(access(legacyWorkflowPath)).rejects.toMatchObject({ code: 'ENOENT' });
 
