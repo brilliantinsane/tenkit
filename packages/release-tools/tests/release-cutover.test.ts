@@ -38,6 +38,14 @@ const localOperatorGuidancePaths = [
     '.scratch/release-process-rederivation/handbook/render-maintainer-guide.rb',
   ),
 ];
+const tabletopRunnerPath = resolve(
+  workspaceRoot,
+  'packages/release-tools/tests/fixtures/release-tabletop/run-tabletop.mjs',
+);
+const cutoverContractPath = resolve(
+  workspaceRoot,
+  'packages/release-tools/tests/fixtures/release-cutover-contract.json',
+);
 const retiredOperationalPatterns = [
   /\brelease:(?:promote|smoke)\b/,
   /\b(?:promote-release|smoke-candidate|promotion-command|candidate-smoke-command|public-candidate-release-set)\b/,
@@ -78,7 +86,18 @@ async function existingLocalOperatorGuidancePaths(): Promise<string[]> {
     }),
   );
 
-  return paths.filter((path): path is string => path !== undefined);
+  const existingPaths = paths.filter((path): path is string => path !== undefined);
+
+  if (
+    process.env.TENKIT_REQUIRE_LOCAL_RELEASE_GUIDANCE === '1' &&
+    existingPaths.length !== localOperatorGuidancePaths.length
+  ) {
+    throw new Error(
+      'Coordinated readiness requires the complete private local operator guidance and deterministic renderer.',
+    );
+  }
+
+  return existingPaths;
 }
 
 async function activeReleaseArchitecturePaths(): Promise<string[]> {
@@ -111,12 +130,12 @@ function requireRecord(value: unknown, description: string): Record<string, unkn
   return value as Record<string, unknown>;
 }
 
-function runRuby(
-  scriptPath: string,
+function runProcess(
+  command: string,
   args: readonly string[],
 ): Promise<{ exitCode: number | null; output: string }> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('ruby', [scriptPath, ...args], {
+    const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -223,6 +242,23 @@ describe('release workflow cutover', () => {
     );
   });
 
+  test('declares local cutover readiness without weakening the external handoff', async () => {
+    const draftWorkflowText = await readFile(resolve(workflowRoot, 'release-draft.yml'), 'utf8');
+    const workspaceMetadata = requireRecord(
+      JSON.parse(await readFile(resolve(workspaceRoot, 'package.json'), 'utf8')) as unknown,
+      'workspace package metadata',
+    );
+    const scripts = requireRecord(workspaceMetadata.scripts, 'workspace package scripts');
+
+    expect(draftWorkflowText).not.toMatch(/not safe for live release use until ticket 14/i);
+    expect(draftWorkflowText).toContain(
+      'External alias cleanup and the first natural RC remain manual, separately authenticated operations.',
+    );
+    expect(scripts['release:readiness']).toBe(
+      'pnpm -F @tenkit/release-tools typecheck && TENKIT_REQUIRE_LOCAL_RELEASE_GUIDANCE=1 pnpm -F @tenkit/release-tools test:readiness && pnpm release:check',
+    );
+  });
+
   test('keeps local operator guidance synchronized with executable Stable and RC behavior', async () => {
     const existingGuidancePaths = await existingLocalOperatorGuidancePaths();
 
@@ -313,7 +349,87 @@ describe('release workflow cutover', () => {
     expect(tabletop).toContain('State: published');
 
     for (const document of [guide, recoveryReference, tabletop]) {
-      expect(document).toMatch(/not safe for live release use until ticket 14/i);
+      expect(document).not.toMatch(/not safe for live release use until ticket 14/i);
+      expect(document).toMatch(/coordinated (?:implementation )?readiness passed/i);
+    }
+  });
+
+  test('proves all accepted tabletop terminal states', async () => {
+    const existingGuidancePaths = await existingLocalOperatorGuidancePaths();
+    const rehearsal = await runProcess(process.execPath, [tabletopRunnerPath]);
+
+    expect(rehearsal.exitCode, rehearsal.output).toBe(0);
+    expect(rehearsal.output.match(/^PASS  /gm)).toHaveLength(12);
+    expect(rehearsal.output).toContain('12/12 scenarios produced the expected terminal state.');
+    expect(rehearsal.output).toContain('Release-Fix-Forward: 0.4.0');
+    expect(rehearsal.output).not.toContain('Release-Fix-Forward: 0.4.0-rc.1');
+
+    if (existingGuidancePaths.length > 0) {
+      const tabletop = await readFile(localOperatorGuidancePaths[3]!, 'utf8');
+      expect(tabletop).toContain('12/12 scenarios produced the expected terminal state.');
+    }
+  });
+
+  test('preserves the read-only baseline and exact external cutover checklist', async () => {
+    const existingGuidancePaths = await existingLocalOperatorGuidancePaths();
+    const cutoverContract = requireRecord(
+      JSON.parse(await readFile(cutoverContractPath, 'utf8')) as unknown,
+      'release cutover contract',
+    );
+    const publicBaseline = requireRecord(cutoverContract.publicBaseline, 'public baseline');
+    const boundedReadback = requireRecord(cutoverContract.boundedReadback, 'bounded readback');
+    const firstNaturalRc = requireRecord(cutoverContract.firstNaturalRc, 'first natural RC');
+    const expectedCleanup = [
+      'npm dist-tag rm create-tenkit candidate',
+      'npm dist-tag rm @tenkit/cli candidate',
+      'npm dist-tag rm @tenkit/template-generator candidate',
+      'npm dist-tag rm create-tenkit next',
+      'npm dist-tag rm @tenkit/cli next',
+      'npm dist-tag rm @tenkit/template-generator next',
+    ];
+
+    expect(publicBaseline).toEqual({
+      stableVersion: '0.3.0',
+      legacyNextVersion: '0.2.0-next.0',
+      gitTag: 'v0.3.0',
+      sourceSha: 'e1304c9126aaf49a9ad4f985496ea9288189217c',
+      packages: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+    });
+    expect(cutoverContract.preflightObservations).toEqual([
+      'Git tags and exact target SHAs',
+      'GitHub Releases and drafts',
+      'npm public versions, staged packages, and dist-tags',
+    ]);
+    expect(cutoverContract.legacyAliasCleanup).toEqual(expectedCleanup);
+    expect(boundedReadback).toEqual({
+      maxReads: 4,
+      durationMs: 6000,
+      stopCondition: 'State remains ambiguous or differs from the recorded baseline.',
+    });
+    expect(firstNaturalRc).toEqual({
+      version: 'X.Y.Z-rc.1',
+      selectedTag: 'next',
+      untouchedTag: 'latest',
+      requiredCompletion:
+        'Dependency-first npm approvals, matching prerelease Draft publication, and final Release Verification.',
+    });
+    expect(cutoverContract.partialPublicDefect).toEqual({
+      stable: 'Use Release-Fix-Forward with the consumed exact Stable version.',
+      rc: 'STOP for owner review; do not add Stable-only fix-forward or choose an RC ordinal manually.',
+    });
+
+    if (existingGuidancePaths.length > 0) {
+      const recoveryReference = await readFile(localOperatorGuidancePaths[2]!, 'utf8');
+      const cleanupPositions = expectedCleanup.map((command) => recoveryReference.indexOf(command));
+
+      expect(cleanupPositions.every((position) => position >= 0)).toBe(true);
+      expect(cleanupPositions).toEqual([...cleanupPositions].sort((left, right) => left - right));
+      expect(recoveryReference).toContain(
+        'use only the first natural release-relevant change for the first replacement RC',
+      );
+      expect(recoveryReference).toContain(
+        'current Git-only RC planning has no authorized marker for an untagged consumed ordinal',
+      );
     }
   });
 
@@ -336,13 +452,13 @@ describe('release workflow cutover', () => {
       }
 
       const rendererPath = join(operationRoot, 'render-maintainer-guide.rb');
-      const synchronizedCheck = await runRuby(rendererPath, ['--check']);
+      const synchronizedCheck = await runProcess('ruby', [rendererPath, '--check']);
 
       expect(synchronizedCheck.exitCode, synchronizedCheck.output).toBe(0);
 
       await appendFile(join(operationRoot, 'maintainer-guide.html'), '\n<!-- drift -->\n');
 
-      const driftCheck = await runRuby(rendererPath, ['--check']);
+      const driftCheck = await runProcess('ruby', [rendererPath, '--check']);
 
       expect(driftCheck.exitCode, driftCheck.output).toBe(1);
       expect(driftCheck.output).toContain(

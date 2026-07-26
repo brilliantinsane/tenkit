@@ -8,6 +8,7 @@
     "plan": "tsx scripts/plan-release.ts",
     "verify": "tsx scripts/verify-release.ts",
     "test": "pnpm -F @tenkit/template-generator build && vitest run",
+    "test:readiness": "vitest run tests/release-plan.test.ts tests/draft-release-set.test.ts tests/draft-workflow.test.ts tests/reproduce-release-set.test.ts tests/release-verification-command.test.ts tests/release-cutover.test.ts",
     "typecheck": "pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false"
   },
   "devDependencies": {

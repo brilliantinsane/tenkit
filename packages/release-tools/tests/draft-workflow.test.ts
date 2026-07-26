@@ -8,6 +8,8 @@ import { promisify } from 'node:util';
 import { afterEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
 
+import { planReleaseSet } from '../src/release-plan';
+
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
 const githubRoot = resolve(workspaceRoot, '.github');
 const workflowPath = resolve(workspaceRoot, '.github/workflows/release-draft.yml');
@@ -94,15 +96,30 @@ async function createDraftRehearsal(channel: DraftRehearsalChannel = 'stable') {
   const operationLog = join(operationRoot, 'operations.log');
   const summary = join(operationRoot, 'summary.md');
   const sourceSha = 'a'.repeat(40);
-  const version = channel === 'stable' ? '0.4.0' : '0.4.0-rc.1';
-  const npmDistTag = channel === 'stable' ? 'latest' : 'next';
-  const gitTag = `v${version}`;
-  const githubReleaseType = channel === 'stable' ? 'release' : 'prerelease';
-  const packageOrder = JSON.stringify([
-    '@tenkit/template-generator',
-    '@tenkit/cli',
-    'create-tenkit',
-  ]);
+  const plan = planReleaseSet({
+    channel,
+    sourceSha,
+    previousStableTag: {
+      name: 'v0.3.0',
+      version: '0.3.0',
+      sha: 'b'.repeat(40),
+    },
+    releaseCandidateTags: [],
+    commits: [
+      {
+        sha: sourceSha,
+        message: 'feat(cli): rehearse coordinated release readiness',
+        paths: ['packages/cli/src/index.ts'],
+      },
+    ],
+  });
+
+  if (plan.kind === 'no-release') {
+    throw new Error('Draft rehearsal requires a release plan.');
+  }
+
+  const { version, npmDistTag, gitTag, githubReleaseType } = plan;
+  const packageOrder = JSON.stringify(plan.dependencyApprovalOrder);
   await mkdir(fakeBin);
   await mkdir(artifactRoot);
   const artifacts = [
@@ -369,15 +386,17 @@ describe('Draft Release workflow', () => {
     expect(serializedStage).toContain(
       'Record the complete public and private registry state for repository-owner review',
     );
+    expect(serializedStage).toContain('follow the Stable partial-public fix-forward procedure');
     expect(serializedStage).toContain(
-      'follow the partial-public fix-forward procedure in the operator runbook',
+      'current Git-only RC planning authorizes no automatic recovery',
     );
-    expect(serializedStage).toContain('Release-Fix-Forward');
+    expect(serializedStage).toContain(
+      'Do not retry Draft, reject a public version, add Release-Fix-Forward, or choose another RC ordinal',
+    );
     expect(serializedStage).toContain('npm Staged Packages');
     expect(serializedStage).toContain(
       'authenticated npm stage list output, or a Release Verification report',
     );
-    expect(serializedStage).not.toContain('Partial-public recovery is not implemented yet');
     expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
 
     const actions = Array.isArray(stage.steps)
@@ -534,58 +553,70 @@ describe('Draft Release workflow', () => {
       );
       expect(summary.includes('Website visibility gate')).toBe(includesWebsiteGate);
       expect(summary).toContain(
-        'this workflow is not safe for live release use until ticket 14 passes the coordinated readiness proof',
+        'External alias cleanup and the first natural RC remain manual, separately authenticated operations.',
       );
     },
   );
 
-  test('rehearses partial-staging recovery without retrying or creating a Release', async () => {
-    const rehearsal = await createDraftRehearsal();
-    const partialEnv = {
-      ...rehearsal.commonEnv,
-      ...rehearsal.artifactEnv,
-      GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
-      FAIL_ARTIFACT: 'tenkit-cli',
-    };
-    let partialOutputLog = '';
+  test.each([
+    {
+      channel: 'stable' as const,
+      expectedRecovery: 'follow the Stable partial-public fix-forward procedure',
+      excludedRecovery: 'current Git-only RC planning authorizes no automatic recovery',
+    },
+    {
+      channel: 'rc' as const,
+      expectedRecovery: 'current Git-only RC planning authorizes no automatic recovery',
+      excludedRecovery: 'follow the Stable partial-public fix-forward procedure',
+    },
+  ])(
+    'rehearses $channel partial-staging recovery without retrying or creating a Release',
+    async ({ channel, expectedRecovery, excludedRecovery }) => {
+      const rehearsal = await createDraftRehearsal(channel);
+      const partialEnv = {
+        ...rehearsal.commonEnv,
+        ...rehearsal.artifactEnv,
+        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
+        FAIL_ARTIFACT: 'tenkit-cli',
+      };
+      let partialOutputLog = '';
 
-    try {
+      try {
+        await runWorkflowShell({
+          script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+          cwd: rehearsal.operationRoot,
+          fakeBin: rehearsal.fakeBin,
+          env: partialEnv,
+        });
+        throw new Error('Partial staging rehearsal unexpectedly succeeded.');
+      } catch (error) {
+        const failure = requireRecord(error, 'partial staging failure');
+        partialOutputLog = typeof failure.stdout === 'string' ? failure.stdout : '';
+      }
+
       await runWorkflowShell({
-        script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+        script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
         cwd: rehearsal.operationRoot,
         fakeBin: rehearsal.fakeBin,
         env: partialEnv,
       });
-      throw new Error('Partial staging rehearsal unexpectedly succeeded.');
-    } catch (error) {
-      const failure = requireRecord(error, 'partial staging failure');
-      partialOutputLog = typeof failure.stdout === 'string' ? failure.stdout : '';
-    }
+      expect(partialOutputLog).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
+      expect(partialOutputLog).toContain(
+        'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
+      );
+      const summary = await readFile(rehearsal.summary, 'utf8');
+      expect(summary).toContain(
+        '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
+      );
+      expect(summary).toContain('@tenkit/cli: `22222222-2222-2222-2222-222222222222`');
+      expect(summary).toContain('npm stage list @tenkit/cli');
+      expect(summary).toContain(`Source SHA: \`${rehearsal.sourceSha}\``);
+      expect(summary).toContain(expectedRecovery);
+      expect(summary).not.toContain(excludedRecovery);
 
-    await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
-      cwd: rehearsal.operationRoot,
-      fakeBin: rehearsal.fakeBin,
-      env: partialEnv,
-    });
-    expect(partialOutputLog).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
-    expect(partialOutputLog).toContain(
-      'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      '@tenkit/cli: `22222222-2222-2222-2222-222222222222`',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      'npm stage list @tenkit/cli',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      `Source SHA: \`${rehearsal.sourceSha}\``,
-    );
-    const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
-    expect(operations).toHaveLength(2);
-    expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
-  });
+      const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
+      expect(operations).toHaveLength(2);
+      expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
+    },
+  );
 });

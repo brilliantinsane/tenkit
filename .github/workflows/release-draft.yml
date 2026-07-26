@@ -334,7 +334,11 @@ jobs:
             echo ''
             echo 'Find stage IDs in npm Staged Packages, authenticated npm stage list output, or a Release Verification report. Never copy them from an agent conversation. Prefer npm Staged Packages for manual rejection.'
             echo ''
-            echo '1. If any same-version package is public, stop. Do not retry Draft or attempt to reject a public version. Record the complete public and private registry state for repository-owner review, then follow the partial-public fix-forward procedure in the operator runbook. The reviewed fix commit must include `Release-Fix-Forward: <public-version>` so tokenless Draft planning selects the next patch version.'
+            if [ "$RELEASE_CHANNEL" = 'stable' ]; then
+              echo '1. If any same-version package is public, stop. Do not retry Draft or attempt to reject a public version. Record the complete public and private registry state for repository-owner review, then follow the Stable partial-public fix-forward procedure in the operator runbook. The reviewed fix commit must include `Release-Fix-Forward: <public-version>` so tokenless Draft planning selects the next patch version.'
+            else
+              echo '1. If any same-version RC package is public, stop. Do not retry Draft, reject a public version, add Release-Fix-Forward, or choose another RC ordinal. Record the complete public and private registry state for repository-owner review; current Git-only RC planning authorizes no automatic recovery.'
+            fi
             echo '2. If this run created no private stage and all three existing private stages belong to one complete, valid earlier Release Set, continue that earlier attempt.'
             echo '3. Otherwise, reject all same-version private stages across the current and earlier attempts with maintainer 2FA before starting a fresh Draft. Do not combine stages from different attempts.'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -409,7 +413,7 @@ jobs:
             fi
             echo 'This Release is a draft. No public npm version or Git tag was created.'
             echo ''
-            echo '> Integration warning: this workflow is not safe for live release use until ticket 14 passes the coordinated readiness proof.'
+            echo '> External alias cleanup and the first natural RC remain manual, separately authenticated operations.'
           } > "$RUNNER_TEMP/release-notes.md"
 
       - name: Create draft GitHub Release
