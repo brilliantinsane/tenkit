@@ -525,9 +525,16 @@ describe('Draft Release workflow', () => {
       expect(summary).toContain(
         `pnpm release:verify -- --source-sha ${rehearsal.sourceSha} --version ${rehearsal.version}`,
       );
+      expect(summary).toContain(
+        `Release Set identity: \`${rehearsal.sourceSha} + ${rehearsal.version}\``,
+      );
+      expect(summary).toContain('Observed state: `fully private`');
+      expect(summary).toContain(
+        'Next action: Run the Release Verification command above. Approve nothing until it passes and names one package.',
+      );
       expect(summary.includes('Website visibility gate')).toBe(includesWebsiteGate);
       expect(summary).toContain(
-        'this workflow is not safe for live release use until tickets 12-14 complete the coordinated cutover',
+        'this workflow is not safe for live release use until ticket 14 passes the coordinated readiness proof',
       );
     },
   );

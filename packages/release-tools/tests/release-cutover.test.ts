@@ -1,5 +1,7 @@
-import { access, readFile, readdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { spawn } from 'node:child_process';
+import { access, appendFile, copyFile, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
@@ -30,6 +32,11 @@ const localOperatorGuidancePaths = [
   resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/maintainer-guide.md'),
   resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/maintainer-guide.html'),
   resolve(workspaceRoot, '.scratch/release-process-rederivation/handbook/recovery-reference.md'),
+  resolve(workspaceRoot, '.scratch/release-process-rederivation/tabletop-rehearsal.md'),
+  resolve(
+    workspaceRoot,
+    '.scratch/release-process-rederivation/handbook/render-maintainer-guide.rb',
+  ),
 ];
 const retiredOperationalPatterns = [
   /\brelease:(?:promote|smoke)\b/,
@@ -102,6 +109,31 @@ function requireRecord(value: unknown, description: string): Record<string, unkn
   }
 
   return value as Record<string, unknown>;
+}
+
+function runRuby(
+  scriptPath: string,
+  args: readonly string[],
+): Promise<{ exitCode: number | null; output: string }> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn('ruby', [scriptPath, ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let output = '';
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      output += chunk;
+    });
+    child.stderr.on('data', (chunk: string) => {
+      output += chunk;
+    });
+    child.once('error', reject);
+    child.once('close', (exitCode) => {
+      resolvePromise({ exitCode, output });
+    });
+  });
 }
 
 describe('release workflow cutover', () => {
@@ -189,5 +221,135 @@ describe('release workflow cutover', () => {
     expect(draftWorkflowText).not.toMatch(
       /gh release (?:edit|upload).*--draft=false|gh release publish/,
     );
+  });
+
+  test('keeps local operator guidance synchronized with executable Stable and RC behavior', async () => {
+    const existingGuidancePaths = await existingLocalOperatorGuidancePaths();
+
+    if (existingGuidancePaths.length === 0) {
+      return;
+    }
+
+    expect(existingGuidancePaths).toHaveLength(localOperatorGuidancePaths.length);
+
+    const guide = await readFile(localOperatorGuidancePaths[0]!, 'utf8');
+    const generatedGuide = await readFile(localOperatorGuidancePaths[1]!, 'utf8');
+    const recoveryReference = await readFile(localOperatorGuidancePaths[2]!, 'utf8');
+    const tabletop = await readFile(localOperatorGuidancePaths[3]!, 'utf8');
+    const stableProcedureStart = guide.indexOf('## Normal Stable procedure');
+    const rcProcedureStart = guide.indexOf('## Normal RC procedure');
+
+    expect(stableProcedureStart).toBeGreaterThan(-1);
+    expect(rcProcedureStart).toBeGreaterThan(stableProcedureStart);
+
+    const stableProcedure = guide.slice(stableProcedureStart, rcProcedureStart);
+    const rcProcedure = guide.slice(rcProcedureStart);
+
+    for (const procedure of [stableProcedure, rcProcedure]) {
+      expect(procedure).toContain(
+        'pnpm release:verify -- --source-sha <full-source-sha> --version <exact-version>',
+      );
+      expect(procedure).toContain('@tenkit/template-generator');
+      expect(procedure).toContain('@tenkit/cli');
+      expect(procedure).toContain('create-tenkit');
+      expect(procedure).toContain('npm 2FA');
+      expect(procedure).toContain('Publish the existing GitHub draft');
+      expect(procedure).toContain('rerun the same Release Verification command');
+    }
+
+    expect(stableProcedure).toContain('pnpm create tenkit@latest --version');
+    expect(rcProcedure).not.toContain('pnpm create tenkit@latest --version');
+    expect(generatedGuide).toContain('href="recovery-reference.md"');
+    expect(generatedGuide).not.toContain('recovery-reference_md.html');
+
+    const stableGeneratedProcedure = generatedGuide.slice(
+      generatedGuide.indexOf('Normal+Stable+procedure'),
+      generatedGuide.indexOf('Normal+RC+procedure'),
+    );
+    const rcGeneratedProcedure = generatedGuide.slice(
+      generatedGuide.indexOf('Normal+RC+procedure'),
+      generatedGuide.indexOf('If+the+normal+path+stops'),
+    );
+
+    expect(stableGeneratedProcedure.match(/<ol(?: start="\d+")?>/g)).toEqual([
+      '<ol>',
+      '<ol start="4">',
+      '<ol start="5">',
+      '<ol start="6">',
+      '<ol start="7">',
+    ]);
+    expect(rcGeneratedProcedure.match(/<ol(?: start="\d+")?>/g)).toEqual([
+      '<ol>',
+      '<ol start="4">',
+      '<ol start="5">',
+      '<ol start="6">',
+      '<ol start="7">',
+    ]);
+
+    for (const state of [
+      'fully private',
+      'partial public (1/3)',
+      'partial public (2/3)',
+      'complete public',
+      'published',
+      'eventual-consistency',
+      'nonstandard',
+    ]) {
+      expect(recoveryReference).toContain(state);
+    }
+
+    expect(recoveryReference).toContain(
+      'Aliases already processed in the ordered list are absent.',
+    );
+    expect(recoveryReference).toContain(
+      'Aliases not yet processed still match their recorded baseline values.',
+    );
+    expect(recoveryReference).toContain(
+      'After all six removals and readbacks, require this final state:',
+    );
+
+    expect(tabletop).toContain('State: fully private');
+    expect(tabletop).toContain('State: complete public');
+    expect(tabletop).toContain('State: published');
+
+    for (const document of [guide, recoveryReference, tabletop]) {
+      expect(document).toMatch(/not safe for live release use until ticket 14/i);
+    }
+  });
+
+  test('detects drift in the generated maintainer guide', async () => {
+    const existingGuidancePaths = await existingLocalOperatorGuidancePaths();
+
+    if (existingGuidancePaths.length === 0) {
+      return;
+    }
+
+    const operationRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-docs-'));
+
+    try {
+      for (const path of [
+        localOperatorGuidancePaths[0]!,
+        localOperatorGuidancePaths[1]!,
+        localOperatorGuidancePaths[4]!,
+      ]) {
+        await copyFile(path, join(operationRoot, basename(path)));
+      }
+
+      const rendererPath = join(operationRoot, 'render-maintainer-guide.rb');
+      const synchronizedCheck = await runRuby(rendererPath, ['--check']);
+
+      expect(synchronizedCheck.exitCode, synchronizedCheck.output).toBe(0);
+
+      await appendFile(join(operationRoot, 'maintainer-guide.html'), '\n<!-- drift -->\n');
+
+      const driftCheck = await runRuby(rendererPath, ['--check']);
+
+      expect(driftCheck.exitCode, driftCheck.output).toBe(1);
+      expect(driftCheck.output).toContain(
+        'maintainer-guide.html is out of date; regenerate it from maintainer-guide.md.',
+      );
+    } finally {
+      await rm(operationRoot, { recursive: true });
+    }
   });
 });
