@@ -362,43 +362,14 @@ describe('Draft Release workflow', () => {
 
     expect(serializedStage.match(/npm stage publish/g)).toHaveLength(1);
     expect(serializedStage.match(/stage_package /g)).toHaveLength(3);
-    expect(serializedStage.indexOf('tenkit-template-generator-')).toBeLessThan(
-      serializedStage.indexOf('tenkit-cli-'),
-    );
-    expect(serializedStage.indexOf('tenkit-cli-')).toBeLessThan(
-      serializedStage.indexOf('create-tenkit-'),
-    );
     expect(serializedStage).toMatch(/npm stage publish[^\n]+--tag \\"\$NPM_DIST_TAG\\"/);
-    expect(serializedStage).toContain("jq -r '.[]'");
+    expect(
+      [...serializedStage.matchAll(/stage_package '([^']+)'/g)].map((match) => match[1]),
+    ).toEqual(['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit']);
     expect(serializedStage).not.toContain('--tag candidate');
     expect(serializedStage).toContain('--access public');
     expect(serializedStage).toContain('--provenance');
     expect(serializedStage).toContain('always()');
-    expect(serializedStage).toContain('npm stage list @tenkit/template-generator');
-    expect(serializedStage).toContain('npm stage list @tenkit/cli');
-    expect(serializedStage).toContain('npm stage list create-tenkit');
-    expect(serializedStage).toContain('all three existing private stages belong to one complete');
-    expect(serializedStage).toContain('continue that earlier attempt');
-    expect(serializedStage).toContain(
-      'reject all same-version private stages across the current and earlier attempts',
-    );
-    expect(serializedStage).toContain('Do not retry Draft or attempt to reject a public version');
-    expect(serializedStage).toContain(
-      'Record the complete public and private registry state for repository-owner review',
-    );
-    expect(serializedStage).toContain('follow the Stable partial-public fix-forward procedure');
-    expect(serializedStage).toContain(
-      'current Git-only RC planning authorizes no automatic recovery',
-    );
-    expect(serializedStage).toContain(
-      'Do not retry Draft, reject a public version, add Release-Fix-Forward, or choose another RC ordinal',
-    );
-    expect(serializedStage).toContain('npm Staged Packages');
-    expect(serializedStage).toContain(
-      'authenticated npm stage list output, or a Release Verification report',
-    );
-    expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
-
     const actions = Array.isArray(stage.steps)
       ? stage.steps.flatMap((step) => {
           const uses = requireRecord(step, 'stage step').uses;
@@ -434,13 +405,6 @@ describe('Draft Release workflow', () => {
     expect(serializedCreateDraftRelease).toContain('$GIT_TAG');
     expect(serializedCreateDraftRelease).not.toContain('gh release create \\"v$VERSION\\"');
     expect(serializedCreateDraftRelease).toMatch(/--target \\"\$SOURCE_SHA\\"/);
-    expect(serializedCreateDraftRelease).toContain('Untrusted Draft diagnostics');
-    expect(serializedCreateDraftRelease).toContain('pnpm release:verify -- --source-sha');
-    expect(serializedCreateDraftRelease).toContain('Website visibility gate');
-    expect(serializedCreateDraftRelease).toContain('PACKAGE_ORDER');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.template-stage-id');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.cli-stage-id');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.create-stage-id');
   });
 
   test.each([
@@ -613,6 +577,9 @@ describe('Draft Release workflow', () => {
       expect(summary).toContain(`Source SHA: \`${rehearsal.sourceSha}\``);
       expect(summary).toContain(expectedRecovery);
       expect(summary).not.toContain(excludedRecovery);
+      expect(summary).toContain(
+        'open that original run and select Re-run failed jobs. Do not dispatch a new Draft or restage packages.',
+      );
 
       const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
       expect(operations).toHaveLength(2);

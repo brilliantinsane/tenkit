@@ -12,6 +12,8 @@ import { runReleaseVerificationCommand } from '../src/release-verification-comma
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from '../src/release-set';
 
 const sourceSha = '041f79e50ff5e84f5883be026201bde10f77f93e';
+const previousStableSha = '1111111111111111111111111111111111111111';
+const previousReleaseCandidateSha = '2222222222222222222222222222222222222222';
 const previousStableVersion = '0.3.0';
 const previousReleaseCandidateVersion = '0.4.0-rc.2';
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
@@ -136,10 +138,14 @@ type VerificationHarnessOptions = {
   sharedArtifactMutations?: Partial<Record<ReleaseSetPackageName, ArtifactMutation>>;
   githubReleaseOverrides?: Record<string, unknown>;
   duplicateGithubRelease?: boolean;
+  transientMissingGithubReads?: number;
   remoteTagSha?: string | null;
   createEntrypointVersion?: string;
   transientMissingReads?: Partial<Record<ReleaseSetPackageName, number>>;
   transientSelectedTagReads?: Partial<Record<ReleaseSetPackageName, number>>;
+  transientMalformedDistTagReads?: Partial<Record<ReleaseSetPackageName, number>>;
+  transientStageViewReads?: Partial<Record<ReleaseSetPackageName, number>>;
+  transientRemoteTagReads?: number;
   npmVersion?: string;
 };
 
@@ -223,6 +229,7 @@ async function createVerificationHarness(
   );
   const publicReadCounts = new Map<ReleaseSetPackageName, number>();
   const distTagReadCounts = new Map<ReleaseSetPackageName, number>();
+  const stageViewReadCounts = new Map<ReleaseSetPackageName, number>();
   const runNpmCommand = vi.fn(async (input: { args: readonly string[]; cwd: string }) => {
     const args = [...input.args];
 
@@ -272,6 +279,12 @@ async function createVerificationHarness(
       );
       const readCount = (distTagReadCounts.get(packageName) ?? 0) + 1;
       distTagReadCounts.set(packageName, readCount);
+      const transientMalformedReads = options.transientMalformedDistTagReads?.[packageName] ?? 0;
+
+      if (readCount <= transientMalformedReads) {
+        return { exitCode: 0, stdout: '{', stderr: '' };
+      }
+
       const transientSelectedTagReads = options.transientSelectedTagReads?.[packageName] ?? 0;
       const selectedVersion =
         states[index] === 'public' && readCount > transientSelectedTagReads
@@ -308,6 +321,17 @@ async function createVerificationHarness(
           packageStages.map((packageStage) => ({ packageName, packageStage })),
         )
         .find(({ packageStage }) => packageStage.id === args[2]);
+      const packageName = stage?.packageName;
+
+      if (packageName) {
+        const readCount = (stageViewReadCounts.get(packageName) ?? 0) + 1;
+        stageViewReadCounts.set(packageName, readCount);
+
+        if (readCount <= (options.transientStageViewReads?.[packageName] ?? 0)) {
+          return { exitCode: 1, stdout: '', stderr: 'temporary registry read failure' };
+        }
+      }
+
       return {
         exitCode: 0,
         stdout: JSON.stringify(
@@ -345,6 +369,7 @@ async function createVerificationHarness(
     return { exitCode: 1, stdout: '', stderr: `Unexpected npm command: ${args.join(' ')}` };
   });
   const publicationState = options.publicationState ?? 'draft';
+  let githubReadCount = 0;
   const githubRelease = {
     tag_name: `v${version}`,
     target_commitish: sourceSha,
@@ -354,28 +379,47 @@ async function createVerificationHarness(
     html_url: `https://github.com/brilliantinsane/tenkit/releases/tag/v${version}`,
     ...options.githubReleaseOverrides,
   };
+  let remoteTagReadCount = 0;
   const runCommand = vi.fn(
     async (input: { command: string; args: readonly string[]; cwd: string }) => {
       if (input.command === 'git' && input.args[0] === 'rev-parse') {
         return { stdout: `${sourceSha}\n`, stderr: '' };
       }
 
-      if (input.command === 'git' && input.args[0] === 'tag') {
+      if (
+        input.command === 'git' &&
+        input.args[0] === 'ls-remote' &&
+        input.args.includes('refs/tags/v*')
+      ) {
         return {
-          stdout: [`v${previousStableVersion}`, `v${previousReleaseCandidateVersion}`].join('\n'),
+          stdout: [
+            `${previousStableSha}\trefs/tags/v${previousStableVersion}`,
+            `${previousReleaseCandidateSha}\trefs/tags/v${previousReleaseCandidateVersion}`,
+          ].join('\n'),
           stderr: '',
         };
       }
 
+      if (input.command === 'git' && input.args[0] === 'merge-base') {
+        return { stdout: `${input.args[1]}\n`, stderr: '' };
+      }
+
       if (input.command === 'gh') {
+        githubReadCount += 1;
         const releases = [
-          githubRelease,
+          ...(githubReadCount > (options.transientMissingGithubReads ?? 0) ? [githubRelease] : []),
           ...(options.duplicateGithubRelease ? [githubRelease] : []),
         ];
         return { stdout: JSON.stringify([releases]), stderr: '' };
       }
 
       if (input.command === 'git' && input.args[0] === 'ls-remote') {
+        remoteTagReadCount += 1;
+
+        if (remoteTagReadCount <= (options.transientRemoteTagReads ?? 0)) {
+          throw new Error('temporary remote tag read failure');
+        }
+
         const remoteTagSha =
           options.remoteTagSha === undefined
             ? publicationState === 'published'
@@ -455,6 +499,12 @@ describe('release:verify command', () => {
       ]);
       expect(harness.reproduceReleaseSet).toHaveBeenCalledWith(
         expect.objectContaining({ sourceSha, version }),
+      );
+      expect(harness.runCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'git',
+          args: ['ls-remote', '--tags', 'origin', 'refs/tags/v*'],
+        }),
       );
     },
   );
@@ -733,6 +783,53 @@ describe('release:verify command', () => {
 
     await expect(harness.execute()).resolves.toBe(0);
     expect(harness.wait).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries a transient private-stage read before recommending approval', async () => {
+    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+      transientStageViewReads: { '@tenkit/template-generator': 1 },
+    });
+
+    await expect(harness.execute()).resolves.toBe(0);
+    expect(harness.wait).toHaveBeenCalledTimes(1);
+    expect(nextActions(harness.getOutput())).toEqual([
+      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+    ]);
+  });
+
+  test('retries malformed npm dist-tag JSON before recommending approval', async () => {
+    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+      transientMalformedDistTagReads: { '@tenkit/template-generator': 1 },
+    });
+
+    await expect(harness.execute()).resolves.toBe(0);
+    expect(harness.wait).toHaveBeenCalledTimes(1);
+    expect(nextActions(harness.getOutput())).toEqual([
+      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+    ]);
+  });
+
+  test('retries a transient missing GitHub draft before recommending approval', async () => {
+    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+      transientMissingGithubReads: 1,
+    });
+
+    await expect(harness.execute()).resolves.toBe(0);
+    expect(harness.wait).toHaveBeenCalledTimes(1);
+    expect(nextActions(harness.getOutput())).toEqual([
+      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+    ]);
+  });
+
+  test('retries a transient remote Git tag read', async () => {
+    const harness = await createVerificationHarness(['public', 'public', 'public'], {
+      publicationState: 'published',
+      transientRemoteTagReads: 1,
+    });
+
+    await expect(harness.execute()).resolves.toBe(0);
+    expect(harness.wait).toHaveBeenCalledTimes(1);
+    expect(harness.getOutput()).toContain(`Git tag: v0.4.0 -> ${sourceSha}`);
   });
 
   test.each(['0.4.0', '0.4.0-rc.3'])(

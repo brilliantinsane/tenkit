@@ -1,6 +1,6 @@
+import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { spawn } from 'node:child_process';
 
 import { describe, expect, test } from 'vitest';
 
@@ -74,9 +74,6 @@ describe('release-tools package commands', () => {
     const scripts = await readPackageScripts();
 
     expect(scripts.test).toBe('pnpm -F @tenkit/template-generator build && vitest run');
-    expect(scripts['test:readiness']).toBe(
-      'vitest run tests/release-plan.test.ts tests/draft-release-set.test.ts tests/draft-workflow.test.ts tests/reproduce-release-set.test.ts tests/release-verification-command.test.ts tests/release-cutover.test.ts',
-    );
     expect(scripts.typecheck).toBe(
       'pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false',
     );

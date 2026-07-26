@@ -286,23 +286,9 @@ jobs:
             echo "$OUTPUT_NAME=$STAGE_ID" >> "$GITHUB_OUTPUT"
           }
 
-          while IFS= read -r package_name; do
-            case "$package_name" in
-              '@tenkit/template-generator')
-                stage_package "$package_name" "$TEMPLATE_ARTIFACT" "$TEMPLATE_SHASUM" template-stage-id
-                ;;
-              '@tenkit/cli')
-                stage_package "$package_name" "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
-                ;;
-              'create-tenkit')
-                stage_package "$package_name" "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id
-                ;;
-              *)
-                echo "::error::Release Plan contains unknown package $package_name."
-                exit 1
-                ;;
-            esac
-          done < <(printf '%s' "$PACKAGE_ORDER" | jq -r '.[]')
+          stage_package '@tenkit/template-generator' "$TEMPLATE_ARTIFACT" "$TEMPLATE_SHASUM" template-stage-id
+          stage_package '@tenkit/cli' "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
+          stage_package 'create-tenkit' "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id
 
       - name: Record staging recovery instructions
         if: ${{ always() }}
@@ -339,7 +325,7 @@ jobs:
             else
               echo '1. If any same-version RC package is public, stop. Do not retry Draft, reject a public version, add Release-Fix-Forward, or choose another RC ordinal. Record the complete public and private registry state for repository-owner review; current Git-only RC planning authorizes no automatic recovery.'
             fi
-            echo '2. If this run created no private stage and all three existing private stages belong to one complete, valid earlier Release Set, continue that earlier attempt.'
+            echo '2. If all three matching private stages succeeded in an earlier Draft run but only its GitHub draft job failed, open that original run and select Re-run failed jobs. Do not dispatch a new Draft or restage packages.'
             echo '3. Otherwise, reject all same-version private stages across the current and earlier attempts with maintainer 2FA before starting a fresh Draft. Do not combine stages from different attempts.'
           } >> "$GITHUB_STEP_SUMMARY"
 
