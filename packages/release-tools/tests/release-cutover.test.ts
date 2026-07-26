@@ -75,11 +75,12 @@ describe('release workflow cutover', () => {
     }
   });
 
-  test('creates only a source-bound draft for manual Finalize', async () => {
+  test('creates only a plan-identified source-bound draft for Release Publication', async () => {
     const draftWorkflowText = await readFile(resolve(workflowRoot, 'release-draft.yml'), 'utf8');
 
-    expect(draftWorkflowText).toContain('gh release create "v$VERSION"');
+    expect(draftWorkflowText).toContain('gh release create "$GIT_TAG"');
     expect(draftWorkflowText).toContain('--draft');
+    expect(draftWorkflowText).toContain('prerelease) set -- --prerelease');
     expect(draftWorkflowText).toContain('--target "$SOURCE_SHA"');
     expect(draftWorkflowText).not.toMatch(
       /gh release (?:edit|upload).*--draft=false|gh release publish/,
