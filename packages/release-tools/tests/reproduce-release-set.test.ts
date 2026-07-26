@@ -36,6 +36,7 @@ async function writeArtifact(
     version?: string;
     internalDependencyVersion?: string;
     internalDependencySection?: 'dependencies' | 'peerDependencies';
+    embeddedCliVersion?: string;
     content?: string;
   } = {},
   releaseVersion = version,
@@ -64,9 +65,20 @@ async function writeArtifact(
       2,
     )}\n`,
   );
+  if (packageFixture.name === '@tenkit/cli') {
+    await mkdir(join(packageRoot, 'dist'));
+    await writeFile(
+      join(packageRoot, 'dist/index.mjs'),
+      `const CLI_VERSION = ${JSON.stringify(overrides.embeddedCliVersion ?? releaseVersion)};\n`,
+    );
+  }
   const fixedTime = new Date('2026-01-01T00:00:00.000Z');
   await utimes(join(packageRoot, 'README.md'), fixedTime, fixedTime);
   await utimes(join(packageRoot, 'package.json'), fixedTime, fixedTime);
+  if (packageFixture.name === '@tenkit/cli') {
+    await utimes(join(packageRoot, 'dist/index.mjs'), fixedTime, fixedTime);
+    await utimes(join(packageRoot, 'dist'), fixedTime, fixedTime);
+  }
   await utimes(packageRoot, fixedTime, fixedTime);
   const tarPath = join(packRoot, 'package.tar');
   execFileSync('tar', ['-cf', tarPath, 'package'], { cwd: packRoot });
@@ -202,6 +214,11 @@ describe('canonical Release Set reproduction', () => {
       'non-runtime internal dependency edge',
       { internalDependencySection: 'peerDependencies' },
       /direct dependency @tenkit\/template-generator/,
+    ],
+    [
+      'embedded Public CLI version',
+      { embeddedCliVersion: '0.3.1' },
+      /embedded Public CLI version expected 0\.3\.0, found 0\.3\.1/,
     ],
   ] as const)('rejects a changed %s', async (_label, overrides, expectedMessage) => {
     const repositoryRoot = await createRepositoryFixture();
