@@ -849,9 +849,9 @@ describe('release:verify command', () => {
     const harness = await createVerificationHarness(['missing', 'private', 'private']);
 
     await expect(harness.execute()).rejects.toThrow(
-      /after 4 read attempts.*Stop and inspect npm public, staged, and dist-tag state/i,
+      /after 4 read attempts over 6000ms.*Stop and inspect npm public, staged, and dist-tag state/i,
     );
-    expect(harness.wait).toHaveBeenCalledTimes(3);
+    expect(harness.wait.mock.calls).toEqual([[2_000], [2_000], [2_000]]);
     expect(nextActions(harness.getOutput())).toEqual([]);
   });
 

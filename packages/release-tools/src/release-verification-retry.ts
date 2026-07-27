@@ -1,5 +1,5 @@
 export const READ_ATTEMPTS = 4;
-export const READ_RETRY_DELAY_MS = 2_500;
+export const READ_RETRY_DELAY_MS = 2_000;
 
 export class RetryableReadError extends Error {}
 

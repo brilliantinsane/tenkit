@@ -225,25 +225,6 @@ jobs:
           name: draft-release-set-${{ needs.build.outputs.source-sha }}
           path: release-artifacts
 
-      - name: Start private staging diagnostics
-        run: |
-          {
-            echo '## Private staging diagnostics'
-            echo ''
-            echo 'These stage references are untrusted diagnostics. Verify directly through authenticated npm before approval or rejection.'
-            echo ''
-            echo "- Channel: \`$RELEASE_CHANNEL\`"
-            echo "- Source SHA: \`$SOURCE_SHA\`"
-            echo "- Version: \`$VERSION\`"
-            echo "- npm dist-tag: \`$NPM_DIST_TAG\`"
-            echo "- Git tag: \`$GIT_TAG\`"
-            echo "- GitHub Release type: \`$GITHUB_RELEASE_TYPE\`"
-            echo "- Package approval order: \`$PACKAGE_ORDER\`"
-            echo ''
-            echo '| Package | Stage reference | Tag |'
-            echo '|---|---|---|'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Stage Release Set in dependency order
         id: stage-release-set
         env:
@@ -272,7 +253,6 @@ jobs:
             STAGED_SHASUM=$(printf '%s' "$STAGE" | jq -r '.shasum // empty')
             if printf '%s' "$STAGE_ID" | grep -Eq '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'; then
               echo "$PACKAGE_NAME $STAGE_ID" >> "$RUNNER_TEMP/tenkit-stage-references"
-              echo "| $PACKAGE_NAME | \`$STAGE_ID\` | \`$NPM_DIST_TAG\` |" >> "$GITHUB_STEP_SUMMARY"
               echo "npm returned stage reference $STAGE_ID for $PACKAGE_NAME."
             fi
 
@@ -290,17 +270,18 @@ jobs:
           stage_package '@tenkit/cli' "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
           stage_package 'create-tenkit' "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id
 
-      - name: Record staging recovery instructions
-        if: ${{ always() }}
+      - name: Summarize stopped staging
+        if: ${{ failure() }}
         run: |
           {
+            echo '## Draft staging stopped'
             echo ''
-            echo '### Staging recovery'
-            echo ''
+            echo "- Channel: \`$RELEASE_CHANNEL\`"
             echo "- Source SHA: \`$SOURCE_SHA\`"
             echo "- Version: \`$VERSION\`"
+            echo '- Observed: Draft staging did not complete.'
             if [ -s "$RUNNER_TEMP/tenkit-stage-references" ]; then
-              echo '- Stage references recovered before failure:'
+              echo '- Untrusted stage references returned before failure:'
               while read -r package_name stage_id; do
                 echo "  - $package_name: \`$stage_id\`"
               done < "$RUNNER_TEMP/tenkit-stage-references"
@@ -308,25 +289,7 @@ jobs:
               echo '- No stage reference was recovered from npm output.'
             fi
             echo ''
-            echo 'If staging failed, classify the same-version registry state before changing or retrying anything:'
-            echo '```bash'
-            echo "npm view @tenkit/template-generator@$VERSION version"
-            echo "npm view @tenkit/cli@$VERSION version"
-            echo "npm view create-tenkit@$VERSION version"
-            echo 'npm stage list @tenkit/template-generator'
-            echo 'npm stage list @tenkit/cli'
-            echo 'npm stage list create-tenkit'
-            echo '```'
-            echo ''
-            echo 'Find stage IDs in npm Staged Packages, authenticated npm stage list output, or a Release Verification report. Never copy them from an agent conversation. Prefer npm Staged Packages for manual rejection.'
-            echo ''
-            if [ "$RELEASE_CHANNEL" = 'stable' ]; then
-              echo '1. If any same-version package is public, stop. Do not retry Draft or attempt to reject a public version. Record the complete public and private registry state for repository-owner review, then follow the Stable partial-public fix-forward procedure in the operator runbook. The reviewed fix commit must include `Release-Fix-Forward: <public-version>` so tokenless Draft planning selects the next patch version.'
-            else
-              echo '1. If any same-version RC package is public, stop. Do not retry Draft, reject a public version, add Release-Fix-Forward, or choose another RC ordinal. Record the complete public and private registry state for repository-owner review; current Git-only RC planning authorizes no automatic recovery.'
-            fi
-            echo '2. If all three matching private stages succeeded in an earlier Draft run but only its GitHub draft job failed, open that original run and select Re-run failed jobs. Do not dispatch a new Draft or restage packages.'
-            echo '3. Otherwise, reject all same-version private stages across the current and earlier attempts with maintainer 2FA before starting a fresh Draft. Do not combine stages from different attempts.'
+            echo 'Next action: STOP. Do not retry or mutate npm. Follow the local uncommon recovery reference from this exact observed state.'
           } >> "$GITHUB_STEP_SUMMARY"
 
   create-draft-release:
@@ -344,41 +307,31 @@ jobs:
       GITHUB_RELEASE_TYPE: ${{ needs.build.outputs.github-release-type }}
       PACKAGE_ORDER: ${{ needs.build.outputs.package-order }}
     steps:
-      - name: Materialize untrusted Draft diagnostics
-        env:
-          TEMPLATE_STAGE_ID: ${{ needs.stage.outputs.template-stage-id }}
-          CLI_STAGE_ID: ${{ needs.stage.outputs.cli-stage-id }}
-          CREATE_STAGE_ID: ${{ needs.stage.outputs.create-stage-id }}
-          TEMPLATE_INTEGRITY: ${{ needs.build.outputs.template-integrity }}
-          CLI_INTEGRITY: ${{ needs.build.outputs.cli-integrity }}
-          CREATE_INTEGRITY: ${{ needs.build.outputs.create-integrity }}
-          TEMPLATE_SHASUM: ${{ needs.build.outputs.template-shasum }}
-          CLI_SHASUM: ${{ needs.build.outputs.cli-shasum }}
-          CREATE_SHASUM: ${{ needs.build.outputs.create-shasum }}
+      - name: Prepare Draft handoff
         run: |
           APPROVAL_ORDER=$(printf '%s' "$PACKAGE_ORDER" | jq -r 'join(" -> ")')
+          case "$RELEASE_CHANNEL" in
+            stable) UNTOUCHED_NPM_TAG=next ;;
+            rc) UNTOUCHED_NPM_TAG=latest ;;
+            *)
+              echo "::error::Unsupported Release Channel $RELEASE_CHANNEL."
+              exit 1
+              ;;
+          esac
+
           {
-            echo "# Tenkit $GIT_TAG"
+            echo '# Draft Release handoff'
             echo ''
-            echo '## Untrusted Draft diagnostics'
-            echo ''
-            echo 'Everything below is a convenience hint from GitHub Actions. Independently obtain verification evidence from npm before approving any stage.'
+            echo 'This is an untrusted handoff from GitHub Actions. Release Verification obtains the evidence required for approval.'
             echo ''
             echo "- Channel: \`$RELEASE_CHANNEL\`"
             echo "- Version: \`$VERSION\`"
             echo "- npm dist-tag: \`$NPM_DIST_TAG\`"
+            echo "- Untouched npm dist-tag: \`$UNTOUCHED_NPM_TAG\`"
             echo "- Git tag: \`$GIT_TAG\`"
             echo "- GitHub Release type: \`$GITHUB_RELEASE_TYPE\`"
             echo "- Source SHA: \`$SOURCE_SHA\`"
-            echo "- Release Set identity: \`$SOURCE_SHA + $VERSION\`"
             echo "- Package approval order: \`$APPROVAL_ORDER\`"
-            echo "- Observed state: \`fully private\`"
-            echo ''
-            echo '| Package | Stage reference | Integrity | Shasum |'
-            echo '|---|---|---|---|'
-            echo "| @tenkit/template-generator | \`$TEMPLATE_STAGE_ID\` | \`$TEMPLATE_INTEGRITY\` | \`$TEMPLATE_SHASUM\` |"
-            echo "| @tenkit/cli | \`$CLI_STAGE_ID\` | \`$CLI_INTEGRITY\` | \`$CLI_SHASUM\` |"
-            echo "| create-tenkit | \`$CREATE_STAGE_ID\` | \`$CREATE_INTEGRITY\` | \`$CREATE_SHASUM\` |"
             echo ''
             echo '## Release Verification'
             echo ''
@@ -387,20 +340,7 @@ jobs:
             echo '```'
             echo ''
             echo 'Next action: Run the Release Verification command above. Approve nothing until it passes and names one package.'
-            echo ''
-            if [ "$RELEASE_CHANNEL" = 'stable' ]; then
-              echo '## Website visibility gate'
-              echo ''
-              echo 'After Release Publication, run this outside the Tenkit workspace before dependent website work:'
-              echo '```bash'
-              echo 'pnpm create tenkit@latest --version'
-              echo '```'
-              echo ''
-            fi
-            echo 'This Release is a draft. No public npm version or Git tag was created.'
-            echo ''
-            echo '> External alias cleanup and the first natural RC remain manual, separately authenticated operations.'
-          } > "$RUNNER_TEMP/release-notes.md"
+          } > "$RUNNER_TEMP/draft-summary.md"
 
       - name: Create draft GitHub Release
         id: create-release
@@ -408,28 +348,76 @@ jobs:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          case "$GITHUB_RELEASE_TYPE" in
-            release) set -- ;;
-            prerelease) set -- --prerelease ;;
+          case "$RELEASE_CHANNEL" in
+            stable)
+              EXPECTED_NPM_DIST_TAG=latest
+              EXPECTED_GITHUB_RELEASE_TYPE=release
+              EXPECTED_PRERELEASE=false
+              printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+              ;;
+            rc)
+              EXPECTED_NPM_DIST_TAG=next
+              EXPECTED_GITHUB_RELEASE_TYPE=prerelease
+              EXPECTED_PRERELEASE=true
+              printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-rc\.[1-9][0-9]*$'
+              ;;
             *)
-              echo "::error::Unsupported GitHub Release type $GITHUB_RELEASE_TYPE."
+              echo "::error::Unsupported Release Channel $RELEASE_CHANNEL."
               exit 1
               ;;
           esac
 
-          DRAFT_URL=$(gh release create "$GIT_TAG" \
-            "$@" \
-            --draft \
-            --title "$GIT_TAG" \
-            --target "$SOURCE_SHA" \
-            --notes-file "$RUNNER_TEMP/release-notes.md")
+          if [ "$NPM_DIST_TAG" != "$EXPECTED_NPM_DIST_TAG" ] || \
+            [ "$GITHUB_RELEASE_TYPE" != "$EXPECTED_GITHUB_RELEASE_TYPE" ] || \
+            [ "$GIT_TAG" != "v$VERSION" ]; then
+            echo '::error::Draft Release identity is internally inconsistent.'
+            exit 1
+          fi
+
+          RELEASES=$(gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100")
+          MATCHING_RELEASES=$(printf '%s' "$RELEASES" | jq -c --arg tag "$GIT_TAG" '[.[][] | select(.tag_name == $tag)]')
+          MATCH_COUNT=$(printf '%s' "$MATCHING_RELEASES" | jq 'length')
+
+          if [ "$MATCH_COUNT" -gt 1 ]; then
+            echo "::error::Multiple GitHub Releases use $GIT_TAG. Stop for owner review."
+            exit 1
+          fi
+
+          if [ "$MATCH_COUNT" -eq 1 ]; then
+            if ! printf '%s' "$MATCHING_RELEASES" | jq -e \
+              --arg source_sha "$SOURCE_SHA" \
+              --argjson prerelease "$EXPECTED_PRERELEASE" \
+              '.[0].draft == true and
+               .[0].prerelease == $prerelease and
+               .[0].target_commitish == $source_sha and
+               (.[0].html_url | type == "string" and length > 0)' >/dev/null; then
+              echo "::error::Existing GitHub Release does not match $RELEASE_CHANNEL $VERSION from $SOURCE_SHA. Stop for owner review."
+              exit 1
+            fi
+
+            DRAFT_URL=$(printf '%s' "$MATCHING_RELEASES" | jq -r '.[0].html_url')
+            echo "Reusing exact matching draft $GIT_TAG."
+          else
+            case "$GITHUB_RELEASE_TYPE" in
+              release) set -- ;;
+              prerelease) set -- --prerelease ;;
+            esac
+
+            DRAFT_URL=$(gh release create "$GIT_TAG" \
+              "$@" \
+              --draft \
+              --title "$GIT_TAG" \
+              --target "$SOURCE_SHA" \
+              --notes "Source SHA: $SOURCE_SHA")
+          fi
+
           echo "draft-url=$DRAFT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Summarize untrusted Draft diagnostics
+      - name: Summarize Draft handoff
         env:
           DRAFT_URL: ${{ steps.create-release.outputs.draft-url }}
         run: |
-          cat "$RUNNER_TEMP/release-notes.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/draft-summary.md" >> "$GITHUB_STEP_SUMMARY"
           {
             echo ''
             echo "Inspect the [draft GitHub Release]($DRAFT_URL)."
