@@ -587,6 +587,19 @@ describe('release:verify command', () => {
     expect(nextActions(harness.getOutput())).toEqual([]);
   });
 
+  test('rejects a private Stable release when Git plans a different version', async () => {
+    const repository = await createReleasePlanningRepository();
+    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+      version: '9.0.0',
+      sourceSha: repository.sourceSha,
+      workspaceRoot: repository.repositoryRoot,
+      useCanonicalReleasePlan: true,
+    });
+
+    await expect(harness.execute()).rejects.toThrow(/requested 9\.0\.0.*Git plans 1\.3\.0/i);
+    expect(nextActions(harness.getOutput())).toEqual([]);
+  });
+
   test.each([
     ['0.4.0', ['private', 'private', 'private'], '@tenkit/template-generator'],
     ['0.4.0', ['public', 'private', 'private'], '@tenkit/cli'],
@@ -654,19 +667,28 @@ describe('release:verify command', () => {
     },
   );
 
-  test('verifies a published RC after Git advances to the next ordinal', async () => {
-    const harness = await createVerificationHarness(['public', 'public', 'public'], {
-      version: '0.4.0-rc.3',
-      plannedVersion: '0.4.0-rc.4',
-      publicationState: 'published',
-    });
+  test.each([
+    ['Stable', '0.4.0', '0.4.1', 'Run pnpm create tenkit@latest --version outside this workspace.'],
+    [
+      'RC',
+      '0.4.0-rc.3',
+      '0.4.0-rc.4',
+      'Release Set publication is complete; no release mutation remains.',
+    ],
+  ] as const)(
+    'verifies a published %s after Git advances its plan',
+    async (_channel, version, plannedVersion, expectedNextAction) => {
+      const harness = await createVerificationHarness(['public', 'public', 'public'], {
+        version,
+        plannedVersion,
+        publicationState: 'published',
+      });
 
-    await expect(harness.execute()).resolves.toBe(0);
-    expect(harness.getOutput()).toContain('State: published');
-    expect(nextActions(harness.getOutput())).toEqual([
-      'Next action: Release Set publication is complete; no release mutation remains.',
-    ]);
-  });
+      await expect(harness.execute()).resolves.toBe(0);
+      expect(harness.getOutput()).toContain('State: published');
+      expect(nextActions(harness.getOutput())).toEqual([`Next action: ${expectedNextAction}`]);
+    },
+  );
 
   test.each([
     ['private', 'public', 'private'],

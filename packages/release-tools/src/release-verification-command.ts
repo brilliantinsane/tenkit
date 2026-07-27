@@ -118,22 +118,23 @@ export async function runReleaseVerificationCommand(
       wait,
     });
 
-    if (identity.channel === 'rc' && githubState.publication === 'draft') {
+    if (githubState.publication === 'draft') {
       const releasePlan = (
         input.planReleaseSetFromRepository ?? planCanonicalReleaseSetFromRepository
       )({
-        channel: 'rc',
+        channel: identity.channel,
         workspaceRoot: input.workspaceRoot,
         sourceRevision: identity.sourceSha,
       });
+      const channelName = identity.channel === 'stable' ? 'Stable' : 'RC';
       const plannedVersion =
-        releasePlan.kind === 'release' && releasePlan.channel === 'rc'
+        releasePlan.kind === 'release' && releasePlan.channel === identity.channel
           ? releasePlan.version
-          : 'no RC version';
+          : `no ${channelName} version`;
 
       if (releasePlan.sourceSha !== identity.sourceSha || plannedVersion !== identity.version) {
         throw new Error(
-          `Release Verification requested ${identity.version}, but Git plans ${plannedVersion} for source ${identity.sourceSha}. Stop and rerun Draft with the Git-planned RC version.`,
+          `Release Verification requested ${identity.version}, but Git plans ${plannedVersion} for source ${identity.sourceSha}. Stop and rerun Draft with the Git-planned ${channelName} version.`,
         );
       }
     }
