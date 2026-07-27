@@ -14,30 +14,56 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
 });
 
-test('injects the version planned from source history into an isolated release workspace', async () => {
-  const isolatedWorkspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-prepared-release-version-'));
-  tempRoots.push(isolatedWorkspaceRoot);
+test.each([
+  ['stable', '0.3.0'],
+  ['rc', '0.3.0-rc.1'],
+] as const)(
+  'injects the %s version planned from source history into an isolated release workspace',
+  async (channel, expectedVersion) => {
+    const isolatedWorkspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-prepared-release-version-'));
+    tempRoots.push(isolatedWorkspaceRoot);
 
-  for (const releasePackage of RELEASE_SET_PACKAGES) {
-    const packageRoot = join(isolatedWorkspaceRoot, releasePackage.root);
-    await mkdir(packageRoot, { recursive: true });
-    await writeFile(
-      join(packageRoot, 'package.json'),
-      `${JSON.stringify({ name: releasePackage.name, version: '0.2.0' }, null, 2)}\n`,
-    );
-  }
+    for (const releasePackage of RELEASE_SET_PACKAGES) {
+      const packageRoot = join(isolatedWorkspaceRoot, releasePackage.root);
+      await mkdir(packageRoot, { recursive: true });
+      await writeFile(
+        join(packageRoot, 'package.json'),
+        `${JSON.stringify(
+          {
+            name: releasePackage.name,
+            version: '0.2.0',
+            ...('internalDependency' in releasePackage
+              ? {
+                  dependencies: {
+                    [releasePackage.internalDependency]: 'workspace:*',
+                  },
+                }
+              : {}),
+          },
+          null,
+          2,
+        )}\n`,
+      );
+    }
 
-  const plan = await prepareReleaseSetVersion({
-    workspaceRoot: repositoryRoot,
-    isolatedWorkspaceRoot,
-    sourceRevision: '3a10d24',
-  });
+    const plan = await prepareReleaseSetVersion({
+      channel,
+      workspaceRoot: repositoryRoot,
+      isolatedWorkspaceRoot,
+      sourceRevision: '3a10d24',
+    });
 
-  expect(plan.version).toBe('0.3.0');
-  for (const releasePackage of RELEASE_SET_PACKAGES) {
-    const packageMetadata = JSON.parse(
-      await readFile(join(isolatedWorkspaceRoot, releasePackage.root, 'package.json'), 'utf8'),
-    ) as Record<string, unknown>;
-    expect(packageMetadata.version).toBe(plan.version);
-  }
-});
+    expect(plan.version).toBe(expectedVersion);
+    for (const releasePackage of RELEASE_SET_PACKAGES) {
+      const packageMetadata = JSON.parse(
+        await readFile(join(isolatedWorkspaceRoot, releasePackage.root, 'package.json'), 'utf8'),
+      ) as Record<string, unknown>;
+      expect(packageMetadata.version).toBe(plan.version);
+      if ('internalDependency' in releasePackage) {
+        expect(packageMetadata.dependencies).toEqual({
+          [releasePackage.internalDependency]: expectedVersion,
+        });
+      }
+    }
+  },
+);

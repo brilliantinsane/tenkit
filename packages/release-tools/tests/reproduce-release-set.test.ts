@@ -7,7 +7,7 @@ import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { assertReleaseSetArtifactsMatch, reproduceReleaseSet } from '../src/reproduce-release-set';
-import { RELEASE_SET_PACKAGES } from '../src/release-set.ts';
+import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from '../src/release-set.ts';
 import type { RunReleaseContainer } from '../src/run-release-container';
 
 const sourceSha = '041f79e50ff5e84f5883be026201bde10f77f93e';
@@ -28,21 +28,18 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
 });
 
-const packageFixtures = RELEASE_SET_PACKAGES.map((releasePackage) => ({
-  ...releasePackage,
-  artifactFilename: `${releasePackage.artifactPrefix}-${version}.tgz`,
-}));
-
 async function writeArtifact(
   artifactRoot: string,
-  packageFixture: (typeof packageFixtures)[number],
+  packageFixture: (typeof RELEASE_SET_PACKAGES)[number],
   overrides: {
     name?: string;
     version?: string;
     internalDependencyVersion?: string;
     internalDependencySection?: 'dependencies' | 'peerDependencies';
+    embeddedCliVersion?: string;
     content?: string;
   } = {},
+  releaseVersion = version,
 ): Promise<void> {
   const packRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-artifact-fixture-'));
   tempRoots.push(packRoot);
@@ -54,11 +51,12 @@ async function writeArtifact(
     `${JSON.stringify(
       {
         name: overrides.name ?? packageFixture.name,
-        version: overrides.version ?? version,
+        version: overrides.version ?? releaseVersion,
         ...('internalDependency' in packageFixture
           ? {
               [overrides.internalDependencySection ?? 'dependencies']: {
-                [packageFixture.internalDependency]: overrides.internalDependencyVersion ?? version,
+                [packageFixture.internalDependency]:
+                  overrides.internalDependencyVersion ?? releaseVersion,
               },
             }
           : {}),
@@ -67,14 +65,25 @@ async function writeArtifact(
       2,
     )}\n`,
   );
+  if (packageFixture.name === '@tenkit/cli') {
+    await mkdir(join(packageRoot, 'dist'));
+    await writeFile(
+      join(packageRoot, 'dist/index.mjs'),
+      `const CLI_VERSION = ${JSON.stringify(overrides.embeddedCliVersion ?? releaseVersion)};\n`,
+    );
+  }
   const fixedTime = new Date('2026-01-01T00:00:00.000Z');
   await utimes(join(packageRoot, 'README.md'), fixedTime, fixedTime);
   await utimes(join(packageRoot, 'package.json'), fixedTime, fixedTime);
+  if (packageFixture.name === '@tenkit/cli') {
+    await utimes(join(packageRoot, 'dist/index.mjs'), fixedTime, fixedTime);
+    await utimes(join(packageRoot, 'dist'), fixedTime, fixedTime);
+  }
   await utimes(packageRoot, fixedTime, fixedTime);
   const tarPath = join(packRoot, 'package.tar');
   execFileSync('tar', ['-cf', tarPath, 'package'], { cwd: packRoot });
   await writeFile(
-    join(artifactRoot, packageFixture.artifactFilename),
+    join(artifactRoot, `${packageFixture.artifactPrefix}-${releaseVersion}.tgz`),
     gzipSync(await readFile(tarPath)),
   );
 }
@@ -82,15 +91,17 @@ async function writeArtifact(
 async function writeReleaseArtifacts(
   artifactRoot: string,
   mutation?: {
-    packageName: (typeof packageFixtures)[number]['name'];
+    packageName: ReleaseSetPackageName;
     overrides: Parameters<typeof writeArtifact>[2];
   },
+  releaseVersion = version,
 ): Promise<void> {
-  for (const packageFixture of packageFixtures) {
+  for (const packageFixture of RELEASE_SET_PACKAGES) {
     await writeArtifact(
       artifactRoot,
       packageFixture,
       mutation?.packageName === packageFixture.name ? mutation.overrides : undefined,
+      releaseVersion,
     );
   }
 }
@@ -155,6 +166,42 @@ describe('canonical Release Set reproduction', () => {
     }
   });
 
+  test('constructs the three canonical RC artifacts with exact prerelease pins', async () => {
+    const repositoryRoot = await createRepositoryFixture();
+    const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
+    tempRoots.push(outputParent);
+    const releaseCandidateVersion = '0.4.0-rc.2';
+
+    const reproduced = await reproduceReleaseSet({
+      repositoryRoot,
+      outputRoot: join(outputParent, 'rc'),
+      sourceSha,
+      version: releaseCandidateVersion,
+      extractSource: fakeSourceExtraction,
+      async runContainer(input) {
+        await writeReleaseArtifacts(input.artifactRoot, undefined, releaseCandidateVersion);
+      },
+    });
+
+    expect(reproduced.artifactPaths.map((artifactPath) => artifactPath.split('/').at(-1))).toEqual([
+      'tenkit-template-generator-0.4.0-rc.2.tgz',
+      'tenkit-cli-0.4.0-rc.2.tgz',
+      'create-tenkit-0.4.0-rc.2.tgz',
+    ]);
+    expect(reproduced.packages.map((releasePackage) => releasePackage.version)).toEqual([
+      releaseCandidateVersion,
+      releaseCandidateVersion,
+      releaseCandidateVersion,
+    ]);
+    expect(
+      reproduced.packages.map((releasePackage) => releasePackage.internalDependencies),
+    ).toEqual([
+      [],
+      [{ name: '@tenkit/template-generator', version: releaseCandidateVersion }],
+      [{ name: '@tenkit/cli', version: releaseCandidateVersion }],
+    ]);
+  });
+
   test.each([
     ['package identity', { name: '@tenkit/not-cli' }, /expected @tenkit\/cli/],
     ['shared version', { version: '0.3.1' }, /expected version 0\.3\.0/],
@@ -167,6 +214,11 @@ describe('canonical Release Set reproduction', () => {
       'non-runtime internal dependency edge',
       { internalDependencySection: 'peerDependencies' },
       /direct dependency @tenkit\/template-generator/,
+    ],
+    [
+      'embedded Public CLI version',
+      { embeddedCliVersion: '0.3.1' },
+      /embedded Public CLI version expected 0\.3\.0, found 0\.3\.1/,
     ],
   ] as const)('rejects a changed %s', async (_label, overrides, expectedMessage) => {
     const repositoryRoot = await createRepositoryFixture();
@@ -245,7 +297,7 @@ describe('canonical Release Set reproduction', () => {
   });
 
   test.runIf(dockerAvailable)(
-    'reproduces byte-identical real package artifacts for Draft and local verification (requires Docker)',
+    'reproduces byte-identical real Stable and RC artifacts (requires Docker)',
     { timeout: 600_000 },
     async () => {
       const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-container-reproduction-'));
@@ -272,30 +324,35 @@ describe('canonical Release Set reproduction', () => {
         throw new Error('Template generator package metadata must contain a version.');
       }
 
-      const commonInput = {
-        repositoryRoot,
-        sourceSha: reviewedSourceSha,
-        version: currentVersion,
-      };
-      const draft = await reproduceReleaseSet({
-        ...commonInput,
-        outputRoot: join(outputParent, 'draft'),
-      });
-      const localVerification = await reproduceReleaseSet({
-        ...commonInput,
-        outputRoot: join(outputParent, 'verification'),
-      });
+      for (const [channel, releaseVersion] of [
+        ['stable', currentVersion],
+        ['rc', '0.4.0-rc.2'],
+      ] as const) {
+        const commonInput = {
+          repositoryRoot,
+          sourceSha: reviewedSourceSha,
+          version: releaseVersion,
+        };
+        const draft = await reproduceReleaseSet({
+          ...commonInput,
+          outputRoot: join(outputParent, `${channel}-draft`),
+        });
+        const localVerification = await reproduceReleaseSet({
+          ...commonInput,
+          outputRoot: join(outputParent, `${channel}-verification`),
+        });
 
-      await assertReleaseSetArtifactsMatch({
-        expectedPackages: draft.packages,
-        artifactPaths: localVerification.artifactPaths,
-        expectedVersion: commonInput.version,
-      });
+        await assertReleaseSetArtifactsMatch({
+          expectedPackages: draft.packages,
+          artifactPaths: localVerification.artifactPaths,
+          expectedVersion: commonInput.version,
+        });
 
-      for (let index = 0; index < draft.artifactPaths.length; index += 1) {
-        await expect(readFile(draft.artifactPaths[index]!)).resolves.toEqual(
-          await readFile(localVerification.artifactPaths[index]!),
-        );
+        for (let index = 0; index < draft.artifactPaths.length; index += 1) {
+          await expect(readFile(draft.artifactPaths[index]!)).resolves.toEqual(
+            await readFile(localVerification.artifactPaths[index]!),
+          );
+        }
       }
     },
   );

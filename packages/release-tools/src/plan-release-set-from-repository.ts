@@ -1,7 +1,8 @@
 import { readReleaseHistory } from './git-release-history';
-import { planReleaseSet, type ReleaseSetPlan } from './release-plan';
+import { planReleaseSet, type ReleaseChannel, type ReleaseSetPlan } from './release-plan';
 
 type PlanReleaseSetFromRepositoryInput = {
+  channel: ReleaseChannel;
   workspaceRoot: string;
   sourceRevision: string;
 };
@@ -9,5 +10,11 @@ type PlanReleaseSetFromRepositoryInput = {
 export function planReleaseSetFromRepository(
   input: PlanReleaseSetFromRepositoryInput,
 ): ReleaseSetPlan {
-  return planReleaseSet(readReleaseHistory(input));
+  return planReleaseSet({
+    channel: input.channel,
+    ...readReleaseHistory({
+      ...input,
+      channel: input.channel,
+    }),
+  });
 }

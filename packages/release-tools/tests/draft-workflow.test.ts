@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -8,10 +8,10 @@ import { promisify } from 'node:util';
 import { afterEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
 
+import { planReleaseSet } from '../src/release-plan';
+
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
-const githubRoot = resolve(workspaceRoot, '.github');
 const workflowPath = resolve(workspaceRoot, '.github/workflows/release-draft.yml');
-const releaseToolsPackagePath = resolve(workspaceRoot, 'packages/release-tools/package.json');
 const draftBuildEntrypoint = resolve(
   workspaceRoot,
   'packages/release-tools/scripts/build-draft-release-set.ts',
@@ -81,7 +81,9 @@ async function runWorkflowShell(input: {
   });
 }
 
-async function createDraftRehearsal() {
+type DraftRehearsalChannel = 'stable' | 'rc';
+
+async function createDraftRehearsal(channel: DraftRehearsalChannel = 'stable') {
   const workflow = await readWorkflow();
   const stageJob = job(workflow, 'stage');
   const createDraftReleaseJob = job(workflow, 'create-draft-release');
@@ -92,13 +94,36 @@ async function createDraftRehearsal() {
   const operationLog = join(operationRoot, 'operations.log');
   const summary = join(operationRoot, 'summary.md');
   const sourceSha = 'a'.repeat(40);
-  const version = '0.4.0';
+  const plan = planReleaseSet({
+    channel,
+    sourceSha,
+    previousStableTag: {
+      name: 'v0.3.0',
+      version: '0.3.0',
+      sha: 'b'.repeat(40),
+    },
+    releaseCandidateTags: [],
+    commits: [
+      {
+        sha: sourceSha,
+        message: 'feat(cli): rehearse coordinated release readiness',
+        paths: ['packages/cli/src/index.ts'],
+      },
+    ],
+  });
+
+  if (plan.kind === 'no-release') {
+    throw new Error('Draft rehearsal requires a release plan.');
+  }
+
+  const { version, npmDistTag, gitTag, githubReleaseType } = plan;
+  const packageOrder = JSON.stringify(plan.dependencyApprovalOrder);
   await mkdir(fakeBin);
   await mkdir(artifactRoot);
   const artifacts = [
-    'tenkit-template-generator-0.4.0.tgz',
-    'tenkit-cli-0.4.0.tgz',
-    'create-tenkit-0.4.0.tgz',
+    `tenkit-template-generator-${version}.tgz`,
+    `tenkit-cli-${version}.tgz`,
+    `create-tenkit-${version}.tgz`,
   ] as const;
   const shasums: string[] = [];
 
@@ -134,8 +159,15 @@ if [ -n "\${FAIL_ARTIFACT:-}" ] && [[ "$artifact" == *"$FAIL_ARTIFACT"* ]]; then
     `#!/bin/bash
 set -euo pipefail
 printf 'gh %s\\n' "$*" >> "$OPERATION_LOG"
-if [ "$1 $2" != 'release create' ]; then exit 66; fi
-printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
+if [ "$1" = 'api' ]; then
+  printf '%s\\n' "$EXISTING_GITHUB_RELEASES"
+  exit 0
+fi
+if [ "$1 $2" = 'release create' ]; then
+  printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
+  exit 0
+fi
+exit 66
 `,
   );
   await writeExecutable(
@@ -154,8 +186,14 @@ printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
       OPERATION_LOG: operationLog,
       RUNNER_TEMP: operationRoot,
       GITHUB_STEP_SUMMARY: summary,
+      RELEASE_CHANNEL: channel,
       SOURCE_SHA: sourceSha,
       VERSION: version,
+      NPM_DIST_TAG: npmDistTag,
+      GIT_TAG: gitTag,
+      GITHUB_RELEASE_TYPE: githubReleaseType,
+      PACKAGE_ORDER: packageOrder,
+      EXISTING_GITHUB_RELEASES: '[[]]',
     },
     artifactEnv: {
       TEMPLATE_ARTIFACT: `./release-artifacts/${artifacts[0]}`,
@@ -167,11 +205,15 @@ printf 'https://github.com/opx/tenkit/releases/tag/untagged-disposable\\n'
     },
     sourceSha,
     version,
+    npmDistTag,
+    gitTag,
+    githubReleaseType,
+    packageOrder,
   };
 }
 
 describe('Draft Release workflow', () => {
-  test('captures the default-branch dispatch SHA before automatic stable planning', async () => {
+  test('accepts only a channel and captures the default-branch event SHA for planning', async () => {
     const workflow = await readWorkflow();
     const dispatch = requireRecord(
       requireRecord(workflow.on, 'workflow triggers').workflow_dispatch,
@@ -180,10 +222,20 @@ describe('Draft Release workflow', () => {
     const concurrency = requireRecord(workflow.concurrency, 'workflow concurrency');
 
     expect(workflow.name).toBe('Draft Release');
-    expect(dispatch).toEqual({});
+    expect(dispatch).toEqual({
+      inputs: {
+        channel: {
+          description: 'Final release channel',
+          required: true,
+          type: 'choice',
+          options: ['stable', 'rc'],
+          default: 'stable',
+        },
+      },
+    });
     expect(workflow.permissions).toEqual({ contents: 'read' });
     expect(concurrency).toEqual({
-      group: 'stable-release-set',
+      group: 'release-set-draft',
       'cancel-in-progress': false,
     });
 
@@ -195,7 +247,9 @@ describe('Draft Release workflow', () => {
     const recordSource = step(build, 'Record exact source SHA');
     const serializedBuildSteps = JSON.stringify(buildSteps);
     expect(serializedBuildSteps).toContain('github.event.repository.default_branch');
+    expect(serializedBuildSteps).toContain('inputs.channel');
     expect(serializedBuildSteps).not.toContain('inputs.source_sha');
+    expect(serializedBuildSteps).not.toContain('inputs.version');
     expect(serializedBuildSteps).not.toContain('Validate requested source SHA');
     expect(
       requireRecord(enforceDefaultBranch.env, 'default-branch guard environment').DISPATCH_REF,
@@ -209,31 +263,40 @@ describe('Draft Release workflow', () => {
     );
     expect(serializedBuildSteps).toContain('steps.source.outputs.source-sha');
     expect(serializedBuildSteps.indexOf('Record exact source SHA')).toBeLessThan(
-      serializedBuildSteps.indexOf('Plan automatic stable Release Set version'),
+      serializedBuildSteps.indexOf('Plan Release Set'),
     );
     expect(serializedBuildSteps).not.toMatch(/"(?:patch|minor|major)"/);
+
+    const outputs = requireRecord(build.outputs, 'build outputs');
+    expect(outputs).toMatchObject({
+      channel: '${{ steps.plan.outputs.channel }}',
+      'source-sha': '${{ steps.plan.outputs.source-sha }}',
+      version: '${{ steps.plan.outputs.version }}',
+      'npm-dist-tag': '${{ steps.plan.outputs.npm-dist-tag }}',
+      'git-tag': '${{ steps.plan.outputs.git-tag }}',
+      'github-release-type': '${{ steps.plan.outputs.github-release-type }}',
+      'package-order': '${{ steps.plan.outputs.package-order }}',
+    });
+
+    const planReleaseSet = step(build, 'Plan Release Set');
+    const serializedPlan = JSON.stringify(planReleaseSet);
+    expect(shell(planReleaseSet)).toContain('--channel "$RELEASE_CHANNEL"');
+    expect(serializedPlan).toContain('.channel');
+    expect(serializedPlan).toContain('.npmDistTag');
+    expect(serializedPlan).toContain('.gitTag');
+    expect(serializedPlan).toContain('.githubReleaseType');
+    expect(serializedPlan).toContain('.dependencyApprovalOrder');
   });
 
   test('plans, checks, and canonically packs in the read-only build job', async () => {
     const workflow = await readWorkflow();
     const build = job(workflow, 'build');
     const serializedBuild = JSON.stringify(build);
-    const githubFiles = await readdir(githubRoot, { recursive: true });
-    const releaseToolsPackage = requireRecord(
-      JSON.parse(await readFile(releaseToolsPackagePath, 'utf8')) as unknown,
-      'release-tools package metadata',
-    );
-    const releaseToolsScripts = requireRecord(
-      releaseToolsPackage.scripts,
-      'release-tools package scripts',
-    );
 
     expect(build.permissions).toEqual({ contents: 'read' });
     expect(serializedBuild).toMatch(/pnpm (?:--silent )?release:plan/);
     expect(serializedBuild).toContain('pnpm release:check');
     expect(serializedBuild).toContain('pnpm --silent -F @tenkit/release-tools draft:build');
-    expect(releaseToolsScripts['draft:build']).toBe('tsx scripts/build-draft-release-set.ts');
-    expect(githubFiles.filter((file) => file.endsWith('.ts'))).toEqual([]);
     expect(serializedBuild).not.toContain('build-draft-release-set.ts');
     expect(serializedBuild).not.toContain('exec tsx');
     expect(serializedBuild).not.toContain('tsx -e');
@@ -274,6 +337,15 @@ describe('Draft Release workflow', () => {
 
     expect(stage.needs).toBe('build');
     expect(stage.permissions).toEqual({ contents: 'read', 'id-token': 'write' });
+    expect(stage.env).toEqual({
+      RELEASE_CHANNEL: '${{ needs.build.outputs.channel }}',
+      SOURCE_SHA: '${{ needs.build.outputs.source-sha }}',
+      VERSION: '${{ needs.build.outputs.version }}',
+      NPM_DIST_TAG: '${{ needs.build.outputs.npm-dist-tag }}',
+      GIT_TAG: '${{ needs.build.outputs.git-tag }}',
+      GITHUB_RELEASE_TYPE: '${{ needs.build.outputs.github-release-type }}',
+      PACKAGE_ORDER: '${{ needs.build.outputs.package-order }}',
+    });
     expect(serializedStage).not.toMatch(
       /contents":"write|NODE_AUTH_TOKEN|npm publish|stage approve/,
     );
@@ -285,39 +357,15 @@ describe('Draft Release workflow', () => {
 
     expect(serializedStage.match(/npm stage publish/g)).toHaveLength(1);
     expect(serializedStage.match(/stage_package /g)).toHaveLength(3);
-    expect(serializedStage.indexOf('tenkit-template-generator-')).toBeLessThan(
-      serializedStage.indexOf('tenkit-cli-'),
-    );
-    expect(serializedStage.indexOf('tenkit-cli-')).toBeLessThan(
-      serializedStage.indexOf('create-tenkit-'),
-    );
-    expect(serializedStage).toMatch(/npm stage publish[^\n]+--tag candidate/);
+    expect(serializedStage).toMatch(/npm stage publish[^\n]+--tag \\"\$NPM_DIST_TAG\\"/);
+    expect(
+      [...serializedStage.matchAll(/stage_package '([^']+)'/g)].map((match) => match[1]),
+    ).toEqual(['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit']);
+    expect(serializedStage).not.toContain('--tag candidate');
     expect(serializedStage).toContain('--access public');
     expect(serializedStage).toContain('--provenance');
-    expect(serializedStage).toContain('always()');
-    expect(serializedStage).toContain('npm stage list @tenkit/template-generator');
-    expect(serializedStage).toContain('npm stage list @tenkit/cli');
-    expect(serializedStage).toContain('npm stage list create-tenkit');
-    expect(serializedStage).toContain('all three existing private stages belong to one complete');
-    expect(serializedStage).toContain('continue that earlier attempt');
-    expect(serializedStage).toContain(
-      'reject all same-version private stages across the current and earlier attempts',
-    );
-    expect(serializedStage).toContain('Do not retry Draft or attempt to reject a public version');
-    expect(serializedStage).toContain(
-      'Record the complete public and private registry state for repository-owner review',
-    );
-    expect(serializedStage).toContain(
-      'follow the partial-public fix-forward procedure in the operator runbook',
-    );
-    expect(serializedStage).toContain('Release-Fix-Forward');
-    expect(serializedStage).toContain('npm Staged Packages');
-    expect(serializedStage).toContain(
-      'authenticated npm stage list output, or a Release Verification report',
-    );
-    expect(serializedStage).not.toContain('Partial-public recovery is not implemented yet');
-    expect(serializedStage).not.toContain(`printf '%s\\n' "$OUTPUT"`);
-
+    expect(serializedStage).toContain('failure()');
+    expect(serializedStage).not.toContain('always()');
     const actions = Array.isArray(stage.steps)
       ? stage.steps.flatMap((step) => {
           const uses = requireRecord(step, 'stage step').uses;
@@ -334,133 +382,282 @@ describe('Draft Release workflow', () => {
 
     expect(createDraftRelease.needs).toEqual(['build', 'stage']);
     expect(createDraftRelease.permissions).toEqual({ contents: 'write' });
+    expect(createDraftRelease.env).toEqual({
+      RELEASE_CHANNEL: '${{ needs.build.outputs.channel }}',
+      SOURCE_SHA: '${{ needs.build.outputs.source-sha }}',
+      VERSION: '${{ needs.build.outputs.version }}',
+      NPM_DIST_TAG: '${{ needs.build.outputs.npm-dist-tag }}',
+      GIT_TAG: '${{ needs.build.outputs.git-tag }}',
+      GITHUB_RELEASE_TYPE: '${{ needs.build.outputs.github-release-type }}',
+      PACKAGE_ORDER: '${{ needs.build.outputs.package-order }}',
+    });
     expect(serializedCreateDraftRelease).not.toMatch(
-      /id-token|\bnpm (?:stage|publish|dist-tag)|actions\/checkout|git tag/,
+      /id-token|\bnpm (?:stage publish|stage approve|publish|dist-tag add)|actions\/checkout|\bgit tag/,
     );
     expect(serializedCreateDraftRelease).toContain('gh release create');
     expect(serializedCreateDraftRelease).toContain('--draft');
+    expect(serializedCreateDraftRelease).toContain('GITHUB_RELEASE_TYPE');
+    expect(serializedCreateDraftRelease).toContain('--prerelease');
+    expect(serializedCreateDraftRelease).toContain('$GIT_TAG');
+    expect(serializedCreateDraftRelease).not.toContain('gh release create \\"v$VERSION\\"');
     expect(serializedCreateDraftRelease).toMatch(/--target \\"\$SOURCE_SHA\\"/);
-    expect(serializedCreateDraftRelease).toContain('Untrusted Draft diagnostics');
-    expect(serializedCreateDraftRelease).toContain('pnpm release:verify -- --source-sha');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.template-stage-id');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.cli-stage-id');
-    expect(serializedCreateDraftRelease).toContain('needs.stage.outputs.create-stage-id');
   });
 
-  test('rehearses successful private staging and one draft Release', async () => {
-    const rehearsal = await createDraftRehearsal();
-    const stageExecution = await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
-      cwd: rehearsal.operationRoot,
-      fakeBin: rehearsal.fakeBin,
-      env: {
-        ...rehearsal.commonEnv,
-        ...rehearsal.artifactEnv,
-        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
-      },
-    });
-    expect(stageExecution.stdout).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
+  test('reuses one exact matching draft without creating another Release', async () => {
+    const rehearsal = await createDraftRehearsal('stable');
     await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
+      script: shell(step(rehearsal.createDraftReleaseJob, 'Prepare Draft handoff')),
       cwd: rehearsal.operationRoot,
       fakeBin: rehearsal.fakeBin,
       env: rehearsal.commonEnv,
     });
-    await runWorkflowShell({
-      script: shell(
-        step(rehearsal.createDraftReleaseJob, 'Materialize untrusted Draft diagnostics'),
-      ),
-      cwd: rehearsal.operationRoot,
-      fakeBin: rehearsal.fakeBin,
-      env: {
-        ...rehearsal.commonEnv,
-        TEMPLATE_STAGE_ID: '11111111-1111-1111-1111-111111111111',
-        CLI_STAGE_ID: '22222222-2222-2222-2222-222222222222',
-        CREATE_STAGE_ID: '33333333-3333-3333-3333-333333333333',
-        TEMPLATE_INTEGRITY: 'sha512-template',
-        CLI_INTEGRITY: 'sha512-cli',
-        CREATE_INTEGRITY: 'sha512-create',
-        TEMPLATE_SHASUM: rehearsal.artifactEnv.TEMPLATE_SHASUM,
-        CLI_SHASUM: rehearsal.artifactEnv.CLI_SHASUM,
-        CREATE_SHASUM: rehearsal.artifactEnv.CREATE_SHASUM,
-      },
-    });
+    const draftUrl = 'https://github.com/opx/tenkit/releases/tag/existing-draft';
+    const outputPath = join(rehearsal.operationRoot, 'release-output');
+
     await runWorkflowShell({
       script: shell(step(rehearsal.createDraftReleaseJob, 'Create draft GitHub Release')),
       cwd: rehearsal.operationRoot,
       fakeBin: rehearsal.fakeBin,
       env: {
         ...rehearsal.commonEnv,
-        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'release-output'),
+        EXISTING_GITHUB_RELEASES: JSON.stringify([
+          [
+            {
+              tag_name: rehearsal.gitTag,
+              target_commitish: rehearsal.sourceSha,
+              draft: true,
+              prerelease: false,
+              html_url: draftUrl,
+            },
+          ],
+        ]),
+        GITHUB_OUTPUT: outputPath,
         GH_REPO: 'opx/tenkit',
         GH_TOKEN: 'disposable-token',
       },
     });
 
     const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
-    expect(operations).toHaveLength(4);
-    expect(
-      operations.filter((operation) => operation.startsWith('npm stage publish')),
-    ).toHaveLength(3);
-    expect(operations.join('\n')).not.toMatch(/npm (?:publish|stage approve|dist-tag)|^git tag/m);
-    expect(operations.filter((operation) => operation.startsWith('gh release create'))).toEqual([
-      expect.stringMatching(new RegExp(`--draft .*--target ${rehearsal.sourceSha} .*--notes-file`)),
-    ]);
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      `Source SHA: \`${rehearsal.sourceSha}\``,
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      `Version: \`${rehearsal.version}\``,
-    );
+    expect(operations).toHaveLength(1);
+    expect(operations[0]).toMatch(/^gh api /);
+    expect(await readFile(outputPath, 'utf8')).toBe(`draft-url=${draftUrl}\n`);
   });
 
-  test('rehearses partial-staging recovery without retrying or creating a Release', async () => {
-    const rehearsal = await createDraftRehearsal();
-    const partialEnv = {
-      ...rehearsal.commonEnv,
-      ...rehearsal.artifactEnv,
-      GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
-      FAIL_ARTIFACT: 'tenkit-cli',
-    };
-    let partialOutputLog = '';
-
-    try {
+  test.each([
+    ['published identity', { draft: false }, 1, 'Existing GitHub Release does not match'],
+    [
+      'wrong source identity',
+      { target_commitish: 'b'.repeat(40) },
+      1,
+      'Existing GitHub Release does not match',
+    ],
+    [
+      'wrong Release type identity',
+      { prerelease: true },
+      1,
+      'Existing GitHub Release does not match',
+    ],
+    ['duplicate identity', {}, 2, 'Multiple GitHub Releases use'],
+  ] as const)(
+    'stops when an existing tag has a %s',
+    async (_case, override, releaseCount, expectedError) => {
+      const rehearsal = await createDraftRehearsal('stable');
       await runWorkflowShell({
+        script: shell(step(rehearsal.createDraftReleaseJob, 'Prepare Draft handoff')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
+        env: rehearsal.commonEnv,
+      });
+
+      await expect(
+        runWorkflowShell({
+          script: shell(step(rehearsal.createDraftReleaseJob, 'Create draft GitHub Release')),
+          cwd: rehearsal.operationRoot,
+          fakeBin: rehearsal.fakeBin,
+          env: {
+            ...rehearsal.commonEnv,
+            EXISTING_GITHUB_RELEASES: JSON.stringify([
+              Array.from({ length: releaseCount }, () => ({
+                tag_name: rehearsal.gitTag,
+                target_commitish: rehearsal.sourceSha,
+                draft: true,
+                prerelease: false,
+                html_url: 'https://github.com/opx/tenkit/releases/tag/mismatch',
+                ...override,
+              })),
+            ]),
+            GITHUB_OUTPUT: join(rehearsal.operationRoot, 'release-output'),
+            GH_REPO: 'opx/tenkit',
+            GH_TOKEN: 'disposable-token',
+          },
+        }),
+      ).rejects.toMatchObject({
+        stdout: expect.stringContaining(expectedError),
+      });
+
+      const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
+      expect(operations).toHaveLength(1);
+      expect(operations[0]).toMatch(/^gh api /);
+    },
+  );
+
+  test.each([
+    { channel: 'stable' as const, includesPrereleaseFlag: false },
+    { channel: 'rc' as const, includesPrereleaseFlag: true },
+  ])(
+    'rehearses $channel staging and its concise Draft handoff',
+    async ({ channel, includesPrereleaseFlag }) => {
+      const rehearsal = await createDraftRehearsal(channel);
+      const stageExecution = await runWorkflowShell({
         script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
+        env: {
+          ...rehearsal.commonEnv,
+          ...rehearsal.artifactEnv,
+          GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
+        },
+      });
+      expect(stageExecution.stdout).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
+      await runWorkflowShell({
+        script: shell(step(rehearsal.createDraftReleaseJob, 'Prepare Draft handoff')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
+        env: {
+          ...rehearsal.commonEnv,
+          TEMPLATE_STAGE_ID: '11111111-1111-1111-1111-111111111111',
+          CLI_STAGE_ID: '22222222-2222-2222-2222-222222222222',
+          CREATE_STAGE_ID: '33333333-3333-3333-3333-333333333333',
+          TEMPLATE_INTEGRITY: 'sha512-template',
+          CLI_INTEGRITY: 'sha512-cli',
+          CREATE_INTEGRITY: 'sha512-create',
+          TEMPLATE_SHASUM: rehearsal.artifactEnv.TEMPLATE_SHASUM,
+          CLI_SHASUM: rehearsal.artifactEnv.CLI_SHASUM,
+          CREATE_SHASUM: rehearsal.artifactEnv.CREATE_SHASUM,
+        },
+      });
+      await runWorkflowShell({
+        script: shell(step(rehearsal.createDraftReleaseJob, 'Create draft GitHub Release')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
+        env: {
+          ...rehearsal.commonEnv,
+          GITHUB_OUTPUT: join(rehearsal.operationRoot, 'release-output'),
+          GH_REPO: 'opx/tenkit',
+          GH_TOKEN: 'disposable-token',
+        },
+      });
+      await runWorkflowShell({
+        script: shell(step(rehearsal.createDraftReleaseJob, 'Summarize Draft handoff')),
+        cwd: rehearsal.operationRoot,
+        fakeBin: rehearsal.fakeBin,
+        env: {
+          ...rehearsal.commonEnv,
+          DRAFT_URL: 'https://github.com/opx/tenkit/releases/tag/untagged-disposable',
+        },
+      });
+
+      const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
+      expect(operations.filter((operation) => operation.startsWith('npm stage publish'))).toEqual([
+        expect.stringContaining(
+          `tenkit-template-generator-${rehearsal.version}.tgz --tag ${rehearsal.npmDistTag}`,
+        ),
+        expect.stringContaining(
+          `tenkit-cli-${rehearsal.version}.tgz --tag ${rehearsal.npmDistTag}`,
+        ),
+        expect.stringContaining(
+          `create-tenkit-${rehearsal.version}.tgz --tag ${rehearsal.npmDistTag}`,
+        ),
+      ]);
+      expect(operations.join('\n')).not.toMatch(/npm (?:publish|stage approve|dist-tag)|^git tag/m);
+      expect(operations.filter((operation) => operation.startsWith('gh api '))).toHaveLength(1);
+      const [createReleaseOperation] = operations.filter((operation) =>
+        operation.startsWith('gh release create'),
+      );
+      expect(createReleaseOperation).toContain(`release create ${rehearsal.gitTag}`);
+      expect(createReleaseOperation).toContain(`--title ${rehearsal.gitTag}`);
+      expect(createReleaseOperation).toContain(`--target ${rehearsal.sourceSha}`);
+      expect(createReleaseOperation?.includes('--prerelease')).toBe(includesPrereleaseFlag);
+
+      const summary = await readFile(rehearsal.summary, 'utf8');
+      expect(summary).toContain(`Channel: \`${channel}\``);
+      expect(summary).toContain(`Version: \`${rehearsal.version}\``);
+      expect(summary).toContain(`npm dist-tag: \`${rehearsal.npmDistTag}\``);
+      expect(summary).toContain(`Git tag: \`${rehearsal.gitTag}\``);
+      expect(summary).toContain(`GitHub Release type: \`${rehearsal.githubReleaseType}\``);
+      expect(summary).toContain(`Source SHA: \`${rehearsal.sourceSha}\``);
+      expect(summary).toContain(
+        `Untouched npm dist-tag: \`${channel === 'stable' ? 'next' : 'latest'}\``,
+      );
+      expect(summary).toContain(
+        'Package approval order: `@tenkit/template-generator -> @tenkit/cli -> create-tenkit`',
+      );
+      expect(summary).toContain(
+        `pnpm release:verify -- --source-sha ${rehearsal.sourceSha} --version ${rehearsal.version}`,
+      );
+      expect(summary).toContain(
+        'Next action: Run the Release Verification command above. Approve nothing until it passes and names one package.',
+      );
+      expect(summary.match(/^Next action:/gm)).toHaveLength(1);
+      expect(summary).not.toMatch(
+        /Website visibility gate|External alias cleanup|Observed state|Stage reference|sha512-|11111111-1111-1111-1111-111111111111/,
+      );
+    },
+  );
+
+  test.each(['stable', 'rc'] as const)(
+    'summarizes $channel partial staging with evidence and one STOP action',
+    async (channel) => {
+      const rehearsal = await createDraftRehearsal(channel);
+      const partialEnv = {
+        ...rehearsal.commonEnv,
+        ...rehearsal.artifactEnv,
+        GITHUB_OUTPUT: join(rehearsal.operationRoot, 'stage-output'),
+        FAIL_ARTIFACT: 'tenkit-cli',
+      };
+      let partialOutputLog = '';
+
+      try {
+        await runWorkflowShell({
+          script: shell(step(rehearsal.stageJob, 'Stage Release Set in dependency order')),
+          cwd: rehearsal.operationRoot,
+          fakeBin: rehearsal.fakeBin,
+          env: partialEnv,
+        });
+        throw new Error('Partial staging rehearsal unexpectedly succeeded.');
+      } catch (error) {
+        const failure = requireRecord(error, 'partial staging failure');
+        partialOutputLog = typeof failure.stdout === 'string' ? failure.stdout : '';
+      }
+
+      await runWorkflowShell({
+        script: shell(step(rehearsal.stageJob, 'Summarize stopped staging')),
         cwd: rehearsal.operationRoot,
         fakeBin: rehearsal.fakeBin,
         env: partialEnv,
       });
-      throw new Error('Partial staging rehearsal unexpectedly succeeded.');
-    } catch (error) {
-      const failure = requireRecord(error, 'partial staging failure');
-      partialOutputLog = typeof failure.stdout === 'string' ? failure.stdout : '';
-    }
+      expect(partialOutputLog).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
+      expect(partialOutputLog).toContain(
+        'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
+      );
+      const summary = await readFile(rehearsal.summary, 'utf8');
+      expect(summary).toContain(
+        '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
+      );
+      expect(summary).toContain('@tenkit/cli: `22222222-2222-2222-2222-222222222222`');
+      expect(summary).toContain(`Channel: \`${channel}\``);
+      expect(summary).toContain(`Source SHA: \`${rehearsal.sourceSha}\``);
+      expect(summary).toContain(
+        'Next action: STOP. Do not retry or mutate npm. Follow the local uncommon recovery reference from this exact observed state.',
+      );
+      expect(summary.match(/^Next action:/gm)).toHaveLength(1);
+      expect(summary).not.toMatch(
+        /npm view|npm stage list|Release-Fix-Forward|Re-run failed jobs|reject all|partial-public fix-forward/,
+      );
 
-    await runWorkflowShell({
-      script: shell(step(rehearsal.stageJob, 'Record staging recovery instructions')),
-      cwd: rehearsal.operationRoot,
-      fakeBin: rehearsal.fakeBin,
-      env: partialEnv,
-    });
-    expect(partialOutputLog).not.toContain('RAW_NPM_RESPONSE_SENTINEL');
-    expect(partialOutputLog).toContain(
-      'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      '@tenkit/cli: `22222222-2222-2222-2222-222222222222`',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      'npm stage list @tenkit/cli',
-    );
-    await expect(readFile(rehearsal.summary, 'utf8')).resolves.toContain(
-      `Source SHA: \`${rehearsal.sourceSha}\``,
-    );
-    const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
-    expect(operations).toHaveLength(2);
-    expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
-  });
+      const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
+      expect(operations).toHaveLength(2);
+      expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
+    },
+  );
 });

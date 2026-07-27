@@ -33,85 +33,111 @@ function run(command: string, args: readonly string[], cwd: string): void {
   }
 }
 
-test('packed Public CLI --version equals its injected package version', async () => {
-  const releaseWorkspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-packed-cli-version-'));
-  tempRoots.push(releaseWorkspaceRoot);
-  const releasePackagesRoot = join(releaseWorkspaceRoot, 'packages');
-  const releaseCliRoot = join(releasePackagesRoot, 'cli');
-  const sourceCliRoot = join(workspaceRoot, 'packages/cli');
+test.each([
+  ['stable', '0.3.0'],
+  ['rc', '0.3.0-rc.1'],
+] as const)(
+  'packed %s Public CLI reports %s',
+  async (channel, expectedVersion) => {
+    const releaseWorkspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-packed-cli-version-'));
+    tempRoots.push(releaseWorkspaceRoot);
+    const releasePackagesRoot = join(releaseWorkspaceRoot, 'packages');
+    const releaseCliRoot = join(releasePackagesRoot, 'cli');
+    const sourceCliRoot = join(workspaceRoot, 'packages/cli');
 
-  await mkdir(releasePackagesRoot, { recursive: true });
-  await cp(join(sourceCliRoot, 'src'), join(releaseCliRoot, 'src'), { recursive: true });
-  await cp(join(sourceCliRoot, 'package.json'), join(releaseCliRoot, 'package.json'));
-  await cp(join(sourceCliRoot, 'README.md'), join(releaseCliRoot, 'README.md'));
-  await symlink(join(sourceCliRoot, 'node_modules'), join(releaseCliRoot, 'node_modules'));
-  const releaseCliMetadata = JSON.parse(
-    await readFile(join(releaseCliRoot, 'package.json'), 'utf8'),
-  ) as Record<string, unknown>;
-  const releaseCliScripts = releaseCliMetadata.scripts as Record<string, unknown>;
-  delete releaseCliScripts.prepack;
-  await writeFile(
-    join(releaseCliRoot, 'package.json'),
-    `${JSON.stringify(releaseCliMetadata, null, 2)}\n`,
-  );
-
-  for (const [folder, name] of [
-    ['template-generator', '@tenkit/template-generator'],
-    ['create-tenkit', 'create-tenkit'],
-  ] as const) {
-    const packageRoot = join(releasePackagesRoot, folder);
-    await mkdir(packageRoot, { recursive: true });
+    await mkdir(releasePackagesRoot, { recursive: true });
+    await cp(join(sourceCliRoot, 'src'), join(releaseCliRoot, 'src'), { recursive: true });
+    await cp(join(sourceCliRoot, 'package.json'), join(releaseCliRoot, 'package.json'));
+    await cp(join(sourceCliRoot, 'README.md'), join(releaseCliRoot, 'README.md'));
+    await symlink(join(sourceCliRoot, 'node_modules'), join(releaseCliRoot, 'node_modules'));
+    const releaseCliMetadata = JSON.parse(
+      await readFile(join(releaseCliRoot, 'package.json'), 'utf8'),
+    ) as Record<string, unknown>;
+    const releaseCliScripts = releaseCliMetadata.scripts as Record<string, unknown>;
+    delete releaseCliScripts.prepack;
     await writeFile(
-      join(packageRoot, 'package.json'),
-      `${JSON.stringify({ name, version: '0.2.0' }, null, 2)}\n`,
+      join(releaseCliRoot, 'package.json'),
+      `${JSON.stringify(releaseCliMetadata, null, 2)}\n`,
     );
-  }
 
-  await writeFile(
-    join(releaseWorkspaceRoot, 'pnpm-workspace.yaml'),
-    "packages:\n  - 'packages/*'\n",
-  );
-  const plan = await planReleaseSetFromRepository({
-    workspaceRoot,
-    sourceRevision: '3a10d24',
-  });
-  expect(plan.kind).toBe('release');
-  if (plan.kind === 'no-release') {
-    throw new Error('Expected acceptance fixture 3a10d24 to produce a Release Set version.');
-  }
-  await injectReleaseSetVersion({ isolatedWorkspaceRoot: releaseWorkspaceRoot, plan });
+    for (const [folder, name] of [
+      ['template-generator', '@tenkit/template-generator'],
+      ['create-tenkit', 'create-tenkit'],
+    ] as const) {
+      const packageRoot = join(releasePackagesRoot, folder);
+      await mkdir(packageRoot, { recursive: true });
+      await writeFile(
+        join(packageRoot, 'package.json'),
+        `${JSON.stringify(
+          {
+            name,
+            version: '0.2.0',
+            ...(folder === 'create-tenkit'
+              ? { dependencies: { '@tenkit/cli': 'workspace:*' } }
+              : {}),
+          },
+          null,
+          2,
+        )}\n`,
+      );
+    }
 
-  run(
-    join(sourceCliRoot, 'node_modules/.bin/tsdown'),
-    ['src/index.ts', '--format', 'esm'],
-    releaseCliRoot,
-  );
-  const packRoot = join(releaseWorkspaceRoot, 'packs');
-  await mkdir(packRoot);
-  run('pnpm', ['pack', '--pack-destination', packRoot], releaseCliRoot);
+    await writeFile(
+      join(releaseWorkspaceRoot, 'pnpm-workspace.yaml'),
+      "packages:\n  - 'packages/*'\n",
+    );
+    const plan = await planReleaseSetFromRepository({
+      channel,
+      workspaceRoot,
+      sourceRevision: '3a10d24',
+    });
+    expect(plan.kind).toBe('release');
+    if (plan.kind === 'no-release') {
+      throw new Error('Expected acceptance fixture 3a10d24 to produce a Release Set version.');
+    }
+    expect(plan.version).toBe(expectedVersion);
+    await injectReleaseSetVersion({ isolatedWorkspaceRoot: releaseWorkspaceRoot, plan });
 
-  const tarballNames = (await readdir(packRoot)).filter((name) => name.endsWith('.tgz'));
-  expect(tarballNames).toHaveLength(1);
-  const extractedRoot = join(releaseWorkspaceRoot, 'extracted');
-  await mkdir(extractedRoot);
-  run('tar', ['-xzf', join(packRoot, tarballNames[0]), '-C', extractedRoot], releaseWorkspaceRoot);
+    run(
+      join(sourceCliRoot, 'node_modules/.bin/tsdown'),
+      ['src/index.ts', '--format', 'esm'],
+      releaseCliRoot,
+    );
+    const packRoot = join(releaseWorkspaceRoot, 'packs');
+    await mkdir(packRoot);
+    run('pnpm', ['pack', '--pack-destination', packRoot], releaseCliRoot);
 
-  const packedPackageRoot = join(extractedRoot, 'package');
-  const packedMetadata = JSON.parse(
-    await readFile(join(packedPackageRoot, 'package.json'), 'utf8'),
-  ) as Record<string, unknown>;
-  await symlink(join(sourceCliRoot, 'node_modules'), join(packedPackageRoot, 'node_modules'));
-  const version = spawnSync(
-    process.execPath,
-    [join(packedPackageRoot, 'dist/index.mjs'), '--version'],
-    {
-      cwd: packedPackageRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
+    const tarballNames = (await readdir(packRoot)).filter((name) => name.endsWith('.tgz'));
+    expect(tarballNames).toHaveLength(1);
+    const extractedRoot = join(releaseWorkspaceRoot, 'extracted');
+    await mkdir(extractedRoot);
+    run(
+      'tar',
+      ['-xzf', join(packRoot, tarballNames[0]), '-C', extractedRoot],
+      releaseWorkspaceRoot,
+    );
 
-  expect(version.status).toBe(0);
-  expect(version.stdout.trim()).toBe(plan.version);
-  expect(packedMetadata.version).toBe(plan.version);
-});
+    const packedPackageRoot = join(extractedRoot, 'package');
+    const packedMetadata = JSON.parse(
+      await readFile(join(packedPackageRoot, 'package.json'), 'utf8'),
+    ) as Record<string, unknown>;
+    await symlink(join(sourceCliRoot, 'node_modules'), join(packedPackageRoot, 'node_modules'));
+    const version = spawnSync(
+      process.execPath,
+      [join(packedPackageRoot, 'dist/index.mjs'), '--version'],
+      {
+        cwd: packedPackageRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+
+    expect({
+      status: version.status,
+      stderr: version.stderr.replaceAll(releaseWorkspaceRoot, '<release-workspace>'),
+    }).toEqual({ status: 0, stderr: '' });
+    expect(version.stdout.trim()).toBe(plan.version);
+    expect(packedMetadata.version).toBe(plan.version);
+  },
+  30_000,
+);

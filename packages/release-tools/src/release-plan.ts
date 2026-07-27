@@ -1,12 +1,19 @@
 import { compareExactStableVersions, parseExactStableVersion } from './exact-stable-version';
-import { RELEASE_SET_PACKAGES } from './release-set.ts';
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
+import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from './release-set.ts';
 
 export type ReleaseImpact = 'patch' | 'minor' | 'major';
+export type ReleaseChannel = 'stable' | 'rc';
 
 export type StableTag = {
   name: string;
   version: string;
   sha: string;
+};
+
+export type ReleaseCandidateTag = {
+  name: string;
+  version: string;
 };
 
 export type ReleaseCommitInput = {
@@ -33,13 +40,20 @@ export type ReleaseSetPlan =
       sourceSha: string;
       previousStableTag: StableTag;
       version: string;
+      channel: ReleaseChannel;
+      npmDistTag: 'latest' | 'next';
+      gitTag: string;
+      githubReleaseType: 'release' | 'prerelease';
+      dependencyApprovalOrder: readonly ReleaseSetPackageName[];
       fixForwardFromVersion?: string;
       contributingCommits: readonly ContributingReleaseCommit[];
     };
 
-type PlanReleaseSetInput = {
+export type PlanReleaseSetInput = {
+  channel: ReleaseChannel;
   sourceSha: string;
   previousStableTag: StableTag;
+  releaseCandidateTags: readonly ReleaseCandidateTag[];
   commits: readonly ReleaseCommitInput[];
 };
 
@@ -157,18 +171,25 @@ function readFixForwardVersion(message: string): string | undefined {
 
   const version = fixForwardTrailers[0]!.value.trim();
 
-  if (!parseExactStableVersion(version)) {
-    throw new Error('Release-Fix-Forward must name one exact stable version.');
+  if (!parseExactReleaseSetVersion(version)) {
+    throw new Error('Release-Fix-Forward must name one exact Stable or RC version.');
   }
 
   return version;
 }
 
 export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
+  if (input.channel !== 'stable' && input.channel !== 'rc') {
+    throw new Error('Release channel must be stable or rc.');
+  }
+
   const plannedCommits = input.commits.flatMap((commit) => {
     const impact = releaseImpact(commit.message);
     const releaseRelevant = isReleaseRelevant(commit.paths);
     const fixForwardFromVersion = readFixForwardVersion(commit.message);
+    const fixForwardChannel = fixForwardFromVersion
+      ? parseExactReleaseSetVersion(fixForwardFromVersion)?.channel
+      : undefined;
 
     if (fixForwardFromVersion && (!impact || !releaseRelevant)) {
       throw new Error(
@@ -178,6 +199,10 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
 
     if (!impact || !releaseRelevant) {
       return [];
+    }
+
+    if (fixForwardChannel === 'stable' && input.channel === 'rc') {
+      throw new Error('A Stable Release-Fix-Forward marker cannot plan an RC.');
     }
 
     return [
@@ -214,7 +239,10 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
   for (const plannedCommit of plannedCommits) {
     const nextFixForwardVersion = plannedCommit.fixForwardFromVersion;
 
-    if (!nextFixForwardVersion) {
+    if (
+      !nextFixForwardVersion ||
+      parseExactReleaseSetVersion(nextFixForwardVersion)?.channel !== 'stable'
+    ) {
       continue;
     }
 
@@ -232,17 +260,115 @@ export function planReleaseSet(input: PlanReleaseSetInput): ReleaseSetPlan {
   const fixForwardVersion = fixForwardFromVersion
     ? bumpVersion(fixForwardFromVersion, 'patch')
     : undefined;
-  const version =
+  const targetVersion =
     fixForwardVersion && compareExactStableVersions(fixForwardVersion, normalVersion) > 0
       ? fixForwardVersion
       : normalVersion;
+  const releaseCandidateFixForwardVersions = plannedCommits.flatMap(
+    ({ fixForwardFromVersion: version }) => {
+      const parsedVersion = version ? parseExactReleaseSetVersion(version) : undefined;
+
+      return version && parsedVersion?.channel === 'rc' ? [version] : [];
+    },
+  );
+  const applicableReleaseCandidateFixForwardVersions = releaseCandidateFixForwardVersions.filter(
+    (candidateVersion) =>
+      parseExactReleaseSetVersion(candidateVersion)?.targetVersion === targetVersion,
+  );
+  const version =
+    input.channel === 'stable'
+      ? targetVersion
+      : `${targetVersion}-rc.${nextReleaseCandidateOrdinal(
+          input.releaseCandidateTags,
+          targetVersion,
+          releaseCandidateFixForwardVersions,
+        )}`;
+  const appliedFixForwardVersion =
+    input.channel === 'stable'
+      ? fixForwardFromVersion
+      : applicableReleaseCandidateFixForwardVersions.at(-1);
 
   return {
     kind: 'release',
+    channel: input.channel,
     sourceSha: input.sourceSha,
     previousStableTag: input.previousStableTag,
     version,
-    ...(fixForwardFromVersion ? { fixForwardFromVersion } : {}),
+    npmDistTag: input.channel === 'stable' ? 'latest' : 'next',
+    gitTag: `v${version}`,
+    githubReleaseType: input.channel === 'stable' ? 'release' : 'prerelease',
+    dependencyApprovalOrder: RELEASE_SET_PACKAGES.map((releasePackage) => releasePackage.name),
+    ...(appliedFixForwardVersion ? { fixForwardFromVersion: appliedFixForwardVersion } : {}),
     contributingCommits,
   };
+}
+
+function nextReleaseCandidateOrdinal(
+  releaseCandidateTags: readonly ReleaseCandidateTag[],
+  targetVersion: string,
+  fixForwardVersions: readonly string[],
+): number {
+  let greatestOrdinal = 0;
+  let latestFixForwardOrdinal = 0;
+  const taggedOrdinals = new Set<number>();
+
+  for (const tag of releaseCandidateTags) {
+    const parsedVersion = parseExactReleaseSetVersion(tag.version);
+
+    if (parsedVersion?.channel !== 'rc' || tag.name !== `v${tag.version}`) {
+      throw new Error(
+        `Release Candidate Git tag ${JSON.stringify(tag.name)} has invalid identity metadata.`,
+      );
+    }
+
+    if (parsedVersion.targetVersion === targetVersion) {
+      taggedOrdinals.add(parsedVersion.ordinal);
+      greatestOrdinal = Math.max(greatestOrdinal, parsedVersion.ordinal);
+    }
+  }
+
+  for (const version of fixForwardVersions) {
+    const parsedVersion = parseExactReleaseSetVersion(version);
+
+    if (parsedVersion?.channel !== 'rc') {
+      throw new Error(`Release-Fix-Forward ${JSON.stringify(version)} must name an exact RC.`);
+    }
+
+    if (parsedVersion.targetVersion !== targetVersion) {
+      if (compareExactStableVersions(parsedVersion.targetVersion, targetVersion) > 0) {
+        throw new Error(
+          `Release-Fix-Forward ${version} is newer than computed target ${targetVersion}.`,
+        );
+      }
+
+      continue;
+    }
+
+    if (taggedOrdinals.has(parsedVersion.ordinal)) {
+      throw new Error(`Release-Fix-Forward ${version} already has a completed Git tag.`);
+    }
+
+    if (parsedVersion.ordinal <= latestFixForwardOrdinal) {
+      throw new Error(
+        `Release-Fix-Forward ${version} must advance beyond ${targetVersion}-rc.${latestFixForwardOrdinal}.`,
+      );
+    }
+
+    if (parsedVersion.ordinal > greatestOrdinal + 1) {
+      throw new Error(
+        `Release-Fix-Forward ${version} skips unrecorded RC versions; expected ${targetVersion}-rc.${greatestOrdinal + 1}.`,
+      );
+    }
+
+    greatestOrdinal = Math.max(greatestOrdinal, parsedVersion.ordinal);
+    latestFixForwardOrdinal = parsedVersion.ordinal;
+  }
+
+  if (greatestOrdinal === Number.MAX_SAFE_INTEGER) {
+    throw new Error(
+      `Release Candidate ordinal for target ${targetVersion} exceeds the supported range.`,
+    );
+  }
+
+  return greatestOrdinal + 1;
 }

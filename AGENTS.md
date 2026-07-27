@@ -83,7 +83,8 @@ During implementation:
 Before finishing:
 
 - verify behavior and consistency across the whole affected scope, not only touched files,
-- and create or update architecture documentation for durable boundary changes unless explicitly told not to.
+- record durable boundary decisions in the configured clone-local workflow documentation when it exists,
+- and do not add or require tracked public documentation solely to satisfy agent workflow rules. Add public documentation only when the user explicitly requests it or the product itself requires a public document.
 
 Tenkit-specific boundaries:
 

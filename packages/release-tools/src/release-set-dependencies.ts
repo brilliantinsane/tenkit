@@ -9,6 +9,10 @@ export type InternalReleaseSetDependency = {
   version: string;
 };
 
+type InternalReleaseSetDependencyDeclaration = InternalReleaseSetDependency & {
+  section: 'dependencies' | 'optionalDependencies' | 'peerDependencies';
+};
+
 function dependencyRecord(value: unknown, description: string): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${description} must be an object.`);
@@ -28,12 +32,25 @@ export function readExactInternalReleaseSetDependencies(
   packageName: ReleaseSetPackageName,
   expectedVersion: string,
 ): InternalReleaseSetDependency[] {
+  const internalDependencies = readCanonicalInternalReleaseSetDependencies(metadata, packageName);
+
+  for (const internalDependency of internalDependencies) {
+    if (internalDependency.version !== expectedVersion) {
+      throw new Error(
+        `${packageName} dependency ${internalDependency.name} expected ${expectedVersion}, found ${internalDependency.version}.`,
+      );
+    }
+  }
+
+  return internalDependencies;
+}
+
+export function readCanonicalInternalReleaseSetDependencies(
+  metadata: Record<string, unknown>,
+  packageName: ReleaseSetPackageName,
+): InternalReleaseSetDependency[] {
   const releasePackage = getReleaseSetPackage(packageName);
-  const actualDependencies: Array<{
-    section: 'dependencies' | 'optionalDependencies' | 'peerDependencies';
-    name: ReleaseSetPackageName;
-    version: string;
-  }> = [];
+  const actualDependencies: InternalReleaseSetDependencyDeclaration[] = [];
 
   for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
     if (metadata[section] === undefined) {
@@ -55,35 +72,27 @@ export function readExactInternalReleaseSetDependencies(
     }
   }
 
-  const expectedDependencies =
-    'internalDependency' in releasePackage
-      ? [{ name: releasePackage.internalDependency, version: expectedVersion }]
-      : [];
+  const expectedDependencyNames =
+    'internalDependency' in releasePackage ? [releasePackage.internalDependency] : [];
 
-  if (actualDependencies.length !== expectedDependencies.length) {
+  if (actualDependencies.length !== expectedDependencyNames.length) {
     throw new Error(
-      `${packageName} expected ${expectedDependencies.length} internal Release Set dependencies, found ${actualDependencies.length}.`,
+      `${packageName} expected ${expectedDependencyNames.length} internal Release Set dependencies, found ${actualDependencies.length}.`,
     );
   }
 
-  for (const expectedDependency of expectedDependencies) {
+  for (const expectedDependencyName of expectedDependencyNames) {
     const actualDependency = actualDependencies[0];
 
     if (
       actualDependency?.section !== 'dependencies' ||
-      actualDependency.name !== expectedDependency.name
+      actualDependency.name !== expectedDependencyName
     ) {
       throw new Error(
-        `${packageName} must declare one direct dependency ${expectedDependency.name}.`,
-      );
-    }
-
-    if (actualDependency.version !== expectedVersion) {
-      throw new Error(
-        `${packageName} dependency ${expectedDependency.name} expected ${expectedVersion}, found ${actualDependency.version}.`,
+        `${packageName} must declare one direct dependency ${expectedDependencyName}.`,
       );
     }
   }
 
-  return expectedDependencies;
+  return actualDependencies.map(({ name, version }) => ({ name, version }));
 }

@@ -26,6 +26,18 @@ exact_version() {
   printf '%s' "$value"
 }
 
+exact_release_version() {
+  local value="$1"
+  local description="$2"
+
+  if [[ ! "$value" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$ ]]; then
+    echo "$description must specify one exact Stable or RC version." >&2
+    return 1
+  fi
+
+  printf '%s' "$value"
+}
+
 run_quietly() {
   local log
   log="$(mktemp)"
@@ -102,7 +114,7 @@ for package_name in "${package_names[@]}"; do
 done
 
 run_quietly pnpm install --frozen-lockfile --ignore-scripts "${install_filters[@]}"
-release_version="$(exact_version "$TENKIT_RELEASE_VERSION" 'TENKIT_RELEASE_VERSION')"
+release_version="$(exact_release_version "$TENKIT_RELEASE_VERSION" 'TENKIT_RELEASE_VERSION')"
 
 for index in "${!package_names[@]}"; do
   package_name="${package_names[index]}"

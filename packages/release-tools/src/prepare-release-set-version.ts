@@ -1,8 +1,9 @@
 import { injectReleaseSetVersion } from './inject-release-set-version';
 import { planReleaseSetFromRepository } from './plan-release-set-from-repository';
-import type { ReleaseSetPlan } from './release-plan';
+import type { ReleaseChannel, ReleaseSetPlan } from './release-plan';
 
 type PrepareReleaseSetVersionInput = {
+  channel: ReleaseChannel;
   workspaceRoot: string;
   isolatedWorkspaceRoot: string;
   sourceRevision: string;

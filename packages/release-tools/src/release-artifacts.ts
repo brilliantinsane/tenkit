@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { promisify } from 'node:util';
 
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
 import { getReleaseSetPackage, type ReleaseSetPackageName } from './release-set.ts';
 import {
   readExactInternalReleaseSetDependencies,
@@ -35,9 +36,42 @@ function metadataRecord(value: unknown, description: string): Record<string, unk
   return value as Record<string, unknown>;
 }
 
+async function readEmbeddedPublicCliVersion(
+  artifactPath: string,
+  artifactFilename: string,
+): Promise<string> {
+  let bundleContents: string;
+
+  try {
+    const result = await execFileAsync('tar', ['-xOzf', artifactPath, 'package/dist/index.mjs'], {
+      encoding: 'utf8',
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    bundleContents = result.stdout;
+  } catch (error) {
+    throw new Error(`Unable to read the embedded Public CLI from ${artifactFilename}.`, {
+      cause: error,
+    });
+  }
+
+  const embeddedVersions = new Set(
+    [...bundleContents.matchAll(/\bCLI_VERSION\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]!),
+  );
+
+  if (embeddedVersions.size !== 1) {
+    throw new Error(`${artifactFilename} must embed exactly one inspectable Public CLI version.`);
+  }
+
+  return [...embeddedVersions][0]!;
+}
+
 export async function inspectReleaseArtifact(
   input: InspectReleaseArtifactInput,
 ): Promise<ReleaseArtifact> {
+  if (!parseExactReleaseSetVersion(input.expectedVersion)) {
+    throw new Error('Release artifact inspection requires one exact Stable or RC version.');
+  }
+
   const releasePackage = getReleaseSetPackage(input.expectedName);
   const expectedFilename = `${releasePackage.artifactPrefix}-${input.expectedVersion}.tgz`;
   const artifactFilename = basename(input.artifactPath);
@@ -79,6 +113,19 @@ export async function inspectReleaseArtifact(
     throw new Error(
       `${input.expectedName} expected version ${input.expectedVersion}, found ${String(metadata.version)}.`,
     );
+  }
+
+  if (input.expectedName === '@tenkit/cli') {
+    const embeddedCliVersion = await readEmbeddedPublicCliVersion(
+      input.artifactPath,
+      artifactFilename,
+    );
+
+    if (embeddedCliVersion !== input.expectedVersion) {
+      throw new Error(
+        `${artifactFilename} embedded Public CLI version expected ${input.expectedVersion}, found ${embeddedCliVersion}.`,
+      );
+    }
   }
 
   const bytes = await readFile(input.artifactPath);

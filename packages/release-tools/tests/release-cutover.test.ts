@@ -6,13 +6,15 @@ import { parse } from 'yaml';
 
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
 const workflowRoot = resolve(workspaceRoot, '.github/workflows');
-const legacyWorkflowPath = resolve(workflowRoot, 'publish.yml');
-const legacyReleaseNotesScriptPath = resolve(workspaceRoot, 'scripts/generate-release-notes.mjs');
-const legacyReleaseNotesConfigPath = resolve(workspaceRoot, 'changelogithub.config.mjs');
-
-function isWorkflowFilename(filename: string): boolean {
-  return filename.endsWith('.yml') || filename.endsWith('.yaml');
-}
+const retiredReleaseToolPaths = [
+  'packages/release-tools/scripts/promote-release.ts',
+  'packages/release-tools/scripts/smoke-candidate.ts',
+  'packages/release-tools/src/candidate-smoke-command.ts',
+  'packages/release-tools/src/promotion-command.ts',
+  'packages/release-tools/src/public-candidate-release-set.ts',
+  'packages/release-tools/tests/candidate-smoke-command.test.ts',
+  'packages/release-tools/tests/promotion-command.test.ts',
+].map((path) => resolve(workspaceRoot, path));
 
 function requireRecord(value: unknown, description: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -23,28 +25,25 @@ function requireRecord(value: unknown, description: string): Record<string, unkn
 }
 
 describe('release workflow cutover', () => {
-  test('removes the combined publishing workflow after replacement checks exist', async () => {
-    await expect(access(legacyWorkflowPath)).rejects.toMatchObject({ code: 'ENOENT' });
-
-    const workflowFiles = (await readdir(workflowRoot)).filter(isWorkflowFilename).sort();
-    expect(workflowFiles).toContain('release-draft.yml');
-    expect(workflowFiles).not.toContain('publish.yml');
-  });
-
-  test('removes scripts used only by the combined publishing workflow', async () => {
-    const packageMetadata = requireRecord(
-      JSON.parse(await readFile(resolve(workspaceRoot, 'package.json'), 'utf8')) as unknown,
-      'workspace package metadata',
+  test('removes Candidate Smoke and Promotion release-tool files', async () => {
+    await Promise.all(
+      retiredReleaseToolPaths.map((path) =>
+        expect(access(path)).rejects.toMatchObject({ code: 'ENOENT' }),
+      ),
     );
-    const scripts = requireRecord(packageMetadata.scripts, 'workspace package scripts');
-
-    expect(scripts).not.toHaveProperty('release:notes');
-    await expect(access(legacyReleaseNotesScriptPath)).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(access(legacyReleaseNotesConfigPath)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  test('keeps npm mutation and GitHub write authority in separate jobs', async () => {
-    const workflowFiles = (await readdir(workflowRoot)).filter(isWorkflowFilename);
+  test('replaces the superseded publishing workflow', async () => {
+    await expect(access(resolve(workflowRoot, 'publish.yml'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    await expect(access(resolve(workflowRoot, 'release-draft.yml'))).resolves.toBeUndefined();
+  });
+
+  test('keeps npm mutation and GitHub write authority separate without legacy mutations', async () => {
+    const workflowFiles = (await readdir(workflowRoot)).filter(
+      (filename) => filename.endsWith('.yml') || filename.endsWith('.yaml'),
+    );
 
     for (const workflowFile of workflowFiles) {
       const workflow = requireRecord(
@@ -59,30 +58,20 @@ describe('release workflow cutover', () => {
           job.permissions ?? {},
           `${workflowFile} ${jobName} permissions`,
         );
-        const serializedJob = JSON.stringify(job);
+        const executableJob = JSON.stringify(job);
         const hasNpmMutationAuthority =
-          permissions['id-token'] === 'write' ||
-          /\bnpm (?:stage publish|dist-tag add)\b/.test(serializedJob);
+          permissions['id-token'] === 'write' || /\bnpm stage publish\b/.test(executableJob);
         const hasGitHubWriteAuthority =
-          permissions.contents === 'write' || /\bgh release\b/.test(serializedJob);
+          permissions.contents === 'write' || /\bgh release\b/.test(executableJob);
 
         expect(
           hasNpmMutationAuthority && hasGitHubWriteAuthority,
-          `${workflowFile} job ${jobName} combines npm mutation and GitHub write authority`,
+          `${workflowFile} job ${jobName} combines npm and GitHub mutation authority`,
         ).toBe(false);
-        expect(serializedJob).not.toMatch(/\bnpm publish\b|\bnpm stage approve\b|\bgit tag\b/);
+        expect(`${workflowFile} ${jobName} ${executableJob}`).not.toMatch(
+          /\bnpm publish\b|\bnpm stage approve\b|\bnpm dist-tag add\b|--tag[ =]candidate\b|\bgit tag\b|\b(?:Candidate Smoke|Promotion|Finalize)\b/,
+        );
       }
     }
-  });
-
-  test('creates only a source-bound draft for manual Finalize', async () => {
-    const draftWorkflowText = await readFile(resolve(workflowRoot, 'release-draft.yml'), 'utf8');
-
-    expect(draftWorkflowText).toContain('gh release create "v$VERSION"');
-    expect(draftWorkflowText).toContain('--draft');
-    expect(draftWorkflowText).toContain('--target "$SOURCE_SHA"');
-    expect(draftWorkflowText).not.toMatch(
-      /gh release (?:edit|upload).*--draft=false|gh release publish/,
-    );
   });
 });

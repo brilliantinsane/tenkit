@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseExactReleaseSetVersion } from './exact-release-set-version';
 import { parseExactStableVersion } from './exact-stable-version';
 import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 
@@ -84,6 +85,10 @@ function bindMount(source: string, target: string): string {
 }
 
 export async function runReleaseContainer(input: RunReleaseContainerInput): Promise<void> {
+  if (!parseExactReleaseSetVersion(input.version)) {
+    throw new Error('Release container requires one exact Stable or RC version.');
+  }
+
   const runCommand = input.runCommand ?? runReleaseCommand;
   const toolchain = await readPinnedToolchain(input.sourceRoot);
   const userId = typeof process.getuid === 'function' ? process.getuid() : 1000;
