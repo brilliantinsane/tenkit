@@ -8,6 +8,7 @@ import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { inspectReleaseArtifact } from '../src/release-artifacts';
+import type { ReleaseSetPlan } from '../src/release-plan';
 import { runReleaseVerificationCommand } from '../src/release-verification-command';
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from '../src/release-set';
 
@@ -22,6 +23,39 @@ const tempRoots: string[] = [];
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((tempRoot) => rm(tempRoot, { recursive: true })));
 });
+
+function git(repositoryRoot: string, ...args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+async function createReleasePlanningRepository(): Promise<{
+  repositoryRoot: string;
+  sourceSha: string;
+}> {
+  const repositoryRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-verification-plan-'));
+  tempRoots.push(repositoryRoot);
+  git(repositoryRoot, 'init', '--quiet');
+  git(repositoryRoot, 'config', 'user.name', 'Release Test');
+  git(repositoryRoot, 'config', 'user.email', 'release-test@example.com');
+  await writeFile(join(repositoryRoot, '.npm-version'), '11.17.0\n');
+  await writeFile(join(repositoryRoot, 'README.md'), 'initial\n');
+  git(repositoryRoot, 'add', '.npm-version', 'README.md');
+  git(repositoryRoot, 'commit', '--quiet', '-m', 'chore: initial');
+  git(repositoryRoot, 'tag', 'v1.2.3');
+  await mkdir(join(repositoryRoot, 'packages/cli/src'), { recursive: true });
+  await writeFile(join(repositoryRoot, 'packages/cli/src/cli.ts'), 'export {};\n');
+  git(repositoryRoot, 'add', 'packages/cli/src/cli.ts');
+  git(repositoryRoot, 'commit', '--quiet', '-m', 'feat(cli): add release behavior');
+
+  return {
+    repositoryRoot,
+    sourceSha: git(repositoryRoot, 'rev-parse', 'HEAD'),
+  };
+}
 
 type ArtifactMutation = {
   name?: string;
@@ -123,6 +157,10 @@ type ReleasePublicationState = 'draft' | 'published';
 
 type VerificationHarnessOptions = {
   version?: string;
+  plannedVersion?: string;
+  sourceSha?: string;
+  workspaceRoot?: string;
+  useCanonicalReleasePlan?: boolean;
   publicationState?: ReleasePublicationState;
   stageOverrides?: Partial<Record<ReleaseSetPackageName, Record<string, unknown>>>;
   viewedStageOverrides?: Partial<Record<ReleaseSetPackageName, Record<string, unknown>>>;
@@ -154,6 +192,8 @@ async function createVerificationHarness(
   options: VerificationHarnessOptions = {},
 ) {
   const version = options.version ?? '0.4.0';
+  const verificationSourceSha = options.sourceSha ?? sourceSha;
+  const verificationWorkspaceRoot = options.workspaceRoot ?? workspaceRoot;
   const isReleaseCandidate = version.includes('-rc.');
   const finalTag = isReleaseCandidate ? 'next' : 'latest';
   const otherTag = isReleaseCandidate ? 'latest' : 'next';
@@ -372,7 +412,7 @@ async function createVerificationHarness(
   let githubReadCount = 0;
   const githubRelease = {
     tag_name: `v${version}`,
-    target_commitish: sourceSha,
+    target_commitish: verificationSourceSha,
     draft: publicationState === 'draft',
     prerelease: isReleaseCandidate,
     published_at: publicationState === 'published' ? '2026-07-20T10:00:00.000Z' : null,
@@ -383,7 +423,7 @@ async function createVerificationHarness(
   const runCommand = vi.fn(
     async (input: { command: string; args: readonly string[]; cwd: string }) => {
       if (input.command === 'git' && input.args[0] === 'rev-parse') {
-        return { stdout: `${sourceSha}\n`, stderr: '' };
+        return { stdout: `${verificationSourceSha}\n`, stderr: '' };
       }
 
       if (
@@ -423,7 +463,7 @@ async function createVerificationHarness(
         const remoteTagSha =
           options.remoteTagSha === undefined
             ? publicationState === 'published'
-              ? sourceSha
+              ? verificationSourceSha
               : null
             : options.remoteTagSha;
         return {
@@ -444,22 +484,44 @@ async function createVerificationHarness(
   );
   let output = '';
   const wait = vi.fn(async () => {});
-  const reproduceReleaseSet = vi.fn(async () => ({
+  const plannedVersion = options.plannedVersion ?? version;
+  const plannedReleaseCandidate = plannedVersion.includes('-rc.');
+  const releasePlan: ReleaseSetPlan = {
+    kind: 'release',
     sourceSha,
+    previousStableTag: {
+      name: `v${previousStableVersion}`,
+      version: previousStableVersion,
+      sha: previousStableSha,
+    },
+    version: plannedVersion,
+    channel: plannedReleaseCandidate ? 'rc' : 'stable',
+    npmDistTag: plannedReleaseCandidate ? 'next' : 'latest',
+    gitTag: `v${plannedVersion}`,
+    githubReleaseType: plannedReleaseCandidate ? 'prerelease' : 'release',
+    dependencyApprovalOrder: RELEASE_SET_PACKAGES.map((releasePackage) => releasePackage.name),
+    contributingCommits: [],
+  };
+  const planReleaseSetFromRepository = vi.fn(() => releasePlan);
+  const reproduceReleaseSet = vi.fn(async () => ({
+    sourceSha: verificationSourceSha,
     version,
     artifactPaths: local.artifactPaths,
     packages: local.packages,
   }));
-  const execute = (args: readonly string[] = ['--source-sha', sourceSha, '--version', version]) =>
+  const execute = (
+    args: readonly string[] = ['--source-sha', verificationSourceSha, '--version', version],
+  ) =>
     runReleaseVerificationCommand({
       args,
-      workspaceRoot,
+      workspaceRoot: verificationWorkspaceRoot,
       write(message) {
         output += message;
       },
       runNpmCommand,
       runCommand,
       wait,
+      ...(options.useCanonicalReleasePlan ? {} : { planReleaseSetFromRepository }),
       reproduceReleaseSet,
     });
 
@@ -469,6 +531,7 @@ async function createVerificationHarness(
     runNpmCommand,
     runCommand,
     wait,
+    planReleaseSetFromRepository,
     reproduceReleaseSet,
   };
 }
@@ -508,6 +571,21 @@ describe('release:verify command', () => {
       );
     },
   );
+
+  test('rejects a private RC when Git plans a different version', async () => {
+    const repository = await createReleasePlanningRepository();
+    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+      version: '1.3.0-rc.9',
+      sourceSha: repository.sourceSha,
+      workspaceRoot: repository.repositoryRoot,
+      useCanonicalReleasePlan: true,
+    });
+
+    await expect(harness.execute()).rejects.toThrow(
+      /requested 1\.3\.0-rc\.9.*Git plans 1\.3\.0-rc\.1/i,
+    );
+    expect(nextActions(harness.getOutput())).toEqual([]);
+  });
 
   test.each([
     ['0.4.0', ['private', 'private', 'private'], '@tenkit/template-generator'],
@@ -575,6 +653,20 @@ describe('release:verify command', () => {
       expect(nextActions(output)).toEqual([`Next action: ${expectedNextAction}.`]);
     },
   );
+
+  test('verifies a published RC after Git advances to the next ordinal', async () => {
+    const harness = await createVerificationHarness(['public', 'public', 'public'], {
+      version: '0.4.0-rc.3',
+      plannedVersion: '0.4.0-rc.4',
+      publicationState: 'published',
+    });
+
+    await expect(harness.execute()).resolves.toBe(0);
+    expect(harness.getOutput()).toContain('State: published');
+    expect(nextActions(harness.getOutput())).toEqual([
+      'Next action: Release Set publication is complete; no release mutation remains.',
+    ]);
+  });
 
   test.each([
     ['private', 'public', 'private'],

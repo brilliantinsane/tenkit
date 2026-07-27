@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { readPinnedNpmVersion } from './npm-version-pin';
+import { planReleaseSetFromRepository as planCanonicalReleaseSetFromRepository } from './plan-release-set-from-repository';
 import { reproduceReleaseSet as reproduceCanonicalReleaseSet } from './reproduce-release-set';
 import { runReleaseCommand, type RunReleaseCommand } from './run-release-command';
 import { RELEASE_SET_PACKAGES } from './release-set';
@@ -36,6 +37,7 @@ type RunReleaseVerificationCommandInput = {
   runNpmCommand?: RunReleaseVerificationNpmCommand;
   runCommand?: RunReleaseCommand;
   wait?: (milliseconds: number) => Promise<void>;
+  planReleaseSetFromRepository?: typeof planCanonicalReleaseSetFromRepository;
   reproduceReleaseSet?: typeof reproduceCanonicalReleaseSet;
 };
 
@@ -115,6 +117,26 @@ export async function runReleaseVerificationCommand(
       runCommand,
       wait,
     });
+
+    if (identity.channel === 'rc' && githubState.publication === 'draft') {
+      const releasePlan = (
+        input.planReleaseSetFromRepository ?? planCanonicalReleaseSetFromRepository
+      )({
+        channel: 'rc',
+        workspaceRoot: input.workspaceRoot,
+        sourceRevision: identity.sourceSha,
+      });
+      const plannedVersion =
+        releasePlan.kind === 'release' && releasePlan.channel === 'rc'
+          ? releasePlan.version
+          : 'no RC version';
+
+      if (releasePlan.sourceSha !== identity.sourceSha || plannedVersion !== identity.version) {
+        throw new Error(
+          `Release Verification requested ${identity.version}, but Git plans ${plannedVersion} for source ${identity.sourceSha}. Stop and rerun Draft with the Git-planned RC version.`,
+        );
+      }
+    }
 
     if (githubState.publication === 'published' && publicCount !== RELEASE_SET_PACKAGES.length) {
       throw new Error(
