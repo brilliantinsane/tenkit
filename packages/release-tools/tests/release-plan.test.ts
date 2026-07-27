@@ -49,7 +49,7 @@ describe('Release Set planning', () => {
     );
   });
 
-  test('starts an RC target at rc.1', () => {
+  test('starts an untagged RC target at rc.1 when no defect marker exists', () => {
     expect(
       planChannelReleaseSet({ channel: 'rc', releaseCandidateTags: [], ...baseHistory }),
     ).toEqual(
@@ -102,7 +102,126 @@ describe('Release Set planning', () => {
     ).toEqual(expect.objectContaining({ version: '1.3.0-rc.1' }));
   });
 
-  test('rejects Release-Fix-Forward for RC planning', () => {
+  test('does not apply an RC defect marker from an older semantic target', () => {
+    const plan = planChannelReleaseSet({
+      channel: 'rc',
+      releaseCandidateTags: [],
+      ...baseHistory,
+      commits: [
+        baseHistory.commits[0],
+        {
+          sha: '3333333333333333333333333333333333333333',
+          message: 'fix(cli): repair old target\n\nRelease-Fix-Forward: 1.2.4-rc.1',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+      ],
+    });
+
+    expect(plan).toEqual(expect.objectContaining({ version: '1.3.0-rc.1' }));
+    expect(plan).not.toHaveProperty('fixForwardFromVersion');
+  });
+
+  test('advances past a partially public RC recorded by its reviewed fix commit', () => {
+    expect(
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [],
+        ...baseHistory,
+        commits: [
+          baseHistory.commits[0],
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 1.3.0-rc.1',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        version: '1.3.0-rc.2',
+        fixForwardFromVersion: '1.3.0-rc.1',
+      }),
+    );
+  });
+
+  test('rejects an RC fix-forward marker that skips unrecorded ordinals', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [],
+        ...baseHistory,
+        commits: [
+          baseHistory.commits[0],
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 1.3.0-rc.9',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/expected 1\.3\.0-rc\.1/);
+  });
+
+  test('rejects an RC defect marker for a future semantic target', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [],
+        ...baseHistory,
+        commits: [
+          baseHistory.commits[0],
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 9.0.0-rc.1',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/newer than computed target 1\.3\.0/);
+  });
+
+  test('rejects an RC fix-forward marker for an already tagged release', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [{ name: 'v1.3.0-rc.1', version: '1.3.0-rc.1' }],
+        ...baseHistory,
+        commits: [
+          baseHistory.commits[0],
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 1.3.0-rc.1',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/already has a completed Git tag/);
+  });
+
+  test('rejects the same consumed RC marker twice', () => {
+    expect(() =>
+      planChannelReleaseSet({
+        channel: 'rc',
+        releaseCandidateTags: [],
+        ...baseHistory,
+        commits: [
+          baseHistory.commits[0],
+          {
+            sha: '3333333333333333333333333333333333333333',
+            message: 'fix(cli): first repair\n\nRelease-Fix-Forward: 1.3.0-rc.1',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+          {
+            sha: '4444444444444444444444444444444444444444',
+            message: 'fix(cli): second repair\n\nRelease-Fix-Forward: 1.3.0-rc.1',
+            paths: ['packages/cli/src/cli.ts'],
+          },
+        ],
+      }),
+    ).toThrow(/must advance beyond 1\.3\.0-rc\.1/);
+  });
+
+  test('rejects a Stable fix-forward marker during RC planning', () => {
     expect(() =>
       planChannelReleaseSet({
         channel: 'rc',
@@ -115,7 +234,31 @@ describe('Release Set planning', () => {
           },
         ],
       }),
-    ).toThrow(/Stable planning/);
+    ).toThrow(/Stable Release-Fix-Forward marker cannot plan an RC/);
+  });
+
+  test('ignores an RC fix-forward marker during Stable planning', () => {
+    const plan = planChannelReleaseSet({
+      channel: 'stable',
+      releaseCandidateTags: [],
+      ...baseHistory,
+      commits: [
+        baseHistory.commits[0],
+        {
+          sha: '3333333333333333333333333333333333333333',
+          message: 'fix(cli): repair release\n\nRelease-Fix-Forward: 1.3.0-rc.1',
+          paths: ['packages/cli/src/cli.ts'],
+        },
+      ],
+    });
+
+    expect(plan).toEqual(
+      expect.objectContaining({
+        version: '1.3.0',
+        channel: 'stable',
+      }),
+    );
+    expect(plan).not.toHaveProperty('fixForwardFromVersion');
   });
 
   test('rejects an invalid channel instead of falling back', () => {
@@ -369,7 +512,7 @@ describe('Release Set planning', () => {
   });
 
   test.each([
-    ['Release-Fix-Forward: next', /exact stable version/],
+    ['Release-Fix-Forward: next', /exact Stable or RC version/],
     ['Release-Fix-Forward: 0.1.9', /newer than 0\.2\.0/],
   ])('rejects invalid fix-forward trailer %s', (trailer, expectedMessage) => {
     expect(() =>
@@ -450,7 +593,7 @@ describe('Release Set planning', () => {
           },
         ],
       }),
-    ).toThrow(/exact stable version/);
+    ).toThrow(/exact Stable or RC version/);
   });
 
   test('rejects an orphan continuation before the fix-forward trailer', () => {
