@@ -52,6 +52,17 @@ describe("CommandMenu", () => {
     cleanup()
   })
 
+  test("does not render the dialog label while the palette is closed", () => {
+    render(<CommandMenu />)
+
+    expect(
+      screen.queryByRole("heading", { name: "Command Palette" })
+    ).toBeNull()
+    expect(
+      screen.queryByText("Search pages and sections to navigate Tenkit.")
+    ).toBeNull()
+  })
+
   test("opens with Ctrl+K and navigates to a selected destination", async () => {
     const user = userEvent.setup()
     render(<CommandMenu />)
