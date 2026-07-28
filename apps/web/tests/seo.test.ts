@@ -5,6 +5,11 @@ import { GET as getFaqRoute } from "@/app/faq.md/route"
 import { GET as getIndexRoute } from "@/app/index.md/route"
 import { GET as getLlmsFullRoute } from "@/app/llms-full.txt/route"
 import { GET as getLlmsRoute } from "@/app/llms.txt/route"
+import getOpenGraphImage, {
+  alt as openGraphImageAlt,
+  contentType as openGraphImageContentType,
+  size as openGraphImageSize,
+} from "@/app/opengraph-image"
 import { GET as getSetupTypesRoute } from "@/app/setup-types.md/route"
 import { GET as getRobotsRoute } from "@/app/robots.txt/route"
 import sitemap from "@/app/sitemap"
@@ -39,17 +44,16 @@ describe("Tenkit Public Web App SEO", () => {
     expect(rootMetadata.alternates?.canonical).toBe("/")
   })
 
-  test("points Open Graph and Twitter metadata at the static OG image", () => {
+  test("serves the branded preview through the App Router image convention", async () => {
+    const image = await getOpenGraphImage()
+
     expect(SITE_CONFIG.ogImage).toBe("/og-image.png")
     expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png")
-    expect(rootMetadata.openGraph?.images).toEqual([
-      {
-        url: "https://www.tenkit.dev/og-image.png",
-        width: 1672,
-        height: 941,
-        alt: SITE_CONFIG.ogImageAlt,
-      },
-    ])
+    expect(openGraphImageAlt).toBe(SITE_CONFIG.ogImageAlt)
+    expect(openGraphImageContentType).toBe("image/png")
+    expect(openGraphImageSize).toEqual({ width: 1672, height: 941 })
+    expect(image.byteLength).toBeGreaterThan(0)
+    expect(rootMetadata.openGraph).not.toHaveProperty("images")
     expect(rootMetadata.twitter?.images).toEqual([
       "https://www.tenkit.dev/og-image.png",
     ])
@@ -98,6 +102,14 @@ describe("Tenkit Public Web App SEO", () => {
     expect(metadata.alternates.canonical).toBe("/configure")
     expect(metadata.openGraph.url).toBe("https://www.tenkit.dev/configure")
     expect(metadata.openGraph.description).toBe(CONFIGURE_PAGE_SEO.description)
+    expect(metadata.openGraph.images).toEqual([
+      {
+        url: "https://www.tenkit.dev/og-image.png",
+        width: 1672,
+        height: 941,
+        alt: SITE_CONFIG.ogImageAlt,
+      },
+    ])
     expect(metadata.twitter.description).toBe(CONFIGURE_PAGE_SEO.description)
   })
 

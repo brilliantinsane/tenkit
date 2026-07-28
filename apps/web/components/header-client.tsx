@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 
+import { CommandMenu } from "@/components/command-menu"
 import { ConfigureHeaderLink } from "@/components/configure-header-link"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -67,7 +68,7 @@ export function HeaderClient({
           <span className="absolute inset-y-0 right-0 w-px bg-border" />
         </div>
       ) : null}
-      <nav
+      <div
         className={cn(
           "flex h-16 w-full items-center justify-between px-4 md:h-14 md:transition-all md:ease-out",
           {
@@ -95,34 +96,38 @@ export function HeaderClient({
             </Link>
           )}
         </div>
-        <div className="hidden items-center gap-2 md:flex">
-          <nav aria-label="Primary" className="flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Button asChild key={link.label} size="sm" variant="ghost">
-                {isHomePage ? (
-                  <a href={link.href}>{link.label}</a>
-                ) : (
-                  <Link href={`/${link.href}`}>{link.label}</Link>
-                )}
-              </Button>
-            ))}
-          </nav>
-          <div className="flex items-center border-l pl-2">
-            <ConfigureHeaderLink />
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
+            <nav aria-label="Primary" className="flex items-center gap-1">
+              {navLinks.map((link) => (
+                <Button asChild key={link.label} size="sm" variant="ghost">
+                  {isHomePage ? (
+                    <a href={link.href}>{link.label}</a>
+                  ) : (
+                    <Link href={`/${link.href}`}>{link.label}</Link>
+                  )}
+                </Button>
+              ))}
+            </nav>
+            <div className="flex items-center border-l pl-2">
+              <ConfigureHeaderLink />
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 border-l pl-2">
-            {desktopStats.github}
-            {desktopStats.npm}
-            <ThemeSwitcher buttonSize="icon-sm" />
+          <div className="flex items-center gap-1.5">
+            <CommandMenu />
+            <div className="md:hidden">
+              <ConfigureHeaderLink />
+            </div>
+            <div className="hidden items-center gap-1.5 border-l pl-2 md:flex">
+              {desktopStats.github}
+              {desktopStats.npm}
+            </div>
+            <div className="border-l pl-2">
+              <ThemeSwitcher buttonSize="icon-sm" />
+            </div>
           </div>
         </div>
-        <div className="flex items-center md:hidden">
-          <ConfigureHeaderLink />
-          <div className="ml-2 border-l pl-2">
-            <ThemeSwitcher buttonSize="icon-sm" />
-          </div>
-        </div>
-      </nav>
+      </div>
     </header>
   )
 }

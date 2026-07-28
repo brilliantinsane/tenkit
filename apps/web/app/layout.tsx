@@ -5,6 +5,7 @@ import { DatabuddyAnalytics } from "@/components/databuddy-analytics"
 import { Header } from "@/components/header"
 import { JotaiProvider } from "@/components/jotai-provider"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { rootMetadata, rootViewport } from "@/lib/site-metadata"
 import { cn } from "@/lib/utils"
@@ -73,6 +74,7 @@ export default function RootLayout({
                   <Header />
                   {children}
                 </div>
+                <Toaster />
               </TooltipProvider>
             </ThemeProvider>
           </JotaiProvider>
