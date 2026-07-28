@@ -576,7 +576,7 @@ export function formatConfiguratorCommandMultiline(command: string): string {
 export function validateConfiguratorAppVariantNames(
   appVariantNames: readonly string[]
 ): readonly (string | undefined)[] {
-  const errors = appVariantNames.map((appVariantName) => {
+  const nameValidationMessages = appVariantNames.map((appVariantName) => {
     try {
       deriveAppVariantIdentity(appVariantName)
       return undefined
@@ -585,13 +585,13 @@ export function validateConfiguratorAppVariantNames(
     }
   })
 
-  if (errors.some(Boolean)) {
-    return errors
+  if (nameValidationMessages.some(Boolean)) {
+    return nameValidationMessages
   }
 
   try {
     deriveAppVariantIdentities(appVariantNames)
-    return errors
+    return nameValidationMessages
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return appVariantNames.map(() => message)

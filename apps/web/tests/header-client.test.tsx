@@ -5,8 +5,9 @@ import userEvent from "@testing-library/user-event"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
-const { mockUsePathname } = vi.hoisted(() => ({
+const { mockUsePathname, push } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
+  push: vi.fn(),
 }))
 
 vi.mock("next/image", () => ({
@@ -23,6 +24,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: mockUsePathname,
+  useRouter: () => ({ push }),
 }))
 
 vi.mock("@/components/theme-switcher", () => ({
@@ -38,6 +40,13 @@ import { HeaderClient } from "@/components/header-client"
 const emptyStats = { github: null, npm: null }
 
 describe("HeaderClient", () => {
+  test("does not nest the primary navigation landmark", () => {
+    render(<HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />)
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeDefined()
+    expect(screen.queryByRole("navigation", { name: "Site header" })).toBeNull()
+  })
+
   afterEach(() => {
     cleanup()
   })
@@ -97,6 +106,10 @@ describe("HeaderClient", () => {
     if (!(mobileMenu instanceof HTMLElement)) {
       throw new Error("Expected the mobile navigation portal to be open.")
     }
+
+    expect(
+      within(mobileMenu).getByRole("navigation", { name: "Mobile" })
+    ).toBeDefined()
 
     expect(
       within(mobileMenu)

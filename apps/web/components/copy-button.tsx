@@ -3,6 +3,7 @@
 import type { ComponentProps } from "react"
 import { motion } from "motion/react"
 import { CheckIcon, CircleXIcon, CopyIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { Button } from "@/components/ui/button"
@@ -55,8 +56,14 @@ export function CopyButton({
   ...props
 }: CopyButtonProps) {
   const { state, copy } = useCopyToClipboard({
-    onCopySuccess,
-    onCopyError,
+    onCopySuccess: (copiedText) => {
+      toast.success("Copied to clipboard")
+      onCopySuccess?.(copiedText)
+    },
+    onCopyError: (error) => {
+      toast.error("Unable to copy")
+      onCopyError?.(error)
+    },
   })
 
   return (

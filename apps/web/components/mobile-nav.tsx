@@ -25,10 +25,6 @@ export function MobileNav({
 }) {
   const [open, setOpen] = React.useState(false)
   const closeMenu = React.useCallback(() => setOpen(false), [])
-  const openMenu = React.useCallback(() => {
-    trackDatabuddyEvent("mobile_nav_opened")
-    setOpen(true)
-  }, [])
   const closeMenuFromStatsLink = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (event.target instanceof Element && event.target.closest("a[href]")) {
@@ -45,7 +41,15 @@ export function MobileNav({
         aria-expanded={open}
         aria-label="Toggle menu"
         className="md:hidden"
-        onClick={open ? closeMenu : openMenu}
+        onClick={() => {
+          if (open) {
+            setOpen(false)
+            return
+          }
+
+          trackDatabuddyEvent("mobile_nav_opened")
+          setOpen(true)
+        }}
         size="icon"
         variant="outline"
       >
@@ -56,9 +60,10 @@ export function MobileNav({
         )}
       </Button>
       {open && (
-        <Portal className="top-16" id="mobile-menu">
+        <Portal className="top-16 md:hidden" data-open={open} id="mobile-menu">
           <PortalBackdrop />
-          <div
+          <nav
+            aria-label="Mobile"
             className={cn(
               "ease-out data-[slot=open]:animate-in data-[slot=open]:zoom-in-97",
               "mx-auto h-full w-[calc(100%-2rem)] max-w-6xl px-4 py-4"
@@ -94,7 +99,7 @@ export function MobileNav({
                 {stats.npm}
               </div>
             </div>
-          </div>
+          </nav>
         </Portal>
       )}
     </div>

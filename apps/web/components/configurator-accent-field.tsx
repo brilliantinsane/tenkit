@@ -33,6 +33,7 @@ export function ConfiguratorAccentField({
 }: ConfiguratorAccentFieldProps) {
   const normalizedHex = normalizeConfiguratorAccentHex(value)
   const displayColor = invalid ? "#000000" : normalizedHex
+  const errorId = `${id}-error`
 
   function commitAccent(nextValue: string) {
     const normalized = normalizeConfiguratorAccentHex(nextValue)
@@ -60,6 +61,7 @@ export function ConfiguratorAccentField({
             id={id}
             value={value}
             aria-invalid={invalid}
+            aria-describedby={error ? errorId : undefined}
             className="min-w-0 flex-1"
             onChange={(event) => onChange(event.target.value.toUpperCase())}
           />
@@ -71,7 +73,7 @@ export function ConfiguratorAccentField({
           <ColorPickerSlider channel="hue" />
         </ColorPickerContent>
       </ColorPicker>
-      {error ? <FieldError>{error}</FieldError> : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </Field>
   )
 }

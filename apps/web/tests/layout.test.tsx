@@ -32,6 +32,10 @@ vi.mock("@/components/ui/tooltip", () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+vi.mock("@/components/ui/sonner", () => ({
+  Toaster: () => <div data-slot="toaster" />,
+}))
+
 import RootLayout from "@/app/layout"
 
 describe("RootLayout", () => {
@@ -43,6 +47,7 @@ describe("RootLayout", () => {
     )
 
     expect(markup).toContain('data-slot="app-content"')
+    expect(markup).toContain('data-slot="toaster"')
     expect(markup).not.toContain("configurator-dialog")
   })
 })

@@ -142,6 +142,42 @@ describe("ConfigurePageContent interactions", () => {
     expect(copyButton.disabled).toBe(true)
   })
 
+  test("associates visible validation errors with their invalid inputs", async () => {
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const projectNameInput = screen.getByLabelText("Project name")
+    const appVariantNameInput = screen.getAllByLabelText("Name")[0]
+    const accentInput = screen.getAllByLabelText("Accent")[0]
+
+    fireEvent.change(projectNameInput, { target: { value: "" } })
+    fireEvent.change(appVariantNameInput, { target: { value: "!!!" } })
+    fireEvent.change(accentInput, { target: { value: "BAD" } })
+
+    const assertErrorAssociation = (input: HTMLElement) => {
+      expect(input.getAttribute("aria-invalid")).toBe("true")
+
+      const errorId = input.getAttribute("aria-describedby")
+
+      if (!errorId) {
+        throw new Error("Expected the invalid input to describe its error.")
+      }
+
+      expect(document.getElementById(errorId)?.getAttribute("role")).toBe(
+        "alert"
+      )
+    }
+
+    await waitFor(() => {
+      assertErrorAssociation(projectNameInput)
+      assertErrorAssociation(appVariantNameInput)
+      assertErrorAssociation(accentInput)
+    })
+  })
+
   test("reset clears every non-default query parameter", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()

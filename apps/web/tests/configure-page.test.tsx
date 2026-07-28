@@ -3,12 +3,15 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing"
 import { describe, expect, test } from "vitest"
 
 import { ConfigurePageContent } from "@/components/configure-page-content"
+import { ConfigurePageShell } from "@/components/configure-page-shell"
 
 describe("ConfigurePageContent", () => {
   function renderConfigurator(searchParams = "") {
     return renderToStaticMarkup(
       <NuqsTestingAdapter searchParams={searchParams}>
-        <ConfigurePageContent />
+        <ConfigurePageShell>
+          <ConfigurePageContent />
+        </ConfigurePageShell>
       </NuqsTestingAdapter>
     )
   }
@@ -46,6 +49,8 @@ describe("ConfigurePageContent", () => {
     expect(markup).toContain("React Native StyleSheet")
     expect(markup).toContain("Tailwind for React Native")
     expect(markup).toContain("bg-code")
+    expect(markup).toContain("focus-visible:ring-3")
+    expect(markup).toContain("focus-visible:ring-ring/30")
     expect(markup).not.toContain("lg:border-l")
     expect(markup).not.toContain('class="sticky top-16')
     expect(markup).not.toContain("Configure create command")

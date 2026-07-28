@@ -21,10 +21,8 @@ import {
   useConfigurator,
 } from "@/components/configurator-provider"
 import { ConfiguratorToggleRow } from "@/components/configurator-toggle-row"
-import { ExpandableCodeBlockCommand } from "@/components/expandable-code-block-command"
 import { CreateCommandAnalyticsProvider } from "@/components/create-command-analytics"
-import { FullWidthDivider } from "@/components/full-width-divider"
-import { SiteFooter } from "@/components/site-footer"
+import { ExpandableCodeBlockCommand } from "@/components/expandable-code-block-command"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -110,35 +108,6 @@ function ConfiguratorSection({
   )
 }
 
-function ConfiguratorHero() {
-  return (
-    <section className="relative px-4 py-16 text-center sm:px-8 sm:py-24">
-      <h1
-        data-slot="configurator-hero-title"
-        className={cn(
-          "font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl",
-          CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
-          "delay-100"
-        )}
-      >
-        Project configurator
-      </h1>
-      <p
-        data-slot="configurator-hero-description"
-        className={cn(
-          "mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg",
-          CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
-          "delay-200"
-        )}
-      >
-        Shape the generated project, inspect the exact command, then copy it
-        into your terminal.
-      </p>
-      <FullWidthDivider position="bottom" />
-    </section>
-  )
-}
-
 function ConfiguratorCommandPanel() {
   const { state, actions, meta } = useConfigurator()
   const [commandExpanded, setCommandExpanded] = useState(false)
@@ -164,13 +133,20 @@ function ConfiguratorCommandPanel() {
             id="page-configurator-project-name"
             value={state.projectName}
             aria-invalid={Boolean(meta.projectNameError)}
+            aria-describedby={
+              meta.projectNameError
+                ? "page-configurator-project-name-error"
+                : undefined
+            }
             onChange={(event) => actions.setProjectName(event.target.value)}
           />
           <FieldDescription>
             Spaces become hyphens in the generated folder name.
           </FieldDescription>
           {meta.projectNameError ? (
-            <FieldError>{meta.projectNameError}</FieldError>
+            <FieldError id="page-configurator-project-name-error">
+              {meta.projectNameError}
+            </FieldError>
           ) : null}
         </Field>
         <Separator />
@@ -313,6 +289,11 @@ function ConfiguratorAppVariantsSection() {
                   id={`page-configurator-variant-name-${appVariantField.position}`}
                   value={appVariantField.name}
                   aria-invalid={Boolean(appVariantField.nameError)}
+                  aria-describedby={
+                    appVariantField.nameError
+                      ? `page-configurator-variant-name-${appVariantField.position}-error`
+                      : undefined
+                  }
                   onChange={(event) =>
                     actions.updateAppVariantName(
                       appVariantField.position,
@@ -321,7 +302,11 @@ function ConfiguratorAppVariantsSection() {
                   }
                 />
                 {appVariantField.nameError ? (
-                  <FieldError>{appVariantField.nameError}</FieldError>
+                  <FieldError
+                    id={`page-configurator-variant-name-${appVariantField.position}-error`}
+                  >
+                    {appVariantField.nameError}
+                  </FieldError>
                 ) : null}
               </Field>
 
@@ -408,7 +393,6 @@ function ConfiguratorPackageManagerSection() {
 
 const Configurator = {
   Provider: ConfiguratorProvider,
-  Hero: ConfiguratorHero,
   CommandPanel: ConfiguratorCommandPanel,
   SetupTypeSection: ConfiguratorSetupTypeSection,
   StylingSection: ConfiguratorStylingSection,
@@ -416,43 +400,34 @@ const Configurator = {
   PackageManagerSection: ConfiguratorPackageManagerSection,
 } as const
 
-function ConfiguratorPageFrame() {
+function ConfiguratorLayout() {
   return (
-    <main className="relative overflow-hidden supports-[overflow:clip]:overflow-clip">
-      <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl">
-        <Configurator.Hero />
-        <div
-          data-slot="configurator-layout"
-          className={cn(
-            "grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:items-start",
-            CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
-            "delay-300"
-          )}
-        >
-          <Configurator.CommandPanel />
-          <div
-            data-slot="configurator-section-stack"
-            className="flex min-w-0 flex-col gap-4 sm:gap-8"
-          >
-            <Configurator.SetupTypeSection />
-            <Configurator.StylingSection />
-            <Configurator.AppVariantsSection />
-            <Configurator.PackageManagerSection />
-          </div>
-        </div>
-        <div aria-hidden="true" className="relative h-px">
-          <FullWidthDivider position="top" />
-        </div>
-        <SiteFooter />
+    <div
+      data-slot="configurator-layout"
+      className={cn(
+        "grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:items-start",
+        CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
+        "delay-300"
+      )}
+    >
+      <Configurator.CommandPanel />
+      <div
+        data-slot="configurator-section-stack"
+        className="flex min-w-0 flex-col gap-4 sm:gap-8"
+      >
+        <Configurator.SetupTypeSection />
+        <Configurator.StylingSection />
+        <Configurator.AppVariantsSection />
+        <Configurator.PackageManagerSection />
       </div>
-    </main>
+    </div>
   )
 }
 
 export function ConfigurePageContent() {
   return (
     <Configurator.Provider>
-      <ConfiguratorPageFrame />
+      <ConfiguratorLayout />
     </Configurator.Provider>
   )
 }
