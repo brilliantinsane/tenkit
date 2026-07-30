@@ -231,10 +231,12 @@ Use `eas init` only to create or discover an App Variant's EAS Project ID. EAS P
 ```text
 .
 ├── apps/
-│   └── playground/                       # Runnable Expo Playground app
+│   ├── playground/                       # Runnable Expo Playground app
+│   └── web/                              # Tenkit website
 ├── packages/
 │   ├── cli/                              # Public CLI implementation package
 │   ├── create-tenkit/                    # Thin package-manager create entrypoint
+│   ├── release-tools/                    # Release Set planning, packing, and verification
 │   └── template-generator/               # Template source, generation, and writer package
 ├── package.json                          # Workspace command surface
 └── pnpm-workspace.yaml                   # pnpm workspace configuration

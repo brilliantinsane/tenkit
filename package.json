@@ -1,7 +1,7 @@
 {
   "name": "tenkit-workspace",
   "version": "1.0.0",
-  "packageManager": "pnpm@11.15.0",
+  "packageManager": "pnpm@11.18.0",
   "private": true,
   "devDependencies": {
     "husky": "^9.1.7",
