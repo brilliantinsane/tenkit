@@ -28,6 +28,7 @@ describe("HeroSection", () => {
     expect(markup).toMatch(
       /data-slot="hero-title" class="[^"]*max-w-5xl[^"]*text-\[clamp\(1\.5rem,7vw,4\.5rem\)\]/
     )
+    expect(markup).toContain("max-[360px]:text-[6vw]")
     expect(markup).toContain(
       "Generate an Expo project with white-label and tenant setup built in."
     )

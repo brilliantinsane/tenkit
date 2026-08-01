@@ -33,7 +33,7 @@ export function HeroSection() {
         <h1
           data-slot="hero-title"
           className={cn(
-            "relative max-w-5xl text-center font-heading text-[clamp(1.5rem,7vw,4.5rem)] leading-[1.05] font-semibold tracking-tight text-foreground",
+            "relative max-w-5xl text-center font-heading text-[clamp(1.5rem,7vw,4.5rem)] leading-[1.05] font-semibold tracking-tight text-foreground max-[360px]:text-[6vw]",
             "animate-in delay-100 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
