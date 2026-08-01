@@ -18,7 +18,7 @@ const selectedChoiceIndicator = (
   <span
     aria-hidden="true"
     data-selected-indicator=""
-    className="absolute top-2 right-2 z-30 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm"
+    className="absolute top-3 right-3 z-30 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm"
   >
     <CheckIcon className="size-3" />
   </span>
@@ -33,7 +33,9 @@ function ChoiceCardContent({
 }) {
   return (
     <span className="block p-1.5">
-      <span className={cn("relative block rounded-lg bg-code", className)}>
+      <span
+        className={cn("relative block rounded-lg bg-background", className)}
+      >
         {children}
       </span>
     </span>

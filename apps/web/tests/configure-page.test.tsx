@@ -19,7 +19,15 @@ describe("ConfigurePageContent", () => {
   test("renders the command panel and every configurator section", () => {
     const markup = renderConfigurator()
 
-    expect(markup).toContain("Project configurator")
+    expect(markup).toContain(
+      '<span class="block whitespace-nowrap">Choose your setup</span>'
+    )
+    expect(markup).toContain(
+      '<span class="block whitespace-nowrap">Start building.</span>'
+    )
+    expect(markup).toContain(
+      "Configure your app architecture and tech stack. Generate your Expo project with one command."
+    )
     expect(markup).not.toContain("Create command")
     expect(markup).toContain("Project name")
     expect(markup).toContain("Setup Type")
@@ -48,7 +56,8 @@ describe("ConfigurePageContent", () => {
     expect(markup).toContain("Branded App Variants")
     expect(markup).toContain("React Native StyleSheet")
     expect(markup).toContain("Tailwind for React Native")
-    expect(markup).toContain("bg-code")
+    expect(markup).not.toContain("bg-code")
+    expect(markup).toContain("bg-background")
     expect(markup).toContain("focus-visible:ring-3")
     expect(markup).toContain("focus-visible:ring-ring/30")
     expect(markup).not.toContain("lg:border-l")

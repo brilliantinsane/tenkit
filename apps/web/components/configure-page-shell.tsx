@@ -15,12 +15,13 @@ export function ConfigurePageShell({ children }: { children: ReactNode }) {
           <h1
             data-slot="configurator-hero-title"
             className={cn(
-              "font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl",
+              "font-heading text-[clamp(1.5rem,7vw,3.75rem)] leading-[1.05] font-semibold tracking-tight",
               CONFIGURATOR_ENTRANCE_MOTION_CLASS_NAME,
               "delay-100"
             )}
           >
-            Project configurator
+            <span className="block whitespace-nowrap">Choose your setup</span>
+            <span className="block whitespace-nowrap">Start building.</span>
           </h1>
           <p
             data-slot="configurator-hero-description"
@@ -30,8 +31,8 @@ export function ConfigurePageShell({ children }: { children: ReactNode }) {
               "delay-200"
             )}
           >
-            Shape the generated project, inspect the exact command, then copy it
-            into your terminal.
+            Configure your app architecture and tech stack. Generate your Expo
+            project with one command.
           </p>
           <FullWidthDivider position="bottom" />
         </section>

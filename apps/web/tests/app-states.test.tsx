@@ -12,9 +12,14 @@ describe("App Router states", () => {
     const markup = renderToStaticMarkup(<ConfigureRouteLoading />)
 
     expect(markup).toContain("Loading configurator")
-    expect(markup).toContain("Project configurator")
     expect(markup).toContain(
-      "Shape the generated project, inspect the exact command, then copy it into your terminal."
+      '<span class="block whitespace-nowrap">Choose your setup</span>'
+    )
+    expect(markup).toContain(
+      '<span class="block whitespace-nowrap">Start building.</span>'
+    )
+    expect(markup).toContain(
+      "Configure your app architecture and tech stack. Generate your Expo project with one command."
     )
     expect(markup).toContain('aria-busy="true"')
     expect(markup).toContain('data-slot="configure-page-loading"')

@@ -16,6 +16,7 @@ Tenkit is an open source pnpm monorepo for helping people quickly start multi-te
 - Use `pnpm` for package scripts and dependency management. Do not use npm, Yarn, Bun, or ad-hoc package manager commands.
 - Expo has changed. Before writing Expo code, read the exact versioned docs at `https://docs.expo.dev/versions/v57.0.0/`.
 - Preserve Tenkit domain language. Do not collapse App Variant, Runtime Tenant, Setup Type, Example, Starter Data, Scaffold, Template, Playground, Active Setup, and Build Preparation into generic "tenant/template/app" wording.
+- Customer-facing marketing copy may translate domain terms into plain audience language when it improves immediate comprehension. It must stay conceptually accurate. Technical explanations, code, and domain documentation must use precise Tenkit terminology.
 - Do not introduce additional public CLI surfaces, web builder, npm publishing, trusted publishing, release automation, or changelog automation unless explicitly requested.
 - Do not mutate the Playground while proving Template generation, and do not treat the Playground as generated output.
 - Do not add broad fallbacks to hide broken behavior. Prefer fixing the underlying behavior. Use fallbacks only at external/runtime boundaries where malformed input is expected and the fallback is explicit.

@@ -1,7 +1,7 @@
 "use client"
 
-import { atomWithStorage } from "jotai/utils"
 import { useAtom } from "jotai"
+import { atomWithStorage } from "jotai/utils"
 
 import {
   CommandActions,
@@ -63,7 +63,10 @@ export function CodeBlockCommand({
   )
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-code">
+    <div
+      data-slot="code-block-command"
+      className="relative overflow-hidden rounded-xl bg-background"
+    >
       <Tabs
         className="gap-0"
         value={packageManager}
