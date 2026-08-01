@@ -23,6 +23,14 @@ export const rootMetadata = {
     siteName: SITE_CONFIG.name,
     title: SITE_CONFIG.title,
     description: SITE_CONFIG.description,
+    images: [
+      {
+        url: ogImageUrl(),
+        width: 1672,
+        height: 941,
+        alt: SITE_CONFIG.ogImageAlt,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
