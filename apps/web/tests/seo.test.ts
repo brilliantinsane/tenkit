@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+
 import { describe, expect, test } from "vitest"
 
 import { GET as getCommandsRoute } from "@/app/commands.md/route"
@@ -5,11 +8,6 @@ import { GET as getFaqRoute } from "@/app/faq.md/route"
 import { GET as getIndexRoute } from "@/app/index.md/route"
 import { GET as getLlmsFullRoute } from "@/app/llms-full.txt/route"
 import { GET as getLlmsRoute } from "@/app/llms.txt/route"
-import getOpenGraphImage, {
-  alt as openGraphImageAlt,
-  contentType as openGraphImageContentType,
-  size as openGraphImageSize,
-} from "@/app/opengraph-image"
 import { GET as getSetupTypesRoute } from "@/app/setup-types.md/route"
 import { GET as getRobotsRoute } from "@/app/robots.txt/route"
 import sitemap from "@/app/sitemap"
@@ -44,19 +42,32 @@ describe("Tenkit Public Web App SEO", () => {
     expect(rootMetadata.alternates?.canonical).toBe("/")
   })
 
-  test("serves the branded preview through the App Router image convention", async () => {
-    const image = await getOpenGraphImage()
+  test("serves the branded preview from the static image path", () => {
+    const imagePath = fileURLToPath(
+      new URL("../public/og-image.png", import.meta.url)
+    )
+    const dynamicRoutePath = fileURLToPath(
+      new URL("../app/opengraph-image.tsx", import.meta.url)
+    )
 
     expect(SITE_CONFIG.ogImage).toBe("/og-image.png")
     expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png")
-    expect(openGraphImageAlt).toBe(SITE_CONFIG.ogImageAlt)
-    expect(openGraphImageContentType).toBe("image/png")
-    expect(openGraphImageSize).toEqual({ width: 1672, height: 941 })
-    expect(image.byteLength).toBeGreaterThan(0)
-    expect(rootMetadata.openGraph).not.toHaveProperty("images")
+    expect(rootMetadata.openGraph?.images).toEqual([
+      {
+        url: "https://www.tenkit.dev/og-image.png",
+        width: 1672,
+        height: 941,
+        alt: SITE_CONFIG.ogImageAlt,
+      },
+    ])
     expect(rootMetadata.twitter?.images).toEqual([
       "https://www.tenkit.dev/og-image.png",
     ])
+    expect(existsSync(imagePath)).toBe(true)
+    expect(readFileSync(imagePath).subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    )
+    expect(existsSync(dynamicRoutePath)).toBe(false)
   })
 
   test("uses the product description across web and social metadata", () => {
