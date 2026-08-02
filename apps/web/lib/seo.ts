@@ -23,7 +23,10 @@ export const SITE_CONFIG = {
   },
   publisher: "Tenkit",
   creator: "Tenkit",
-  ogImage: "/og-image.png",
+  ogImage: "/og-image.png?v=2",
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageType: "image/png",
   ogImageAlt:
     "Tenkit preview image for multi-tenant setup types and generated app workflows for apps built with Expo.",
   keywords: [
@@ -83,9 +86,10 @@ export function createPageMetadata(page: PageSeo) {
       images: [
         {
           url: ogImageUrl(),
-          width: 1672,
-          height: 941,
+          width: SITE_CONFIG.ogImageWidth,
+          height: SITE_CONFIG.ogImageHeight,
           alt: SITE_CONFIG.ogImageAlt,
+          type: SITE_CONFIG.ogImageType,
         },
       ],
     },
