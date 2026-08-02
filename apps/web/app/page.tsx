@@ -7,14 +7,12 @@ import {
   TerminalIcon,
 } from "lucide-react"
 import dynamic from "next/dynamic"
-import { Suspense } from "react"
 
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { HeroSection } from "@/components/hero"
 import { JsonLdScript } from "@/components/json-ld-script"
 import { ProofSection } from "@/components/proof-section"
 import { SetupTypeStoriesSection } from "@/components/setup-type-stories-section"
-import { SetupTypesExperiment } from "@/components/setup-types-experiment"
 import { SiteFooter } from "@/components/site-footer"
 import { FaqAccordion } from "@/components/faq-accordion"
 import { FAQ_ITEMS } from "@/constants/landing"
@@ -289,9 +287,7 @@ export default function Page() {
       <main className="relative flex min-h-screen flex-col overflow-hidden supports-[overflow:clip]:overflow-clip">
         <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl grow">
           <HeroSection />
-          <Suspense fallback={<SetupTypeStoriesSection />}>
-            <SetupTypesExperiment />
-          </Suspense>
+          <SetupTypeStoriesSection />
           <ProofSection />
           <BuildGuidanceBento />
           <FaqSection />

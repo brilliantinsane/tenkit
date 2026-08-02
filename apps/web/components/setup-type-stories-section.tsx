@@ -12,8 +12,7 @@ import { useState } from "react"
 import { ConfiguratorCodeResponsiveIconChoiceCard } from "@/components/configurator-choice-card"
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GlowingCard } from "@/components/glowing-card"
-import { SetupTypeVisual } from "@/components/setup-type-visuals"
-import { SetupTypeVisualPrototype } from "@/components/setup-type-visual-prototypes"
+import { SetupTypeGeneratedTree } from "@/components/setup-type-generated-tree"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
@@ -31,8 +30,9 @@ const setupTypeStories = [
     tenkitChange:
       "Keep one codebase. Define every customer app as its own App Variant.",
     outcome: "Add the next branded app without creating another codebase.",
-    visualTitle: "One codebase. Separate customer apps.",
-    visualSummary: "Each customer ships as its own App Variant.",
+    visualTitle: ["One codebase", "Separate customer apps"],
+    visualSummary:
+      "Generate each customer's native app identity without duplicating the product.",
     accent: "blue",
   },
   {
@@ -48,8 +48,9 @@ const setupTypeStories = [
     tenkitChange:
       "Keep one App Variant. Model every location as a Runtime Tenant with explicit access rules.",
     outcome: "Add a location without publishing another app.",
-    visualTitle: "One app. Multiple locations.",
-    visualSummary: "One App Variant opens multiple Runtime Tenants.",
+    visualTitle: ["One app", "Multiple locations"],
+    visualSummary:
+      "Let users open the locations they can access without publishing another app.",
     accent: "orange",
   },
   {
@@ -66,8 +67,9 @@ const setupTypeStories = [
     tenkitChange:
       "Keep most Runtime Tenants in the Generic App Variant. Tie selected partners to Standalone App Variants.",
     outcome: "Support both without splitting the product.",
-    visualTitle: "One shared app. One standalone partner app.",
-    visualSummary: "Both ship from the same product codebase.",
+    visualTitle: ["One shared app", "Standalone partner apps"],
+    visualSummary:
+      "Keep most partners in the shared app and give selected partners their own native app.",
     accent: "mint",
   },
 ] as const
@@ -173,35 +175,33 @@ function SetupTypeStoryPanel({ story }: { story: SetupTypeStory }) {
   )
 }
 
-function SetupTypeDistributionCard({
-  story,
-  visualPrototype,
-}: {
-  story: SetupTypeStory
-  visualPrototype?: boolean
-}) {
+function SetupTypeDistributionCard({ story }: { story: SetupTypeStory }) {
   const accentStyles = setupTypeStoryAccentStyles[story.accent]
   const SetupTypeIcon = setupTypeStoryIcons[story.id]
-  const [visualActive, setVisualActive] = useState(false)
 
   return (
     <GlowingCard
       as="article"
       data-slot="setup-type-distribution-card"
-      onMouseEnter={() => setVisualActive(true)}
-      onMouseLeave={() => setVisualActive(false)}
       className="group h-full animate-in rounded-xl border border-background/10 bg-foreground text-background shadow-sm duration-300 fade-in zoom-in-98"
       backgroundClassName="rounded-[calc(var(--radius-xl)-1px)] bg-foreground"
       contentClassName="flex h-full flex-col p-5 sm:p-7"
       glowClassName={accentStyles.glow}
     >
-      <div className="flex items-start justify-between gap-5 lg:h-[6.5rem]">
-        <div>
+      <div className="relative">
+        <div className="pr-14 sm:pr-16">
           <p className="font-mono text-[0.6875rem] tracking-[0.14em] text-background/70 uppercase">
-            Example structure
+            Generated setup
           </p>
-          <h3 className="mt-2 max-w-sm font-heading text-2xl leading-tight font-semibold tracking-normal text-balance">
-            {story.visualTitle}
+          <h3
+            aria-label={story.visualTitle.join(" ")}
+            className="mt-2 max-w-sm font-heading text-lg leading-tight font-semibold tracking-normal sm:text-2xl"
+          >
+            {story.visualTitle.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </h3>
           <p className="mt-3 max-w-sm text-sm leading-6 text-background/75">
             {story.visualSummary}
@@ -209,7 +209,7 @@ function SetupTypeDistributionCard({
         </div>
         <span
           className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-full",
+            "absolute top-0 right-0 grid size-11 place-items-center rounded-full",
             accentStyles.bg,
             accentStyles.text
           )}
@@ -219,21 +219,13 @@ function SetupTypeDistributionCard({
       </div>
 
       <div className="mt-6">
-        {visualPrototype ? (
-          <SetupTypeVisualPrototype setupType={story.id} />
-        ) : (
-          <SetupTypeVisual type={story.id} active={visualActive} />
-        )}
+        <SetupTypeGeneratedTree setupType={story.id} />
       </div>
     </GlowingCard>
   )
 }
 
-export function SetupTypeStoriesSection({
-  visualPrototype,
-}: {
-  visualPrototype?: boolean
-} = {}) {
+export function SetupTypeStoriesSection() {
   const [selectedStoryId, setSelectedStoryId] = useState<SetupTypeStory["id"]>(
     setupTypeStories[0].id
   )
@@ -251,11 +243,16 @@ export function SetupTypeStoriesSection({
           <p className="font-mono text-xs tracking-[0.18em] text-muted-foreground uppercase">
             Setup Types
           </p>
-          <h2 className="mt-3 font-heading text-3xl font-semibold tracking-normal text-balance sm:text-5xl">
-            Choose the app structure your product needs.
+          <h2
+            aria-label="Different customer experiences One product to maintain"
+            className="mt-3 font-heading text-3xl font-semibold tracking-normal sm:text-5xl"
+          >
+            <span className="block">Different customer experiences</span>
+            <span className="block">One product to maintain</span>
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-            Start with what people download and what they can open inside it.
+            See how Tenkit supports branded customer apps, multiple businesses
+            inside one app, or both without forking the codebase.
           </p>
         </div>
 
@@ -284,7 +281,6 @@ export function SetupTypeStoriesSection({
           <SetupTypeDistributionCard
             key={selectedStory.id}
             story={selectedStory}
-            visualPrototype={visualPrototype}
           />
         </div>
       </div>

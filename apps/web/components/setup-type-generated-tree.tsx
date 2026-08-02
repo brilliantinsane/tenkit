@@ -9,8 +9,8 @@ import {
 } from "lucide-react"
 
 import type { SetupTypeStoryId } from "@/components/setup-type-stories-section"
+import { ScrollFadeEffect } from "@/components/scroll-fade-effect"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   createFileIcons,
   createTreeCollection,
@@ -31,109 +31,66 @@ type GeneratedProjectNode = {
   children?: GeneratedProjectNode[]
 }
 
-type GeneratedProject = {
+type GeneratedProjectHighlights = {
   name: string
-  summary: string
+  label: string
+  description: string
   paths: readonly string[]
-  defaultExpandedValue: readonly string[]
-}
-
-const commonGeneratedPaths = [
-  ".claude/settings.json",
-  ".env.example",
-  ".gitignore",
-  ".vscode/extensions.json",
-  ".vscode/settings.json",
-  "AGENTS.md",
-  "app.config.ts",
-  "assets/_global/README.md",
-  "CLAUDE.md",
-  "eas.json",
-  "package.json",
-  "pnpm-workspace.yaml",
-  "README.md",
-  "scripts/tenkit-cli-core.ts",
-  "scripts/tenkit-cli-runtime.ts",
-  "scripts/tenkit-cli.ts",
-  "src/app/_layout.tsx",
-  "src/app/index.tsx",
-  "src/components/app-tabs.tsx",
-  "src/components/app-tabs.web.tsx",
-  "src/components/themed-text.tsx",
-  "src/components/themed-view.tsx",
-  "src/constants/design-tokens.ts",
-  "src/constants/globals.ts",
-  "src/constants/project-config.ts",
-  "src/hooks/use-app-variant-config.ts",
-  "src/lib/resolve-app-variant-config.ts",
-  "src/theme/colors.ts",
-  "src/theme/config.ts",
-  "src/theme/ThemeContext.tsx",
-  "src/types/app-variant.ts",
-  "tsconfig.json",
-] as const
-
-function appVariantAssetPaths(slug: string) {
-  return [
-    `assets/${slug}/app.icon/Assets/final-tenkit-logo.svg`,
-    `assets/${slug}/app.icon/icon.json`,
-    `assets/${slug}/icons/android-icon-background.png`,
-    `assets/${slug}/icons/android-icon-foreground.png`,
-    `assets/${slug}/icons/android-icon-monochrome.png`,
-    `assets/${slug}/icons/favicon.png`,
-    `assets/${slug}/icons/icon.png`,
-    `assets/${slug}/icons/splash-icon-dark.png`,
-    `assets/${slug}/icons/splash-icon-light.png`,
-  ]
+  defaultExpandedPaths: readonly string[]
 }
 
 const generatedProjects = {
   "white-label": {
     name: "tenkit-white-label-app",
-    summary: "2 App Variants",
+    label: "Branded App Variants",
+    description: "A native identity and asset set for each customer",
+    defaultExpandedPaths: ["src", "src/constants", "assets"],
     paths: [
-      ...commonGeneratedPaths,
-      ...appVariantAssetPaths("first-tenant"),
-      ...appVariantAssetPaths("second-tenant"),
-      "src/app/explore.tsx",
+      "app.config.ts",
+      "assets/first-tenant/icons/icon.png",
+      "assets/second-tenant/icons/icon.png",
       "src/constants/app-variants.ts",
-    ].sort(),
-    defaultExpandedValue: ["assets", "src", "src/constants"],
+      "src/hooks/use-app-variant-config.ts",
+      "src/lib/resolve-app-variant-config.ts",
+      "src/types/app-variant.ts",
+    ],
   },
   "runtime-tenants": {
     name: "tenkit-runtime-tenants",
-    summary: "1 App Variant + Runtime Tenant access",
+    label: "Runtime Tenant access",
+    description: "One App Variant with selectable business contexts",
+    defaultExpandedPaths: ["src", "src/constants"],
     paths: [
-      ...commonGeneratedPaths,
-      ...appVariantAssetPaths("acme-app"),
-      "src/app/settings.tsx",
+      "app.config.ts",
+      "assets/acme-app/icons/icon.png",
       "src/constants/app-variant.ts",
       "src/constants/runtime-tenants.ts",
       "src/hooks/use-active-runtime-tenant.ts",
       "src/lib/runtime-tenant-access.ts",
       "src/storage/app-preferences.ts",
+      "src/types/app-variant.ts",
       "src/types/runtime-tenant.ts",
-    ].sort(),
-    defaultExpandedValue: ["assets", "src", "src/constants"],
+    ],
   },
   hybrid: {
     name: "tenkit-generic-standalone",
-    summary: "2 App Variants + Runtime Tenant access",
+    label: "Shared + Standalone App Variants",
+    description: "One generic app plus a native app for selected partners",
+    defaultExpandedPaths: ["src", "src/constants", "assets"],
     paths: [
-      ...commonGeneratedPaths,
-      ...appVariantAssetPaths("atlas-network"),
-      ...appVariantAssetPaths("west-studio"),
-      "src/app/settings.tsx",
+      "app.config.ts",
+      "assets/atlas-network/icons/icon.png",
+      "assets/west-studio/icons/icon.png",
       "src/constants/app-variants.ts",
       "src/constants/runtime-tenants.ts",
       "src/hooks/use-active-runtime-tenant.ts",
       "src/lib/runtime-tenant-access.ts",
       "src/storage/app-preferences.ts",
+      "src/types/app-variant.ts",
       "src/types/runtime-tenant.ts",
-    ].sort(),
-    defaultExpandedValue: ["assets", "src", "src/constants"],
+    ],
   },
-} satisfies Record<SetupTypeStoryId, GeneratedProject>
+} satisfies Record<SetupTypeStoryId, GeneratedProjectHighlights>
 
 const fileIcons = createFileIcons({
   ".example": Settings2Icon,
@@ -145,7 +102,9 @@ const fileIcons = createFileIcons({
   ".tsx": FileCode2Icon,
 })
 
-function createProjectRoot(project: GeneratedProject): GeneratedProjectNode {
+function createProjectRoot(
+  project: GeneratedProjectHighlights
+): GeneratedProjectNode {
   const root: GeneratedProjectNode = {
     id: project.name,
     name: project.name,
@@ -268,7 +227,7 @@ function GeneratedTreeNode({
   )
 }
 
-export function SetupTypeVisualPrototype({
+export function SetupTypeGeneratedTree({
   setupType,
 }: {
   setupType: SetupTypeStoryId
@@ -278,26 +237,29 @@ export function SetupTypeVisualPrototype({
   const collection = createTreeCollection({ rootNode })
 
   return (
-    <div className="h-80 overflow-hidden rounded-xl border border-background/15 bg-background text-foreground sm:h-96 lg:h-[25.5rem]">
+    <div className="h-80 overflow-hidden rounded-xl border border-background/15 bg-background text-foreground lg:h-[23.25rem]">
       <div className="flex h-14 items-center justify-between gap-4 border-b px-4">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{project.name}/</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {project.summary}
+          <p className="text-sm font-medium">{project.label}</p>
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            {project.description}
           </p>
         </div>
-        <Badge variant="secondary">{project.paths.length} files</Badge>
+        <Badge variant="secondary" className="shrink-0">
+          Key files
+        </Badge>
       </div>
 
-      <ScrollArea className="h-[calc(100%-3.5rem)]">
+      <ScrollFadeEffect className="h-[calc(100%-3.5rem)] overscroll-contain">
         <TreeView
+          key={setupType}
           collection={collection}
-          defaultExpandedValue={[...project.defaultExpandedValue]}
+          defaultExpandedValue={[...project.defaultExpandedPaths]}
           fileIcons={fileIcons}
           className="gap-0 py-2 [--indentation:--spacing(3)] [--item-gap:--spacing(1.5)] [--padding-block:--spacing(1)] [--padding-inline:--spacing(3)]"
         >
           <TreeViewLabel className="sr-only">
-            Generated files for {project.name}
+            Key generated files for {project.label}
           </TreeViewLabel>
           <TreeViewTree>
             {rootNode.children?.map((node, index) => (
@@ -309,7 +271,7 @@ export function SetupTypeVisualPrototype({
             ))}
           </TreeViewTree>
         </TreeView>
-      </ScrollArea>
+      </ScrollFadeEffect>
     </div>
   )
 }

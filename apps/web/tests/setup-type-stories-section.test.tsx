@@ -65,14 +65,11 @@ describe("SetupTypeStoriesSection", () => {
       })
     ).toBeDefined()
     expect(screen.getAllByText("White Label Apps")).toHaveLength(2)
-    expect(
-      screen.getByRole("group", {
-        name: "One shared product codebase branches into three separately branded App Variants.",
-      })
-    ).toBeDefined()
+    expect(container.querySelector('[data-slot="tree-view"]')).not.toBeNull()
+    expect(screen.getByText("Branded App Variants")).toBeDefined()
     expect(
       screen.getByRole("heading", {
-        name: "Choose the app structure your product needs.",
+        name: "Different customer experiences One product to maintain",
       })
     ).toBeDefined()
 
@@ -82,16 +79,10 @@ describe("SetupTypeStoriesSection", () => {
     const distributionCard = container.querySelector(
       '[data-slot="setup-type-distribution-card"]'
     )
-    const whiteLabelSourceNode = container.querySelector(
-      '[data-slot="shared-product-code-node"]'
-    )
-
     expect(storyShell?.className).toContain("lg:grid-cols-2")
     expect(storyShell?.className).toContain("lg:h-[37rem]")
     expect(distributionCard?.className).toContain("bg-foreground")
     expect(distributionCard?.className).toContain("text-background")
-    expect(whiteLabelSourceNode?.className).toContain("h-12")
-    expect(whiteLabelSourceNode?.className).toContain("w-40")
 
     await user.click(runtimeTenantsChoice)
 
@@ -102,21 +93,9 @@ describe("SetupTypeStoriesSection", () => {
         name: "One app for every location.",
       })
     ).toBeDefined()
-    expect(screen.getAllByText("Berlin").length).toBeGreaterThan(0)
     expect(screen.getAllByText("Single App Runtime Tenants")).toHaveLength(2)
-    expect(screen.queryByText("Member app")).toBeNull()
-    expect(screen.getByText("1 App Variant")).toBeDefined()
-
-    const runtimeDistributionCard = container.querySelector(
-      '[data-slot="setup-type-distribution-card"]'
-    )
-    if (!runtimeDistributionCard) {
-      throw new Error("Expected runtime distribution card")
-    }
-    await user.hover(runtimeDistributionCard)
-    expect(
-      container.querySelector('[data-slot="runtime-orbit-pulse"]')
-    ).not.toBeNull()
+    expect(screen.getByText("Runtime Tenant access")).toBeDefined()
+    expect(screen.getByText("runtime-tenants.ts")).toBeDefined()
 
     await user.click(hybridChoice)
 
@@ -127,26 +106,31 @@ describe("SetupTypeStoriesSection", () => {
         name: "Keep most partners in one app. Give selected partners their own.",
       })
     ).toBeDefined()
-    expect(screen.getAllByText("Partner business").length).toBeGreaterThan(0)
     expect(
       screen.getAllByText("Generic With Standalone App Variants")
     ).toHaveLength(1)
-    const hybridSourceNode = container.querySelector(
-      '[data-slot="shared-product-code-node"]'
-    )
-    expect(hybridSourceNode?.className).toBe(whiteLabelSourceNode?.className)
+    expect(screen.getByText("Shared + Standalone App Variants")).toBeDefined()
+    expect(screen.getByText("app-variants.ts")).toBeDefined()
     expect(screen.queryByText("Prototype D")).toBeNull()
   })
 
-  test("shows the generated project tree for each Setup Type prototype", async () => {
+  test("shows the generated project tree for each Setup Type", async () => {
     const user = userEvent.setup()
 
-    const { container } = render(<SetupTypeStoriesSection visualPrototype />)
+    const { container } = render(<SetupTypeStoriesSection />)
 
     expect(container.querySelector('[data-slot="tree-view"]')).not.toBeNull()
-    expect(screen.getByText("tenkit-white-label-app/")).toBeDefined()
-    expect(await screen.findByText("first-tenant")).toBeDefined()
+    expect(screen.getByText("Branded App Variants")).toBeDefined()
+    expect(screen.getByText("Key files")).toBeDefined()
+    expect(screen.getByText("constants")).toBeDefined()
+    expect(screen.getByText("first-tenant")).toBeDefined()
     expect(screen.getByText("app-variants.ts")).toBeDefined()
+    expect(screen.queryByText("package.json")).toBeNull()
+    expect(
+      container
+        .querySelector('[data-orientation="vertical"]')
+        ?.className.includes("scroll-fade-effect-y")
+    ).toBe(true)
 
     await user.click(
       screen.getByRole("button", {
@@ -154,8 +138,7 @@ describe("SetupTypeStoriesSection", () => {
       })
     )
 
-    expect(screen.getByText("tenkit-runtime-tenants/")).toBeDefined()
-    expect(await screen.findByText("acme-app")).toBeDefined()
+    expect(screen.getByText("Runtime Tenant access")).toBeDefined()
     expect(screen.getByText("runtime-tenants.ts")).toBeDefined()
     expect(screen.queryByText("first-tenant")).toBeNull()
 
@@ -165,9 +148,9 @@ describe("SetupTypeStoriesSection", () => {
       })
     )
 
-    expect(screen.getByText("tenkit-generic-standalone/")).toBeDefined()
-    expect(await screen.findByText("atlas-network")).toBeDefined()
-    expect(screen.getByText("west-studio")).toBeDefined()
+    expect(screen.getByText("Shared + Standalone App Variants")).toBeDefined()
     expect(screen.getByText("app-variants.ts")).toBeDefined()
+    expect(screen.getByText("atlas-network")).toBeDefined()
+    expect(screen.getByText("west-studio")).toBeDefined()
   })
 })
