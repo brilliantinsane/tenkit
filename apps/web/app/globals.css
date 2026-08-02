@@ -68,6 +68,22 @@
         rotate(calc((var(--angle) * -1deg) - 360deg));
     }
   }
+  @keyframes expand {
+    from {
+      height: var(--collapsed-height, 0);
+    }
+    to {
+      height: var(--height);
+    }
+  }
+  @keyframes collapse {
+    from {
+      height: var(--height);
+    }
+    to {
+      height: var(--collapsed-height, 0);
+    }
+  }
 }
 
 :root {

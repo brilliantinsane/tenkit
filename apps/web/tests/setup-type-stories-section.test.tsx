@@ -2,9 +2,43 @@
 
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, test } from "vitest"
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest"
 
 import { SetupTypeStoriesSection } from "@/components/setup-type-stories-section"
+
+beforeAll(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class ResizeObserverMock {
+      disconnect() {}
+      observe() {}
+      unobserve() {}
+    }
+  )
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class IntersectionObserverMock {
+      disconnect() {}
+      observe() {}
+      takeRecords() {
+        return []
+      }
+      unobserve() {}
+    }
+  )
+})
+
+afterAll(() => {
+  vi.unstubAllGlobals()
+})
 
 afterEach(cleanup)
 
@@ -104,13 +138,15 @@ describe("SetupTypeStoriesSection", () => {
     expect(screen.queryByText("Prototype D")).toBeNull()
   })
 
-  test("uses a different circuit pattern for each Setup Type prototype", async () => {
+  test("shows the generated project tree for each Setup Type prototype", async () => {
     const user = userEvent.setup()
 
-    render(<SetupTypeStoriesSection visualPrototype />)
+    const { container } = render(<SetupTypeStoriesSection visualPrototype />)
 
-    expect(screen.getByText("Branded app releases")).toBeDefined()
-    expect(screen.queryByText("Runtime access flow")).toBeNull()
+    expect(container.querySelector('[data-slot="tree-view"]')).not.toBeNull()
+    expect(screen.getByText("tenkit-white-label-app/")).toBeDefined()
+    expect(await screen.findByText("first-tenant")).toBeDefined()
+    expect(screen.getByText("app-variants.ts")).toBeDefined()
 
     await user.click(
       screen.getByRole("button", {
@@ -118,8 +154,10 @@ describe("SetupTypeStoriesSection", () => {
       })
     )
 
-    expect(screen.getByText("Runtime access flow")).toBeDefined()
-    expect(screen.queryByText("Branded app releases")).toBeNull()
+    expect(screen.getByText("tenkit-runtime-tenants/")).toBeDefined()
+    expect(await screen.findByText("acme-app")).toBeDefined()
+    expect(screen.getByText("runtime-tenants.ts")).toBeDefined()
+    expect(screen.queryByText("first-tenant")).toBeNull()
 
     await user.click(
       screen.getByRole("button", {
@@ -127,7 +165,9 @@ describe("SetupTypeStoriesSection", () => {
       })
     )
 
-    expect(screen.getByText("Shared + standalone releases")).toBeDefined()
-    expect(screen.queryByText("Runtime access flow")).toBeNull()
+    expect(screen.getByText("tenkit-generic-standalone/")).toBeDefined()
+    expect(await screen.findByText("atlas-network")).toBeDefined()
+    expect(screen.getByText("west-studio")).toBeDefined()
+    expect(screen.getByText("app-variants.ts")).toBeDefined()
   })
 })
