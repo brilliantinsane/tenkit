@@ -12,6 +12,7 @@ export interface OrbitingCirclesProps extends React.HTMLAttributes<HTMLDivElemen
   orbitPath?: "visible" | "hidden"
   iconSize?: number
   speed?: number
+  paused?: boolean
 }
 
 export function OrbitingCircles({
@@ -24,6 +25,7 @@ export function OrbitingCircles({
   orbitPath = "visible",
   iconSize = 30,
   speed = 1,
+  paused = false,
   ...props
 }: OrbitingCirclesProps) {
   const childrenArray = React.Children.toArray(children)
@@ -66,6 +68,7 @@ export function OrbitingCircles({
               {
                 "[animation-direction:reverse]":
                   direction === "counterclockwise",
+                "[animation-play-state:paused]": paused,
               },
               className
             )}

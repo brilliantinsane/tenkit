@@ -1,5 +1,4 @@
 import {
-  CheckIcon,
   ClipboardCheckIcon,
   CompassIcon,
   FileCodeIcon,
@@ -8,15 +7,17 @@ import {
   TerminalIcon,
 } from "lucide-react"
 import dynamic from "next/dynamic"
+import { Suspense } from "react"
 
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { HeroSection } from "@/components/hero"
 import { JsonLdScript } from "@/components/json-ld-script"
 import { ProofSection } from "@/components/proof-section"
+import { SetupTypeStoriesSection } from "@/components/setup-type-stories-section"
+import { SetupTypesExperiment } from "@/components/setup-types-experiment"
 import { SiteFooter } from "@/components/site-footer"
 import { FaqAccordion } from "@/components/faq-accordion"
-import { Badge } from "@/components/ui/badge"
-import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
+import { FAQ_ITEMS } from "@/constants/landing"
 import { getLandingJsonLdGraph } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 
@@ -24,41 +25,11 @@ const GlowingCard = dynamic(() =>
   import("@/components/glowing-card").then((module) => module.GlowingCard)
 )
 
-const SetupModelFlow = dynamic(() =>
-  import("@/components/setup-model-preview").then(
-    (module) => module.SetupModelFlow
-  )
-)
-
-const SetupModelPreview = dynamic(() =>
-  import("@/components/setup-model-preview").then(
-    (module) => module.SetupModelPreview
-  )
-)
-
 const OrbitingCircles = dynamic(() =>
   import("@/components/ui/orbiting-circles").then(
     (module) => module.OrbitingCircles
   )
 )
-
-const setupVisuals = [
-  {
-    accentText: "text-[#208AEF]",
-    accentBg: "bg-[#208AEF]/10",
-    accentBorder: "border-[#208AEF]/25",
-  },
-  {
-    accentText: "text-[#EF8520]",
-    accentBg: "bg-[#EF8520]/10",
-    accentBorder: "border-[#EF8520]/25",
-  },
-  {
-    accentText: "text-[#2DD4A8]",
-    accentBg: "bg-[#2DD4A8]/10",
-    accentBorder: "border-[#2DD4A8]/25",
-  },
-] as const
 
 const guidanceCards = [
   {
@@ -145,97 +116,6 @@ function SectionIntro({
         {description}
       </p>
     </div>
-  )
-}
-
-function SetupTypesSection() {
-  return (
-    <section
-      id="setup-types"
-      className="relative scroll-mt-24 px-4 py-16 sm:px-8 sm:py-24"
-    >
-      <div className="flex flex-col gap-10">
-        <SectionIntro
-          eyebrow="Setup types"
-          title="Three distribution models, shown as native app shapes."
-          description="Pick the relationship between App Variants and Runtime Tenants first. Tenkit turns that choice into generated files instead of a copied app."
-        />
-
-        <div className="grid gap-4 min-[1120px]:grid-cols-3">
-          {SETUP_TYPES.map((setup, index) => {
-            const visual = setupVisuals[index]
-
-            return (
-              <article
-                key={setup.slug}
-                className={cn(
-                  "group relative flex min-h-152 flex-col overflow-hidden rounded-lg border bg-card/70 shadow-sm transition-colors duration-300",
-                  "hover:bg-card"
-                )}
-              >
-                <div className="relative h-72 overflow-hidden border-b bg-[#07090d]">
-                  <SetupModelPreview index={index} />
-                  <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-card" />
-                </div>
-
-                <div className="relative z-10 flex flex-1 flex-col gap-5 p-5">
-                  <div className="lg:min-h-52">
-                    <div className="flex items-center justify-between gap-3">
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "border font-mono",
-                          visual.accentBorder,
-                          visual.accentBg,
-                          visual.accentText
-                        )}
-                      >
-                        {setup.eyebrow}
-                      </Badge>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        0{index + 1}
-                      </span>
-                    </div>
-                    <h3 className="mt-5 font-heading text-2xl font-semibold tracking-normal text-balance">
-                      {setup.label}
-                    </h3>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      {setup.headline}
-                    </p>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {setup.description}
-                    </p>
-                  </div>
-
-                  <SetupModelFlow index={index} />
-
-                  <ul className="mt-auto grid gap-2 border-t pt-4">
-                    {setup.examples.map((example) => (
-                      <li
-                        key={example}
-                        className="flex items-center gap-2 text-xs text-muted-foreground"
-                      >
-                        <span
-                          className={cn(
-                            "grid size-5 shrink-0 place-items-center rounded-full",
-                            visual.accentBg,
-                            visual.accentText
-                          )}
-                        >
-                          <CheckIcon className="size-3" aria-hidden="true" />
-                        </span>
-                        <span>{example}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      </div>
-      <SectionBoundary />
-    </section>
   )
 }
 
@@ -409,8 +289,10 @@ export default function Page() {
       <main className="relative flex min-h-screen flex-col overflow-hidden supports-[overflow:clip]:overflow-clip">
         <div className="relative mx-auto w-[calc(100%-2rem)] max-w-6xl grow">
           <HeroSection />
+          <Suspense fallback={<SetupTypeStoriesSection />}>
+            <SetupTypesExperiment />
+          </Suspense>
           <ProofSection />
-          <SetupTypesSection />
           <BuildGuidanceBento />
           <FaqSection />
           <SiteFooter commandHref="#commands" />
