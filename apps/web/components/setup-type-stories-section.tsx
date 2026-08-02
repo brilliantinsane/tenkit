@@ -13,10 +13,7 @@ import { ConfiguratorCodeResponsiveIconChoiceCard } from "@/components/configura
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GlowingCard } from "@/components/glowing-card"
 import { SetupTypeVisual } from "@/components/setup-type-visuals"
-import {
-  SetupTypeVisualPrototype,
-  type SetupTypeVisualPrototypeId,
-} from "@/components/setup-type-visual-prototypes"
+import { SetupTypeVisualPrototype } from "@/components/setup-type-visual-prototypes"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
@@ -178,10 +175,10 @@ function SetupTypeStoryPanel({ story }: { story: SetupTypeStory }) {
 
 function SetupTypeDistributionCard({
   story,
-  visualVariant,
+  visualPrototype,
 }: {
   story: SetupTypeStory
-  visualVariant?: SetupTypeVisualPrototypeId
+  visualPrototype?: boolean
 }) {
   const accentStyles = setupTypeStoryAccentStyles[story.accent]
   const SetupTypeIcon = setupTypeStoryIcons[story.id]
@@ -222,11 +219,8 @@ function SetupTypeDistributionCard({
       </div>
 
       <div className="mt-6">
-        {visualVariant ? (
-          <SetupTypeVisualPrototype
-            setupType={story.id}
-            variant={visualVariant}
-          />
+        {visualPrototype ? (
+          <SetupTypeVisualPrototype setupType={story.id} />
         ) : (
           <SetupTypeVisual type={story.id} active={visualActive} />
         )}
@@ -236,9 +230,9 @@ function SetupTypeDistributionCard({
 }
 
 export function SetupTypeStoriesSection({
-  visualVariant,
+  visualPrototype,
 }: {
-  visualVariant?: SetupTypeVisualPrototypeId
+  visualPrototype?: boolean
 } = {}) {
   const [selectedStoryId, setSelectedStoryId] = useState<SetupTypeStory["id"]>(
     setupTypeStories[0].id
@@ -290,7 +284,7 @@ export function SetupTypeStoriesSection({
           <SetupTypeDistributionCard
             key={selectedStory.id}
             story={selectedStory}
-            visualVariant={visualVariant}
+            visualPrototype={visualPrototype}
           />
         </div>
       </div>

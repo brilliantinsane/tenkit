@@ -1,7 +1,13 @@
 "use client"
 
 import { motion, useReducedMotion } from "motion/react"
-import { useId, useMemo, type HTMLAttributes, type ReactNode } from "react"
+import {
+  useCallback,
+  useId,
+  useMemo,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -9,50 +15,55 @@ export type CircuitNode = {
   id: string
   x: number
   y: number
-  label: string
-  caption?: string
+  label?: string
   icon?: ReactNode
-  className?: string
-  labelClassName?: string
+  status?: "active" | "inactive" | "processing" | "error"
+  size?: "sm" | "md" | "lg"
 }
 
 export type CircuitConnection = {
   from: string
   to: string
+  animated?: boolean
+  bidirectional?: boolean
   color?: string
   pulseColor?: string
-  bidirectional?: boolean
 }
 
-type CircuitBoardProps = HTMLAttributes<HTMLDivElement> & {
+export type CircuitBoardProps = HTMLAttributes<HTMLDivElement> & {
   nodes: readonly CircuitNode[]
   connections: readonly CircuitConnection[]
-  viewBoxWidth?: number
-  viewBoxHeight?: number
+  width?: number
+  height?: number
+  gridSize?: number
   showGrid?: boolean
+  gridColor?: string
+  traceColor?: string
+  pulseColor?: string
+  nodeColor?: string
   pulseSpeed?: number
+  traceWidth?: number
 }
 
-function getCircuitPath(from: CircuitNode, to: CircuitNode) {
-  const deltaX = to.x - from.x
-  const deltaY = to.y - from.y
-
-  if (Math.abs(deltaY) >= Math.abs(deltaX)) {
-    const middleY = from.y + deltaY / 2
-    return `M ${from.x} ${from.y} V ${middleY} H ${to.x} V ${to.y}`
-  }
-
-  const middleX = from.x + deltaX / 2
-  return `M ${from.x} ${from.y} H ${middleX} V ${to.y} H ${to.x}`
+function getNodeSize(size?: CircuitNode["size"]) {
+  if (size === "sm") return 28
+  if (size === "lg") return 52
+  return 38
 }
 
 export function CircuitBoard({
   nodes,
   connections,
-  viewBoxWidth = 480,
-  viewBoxHeight = 336,
+  width = 480,
+  height = 300,
+  gridSize = 20,
   showGrid = true,
-  pulseSpeed = 2.4,
+  gridColor = "color-mix(in oklab, var(--background) 18%, transparent)",
+  traceColor = "color-mix(in oklab, var(--background) 42%, transparent)",
+  pulseColor = "var(--primary)",
+  nodeColor = "var(--background)",
+  pulseSpeed = 1.8,
+  traceWidth = 2,
   className,
   ...props
 }: CircuitBoardProps) {
@@ -65,158 +76,187 @@ export function CircuitBoard({
     [nodes]
   )
 
+  const calculatePath = useCallback((from: CircuitNode, to: CircuitNode) => {
+    const fromOffset = getNodeSize(from.size) / 2 + 4
+    const toOffset = getNodeSize(to.size) / 2 + 4
+    const deltaX = to.x - from.x
+    const deltaY = to.y - from.y
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      const startX = from.x + (deltaX > 0 ? fromOffset : -fromOffset)
+      const endX = to.x + (deltaX > 0 ? -toOffset : toOffset)
+      const middleX = from.x + deltaX / 2
+      return `M ${startX} ${from.y} H ${middleX} V ${to.y} H ${endX}`
+    }
+
+    const startY = from.y + (deltaY > 0 ? fromOffset : -fromOffset)
+    const endY = to.y + (deltaY > 0 ? -toOffset : toOffset)
+    const middleY = from.y + deltaY / 2
+    return `M ${from.x} ${startY} V ${middleY} H ${to.x} V ${endY}`
+  }, [])
+
   return (
     <div
-      className={cn("relative size-full overflow-hidden", className)}
+      className={cn("relative w-full overflow-hidden", className)}
+      style={{ aspectRatio: `${width} / ${height}` }}
       {...props}
     >
       <svg
         aria-hidden="true"
-        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-        preserveAspectRatio="none"
+        viewBox={`0 0 ${width} ${height}`}
         className="pointer-events-none absolute inset-0 size-full"
       >
         <defs>
           <filter id={glowId} x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="1.75" result="coloredBlur" />
             <feMerge>
-              <feMergeNode in="blur" />
+              <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
           <pattern
             id={gridId}
-            width="20"
-            height="20"
+            width={gridSize}
+            height={gridSize}
             patternUnits="userSpaceOnUse"
           >
-            <circle cx="10" cy="10" r="1" fill="currentColor" />
+            <circle
+              cx={gridSize / 2}
+              cy={gridSize / 2}
+              r="0.75"
+              fill={gridColor}
+            />
           </pattern>
         </defs>
 
         {showGrid ? (
-          <rect
-            width={viewBoxWidth}
-            height={viewBoxHeight}
-            fill={`url(#${gridId})`}
-            opacity="0.09"
-          />
+          <rect width={width} height={height} fill={`url(#${gridId})`} />
         ) : null}
 
         {connections.map((connection, index) => {
-          const from = nodeMap.get(connection.from)
-          const to = nodeMap.get(connection.to)
+          const fromNode = nodeMap.get(connection.from)
+          const toNode = nodeMap.get(connection.to)
 
-          if (!from || !to) return null
+          if (!fromNode || !toNode) return null
 
-          const path = getCircuitPath(from, to)
-          const pulseColor =
-            connection.pulseColor ?? connection.color ?? "currentColor"
+          const path = calculatePath(fromNode, toNode)
+          const activePulseColor = connection.pulseColor ?? pulseColor
 
           return (
             <g key={`${connection.from}-${connection.to}-${index}`}>
               <motion.path
                 d={path}
                 fill="none"
-                stroke={connection.color ?? "currentColor"}
-                strokeWidth="1.5"
+                stroke={connection.color ?? traceColor}
+                strokeWidth={traceWidth}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity="0.32"
                 initial={shouldReduceMotion ? false : { pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 0.7, delay: index * 0.08 }}
+                transition={{ duration: 0.8, delay: index * 0.1 }}
               />
-              {!shouldReduceMotion ? (
-                <>
-                  <motion.path
-                    d={path}
-                    pathLength="1"
-                    fill="none"
-                    stroke={pulseColor}
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="0.08 0.92"
-                    filter={`url(#${glowId})`}
-                    initial={{ strokeDashoffset: 0 }}
-                    animate={{ strokeDashoffset: -1 }}
-                    transition={{
-                      duration: pulseSpeed,
-                      repeat: Infinity,
-                      ease: "linear",
-                      delay: index * 0.2,
-                    }}
-                  />
-                  {connection.bidirectional ? (
-                    <motion.path
-                      d={path}
-                      pathLength="1"
-                      fill="none"
-                      stroke={pulseColor}
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeDasharray="0.06 0.94"
-                      filter={`url(#${glowId})`}
-                      initial={{ strokeDashoffset: -1 }}
-                      animate={{ strokeDashoffset: 0 }}
-                      transition={{
-                        duration: pulseSpeed,
-                        repeat: Infinity,
-                        ease: "linear",
-                        delay: index * 0.2 + pulseSpeed / 2,
-                      }}
-                    />
-                  ) : null}
-                </>
+
+              {connection.animated !== false && !shouldReduceMotion ? (
+                <motion.path
+                  d={path}
+                  pathLength="1"
+                  fill="none"
+                  stroke={activePulseColor}
+                  strokeWidth={traceWidth + 0.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="0.045 0.955"
+                  filter={`url(#${glowId})`}
+                  initial={{ strokeDashoffset: 0 }}
+                  animate={{ strokeDashoffset: -1 }}
+                  transition={{
+                    duration: pulseSpeed,
+                    repeat: Infinity,
+                    ease: "linear",
+                    delay: index * 0.18,
+                  }}
+                />
+              ) : null}
+
+              {connection.bidirectional && !shouldReduceMotion ? (
+                <motion.path
+                  d={path}
+                  pathLength="1"
+                  fill="none"
+                  stroke={activePulseColor}
+                  strokeWidth={traceWidth + 0.35}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="0.035 0.965"
+                  filter={`url(#${glowId})`}
+                  initial={{ strokeDashoffset: -1 }}
+                  animate={{ strokeDashoffset: 0 }}
+                  transition={{
+                    duration: pulseSpeed,
+                    repeat: Infinity,
+                    ease: "linear",
+                    delay: index * 0.18 + pulseSpeed / 2,
+                  }}
+                />
               ) : null}
             </g>
           )
         })}
       </svg>
 
-      {nodes.map((node, index) => (
-        <motion.div
-          key={node.id}
-          className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-          style={{
-            left: `${(node.x / viewBoxWidth) * 100}%`,
-            top: `${(node.y / viewBoxHeight) * 100}%`,
-          }}
-          initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.35, delay: 0.12 + index * 0.06 }}
-        >
-          <div
-            className={cn(
-              "flex h-[4.25rem] w-24 items-center gap-2.5 rounded-lg border border-background/20 bg-foreground px-3 text-background shadow-lg sm:w-28",
-              node.className
-            )}
+      {nodes.map((node, index) => {
+        const size = getNodeSize(node.size)
+        const statusColor =
+          node.status === "inactive"
+            ? `color-mix(in oklab, ${nodeColor} 52%, transparent)`
+            : node.status === "error"
+              ? "var(--destructive)"
+              : pulseColor
+
+        return (
+          <motion.div
+            key={node.id}
+            className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            style={{
+              left: `${(node.x / width) * 100}%`,
+              top: `${(node.y / height) * 100}%`,
+              width: size,
+              height: size,
+            }}
+            initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: index * 0.08 + 0.35, type: "spring" }}
           >
-            {node.icon ? (
-              <span className="grid size-7 shrink-0 place-items-center rounded-md bg-background/10">
-                {node.icon}
-              </span>
+            <div
+              className="absolute inset-0 rounded-lg border"
+              style={{
+                backgroundColor: `color-mix(in oklab, ${statusColor} 10%, var(--foreground))`,
+                borderColor: `color-mix(in oklab, ${statusColor} 58%, transparent)`,
+                boxShadow:
+                  node.status === "active"
+                    ? `0 0 11px color-mix(in oklab, ${statusColor} 24%, transparent)`
+                    : undefined,
+              }}
+            />
+            {node.status === "processing" && !shouldReduceMotion ? (
+              <motion.div
+                className="absolute -inset-1 rounded-xl border"
+                style={{ borderColor: statusColor }}
+                animate={{ opacity: [0.08, 0.28, 0.08], scale: [1, 1.08, 1] }}
+                transition={{ duration: 2.6, repeat: Infinity }}
+              />
             ) : null}
-            <span className="min-w-0">
-              <span
-                className={cn(
-                  "block text-xs leading-4 font-medium",
-                  node.labelClassName
-                )}
-              >
+            <span className="relative z-10" style={{ color: statusColor }}>
+              {node.icon}
+            </span>
+            {node.label ? (
+              <span className="absolute top-full left-1/2 z-20 mt-1.5 w-16 -translate-x-1/2 rounded-sm bg-foreground px-1 py-1 text-center text-[0.5625rem] leading-3 font-medium text-background shadow-[0_0_0_2px_var(--foreground)] sm:mt-2 sm:w-28 sm:px-2 sm:text-xs sm:leading-4">
                 {node.label}
               </span>
-              {node.caption ? (
-                <span className="mt-0.5 block text-[0.625rem] leading-3 text-background/70">
-                  {node.caption}
-                </span>
-              ) : null}
-            </span>
-          </div>
-        </motion.div>
-      ))}
+            ) : null}
+          </motion.div>
+        )
+      })}
     </div>
   )
 }

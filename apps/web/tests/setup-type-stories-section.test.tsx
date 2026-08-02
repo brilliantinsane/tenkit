@@ -103,4 +103,31 @@ describe("SetupTypeStoriesSection", () => {
     expect(hybridSourceNode?.className).toBe(whiteLabelSourceNode?.className)
     expect(screen.queryByText("Prototype D")).toBeNull()
   })
+
+  test("uses a different circuit pattern for each Setup Type prototype", async () => {
+    const user = userEvent.setup()
+
+    render(<SetupTypeStoriesSection visualPrototype />)
+
+    expect(screen.getByText("Branded app releases")).toBeDefined()
+    expect(screen.queryByText("Runtime access flow")).toBeNull()
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Single App Runtime Tenants\s*One app, many businesses/,
+      })
+    )
+
+    expect(screen.getByText("Runtime access flow")).toBeDefined()
+    expect(screen.queryByText("Branded app releases")).toBeNull()
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Generic \+ Standalone Apps\s*Shared app plus partner apps/,
+      })
+    )
+
+    expect(screen.getByText("Shared + standalone releases")).toBeDefined()
+    expect(screen.queryByText("Runtime access flow")).toBeNull()
+  })
 })
