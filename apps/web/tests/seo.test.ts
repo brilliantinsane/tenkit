@@ -50,23 +50,44 @@ describe("Tenkit Public Web App SEO", () => {
       new URL("../app/opengraph-image.tsx", import.meta.url)
     )
 
-    expect(SITE_CONFIG.ogImage).toBe("/og-image.png")
-    expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png")
+    expect(existsSync(imagePath)).toBe(true)
+
+    const image = readFileSync(imagePath)
+    const chunkTypes: string[] = []
+    let chunkOffset = 8
+
+    while (chunkOffset + 12 <= image.length) {
+      const chunkLength = image.readUInt32BE(chunkOffset)
+      const chunkType = image.toString(
+        "ascii",
+        chunkOffset + 4,
+        chunkOffset + 8
+      )
+
+      chunkTypes.push(chunkType)
+      chunkOffset += chunkLength + 12
+    }
+
+    expect(image.subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    )
+    expect(image.readUInt32BE(16)).toBe(1200)
+    expect(image.readUInt32BE(20)).toBe(630)
+    expect(chunkTypes).not.toContain("caBX")
+    expect(SITE_CONFIG.ogImage).toBe("/og-image.png?v=2")
+    expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png?v=2")
     expect(rootMetadata.openGraph?.images).toEqual([
       {
-        url: "https://www.tenkit.dev/og-image.png",
-        width: 1672,
-        height: 941,
+        url: "https://www.tenkit.dev/og-image.png?v=2",
+        width: 1200,
+        height: 630,
         alt: SITE_CONFIG.ogImageAlt,
+        type: "image/png",
       },
     ])
     expect(rootMetadata.twitter?.images).toEqual([
-      "https://www.tenkit.dev/og-image.png",
+      "https://www.tenkit.dev/og-image.png?v=2",
     ])
-    expect(existsSync(imagePath)).toBe(true)
-    expect(readFileSync(imagePath).subarray(0, 8)).toEqual(
-      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-    )
     expect(existsSync(dynamicRoutePath)).toBe(false)
   })
 
@@ -115,10 +136,11 @@ describe("Tenkit Public Web App SEO", () => {
     expect(metadata.openGraph.description).toBe(CONFIGURE_PAGE_SEO.description)
     expect(metadata.openGraph.images).toEqual([
       {
-        url: "https://www.tenkit.dev/og-image.png",
-        width: 1672,
-        height: 941,
+        url: "https://www.tenkit.dev/og-image.png?v=2",
+        width: 1200,
+        height: 630,
         alt: SITE_CONFIG.ogImageAlt,
+        type: "image/png",
       },
     ])
     expect(metadata.twitter.description).toBe(CONFIGURE_PAGE_SEO.description)
