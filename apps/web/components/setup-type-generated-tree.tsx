@@ -24,6 +24,7 @@ import {
   TreeViewNode,
   TreeViewTree,
 } from "@/components/ui/tree-view"
+import { SETUP_TYPE_GENERATED_PROJECT_HIGHLIGHTS } from "@/lib/setup-type-generated-project-highlights"
 
 type GeneratedProjectNode = {
   id: string
@@ -31,66 +32,8 @@ type GeneratedProjectNode = {
   children?: GeneratedProjectNode[]
 }
 
-type GeneratedProjectHighlights = {
-  name: string
-  label: string
-  description: string
-  paths: readonly string[]
-  defaultExpandedPaths: readonly string[]
-}
-
-const generatedProjects = {
-  "white-label": {
-    name: "tenkit-white-label-app",
-    label: "Branded App Variants",
-    description: "A native identity and asset set for each customer",
-    defaultExpandedPaths: ["src", "src/constants", "assets"],
-    paths: [
-      "app.config.ts",
-      "assets/first-tenant/icons/icon.png",
-      "assets/second-tenant/icons/icon.png",
-      "src/constants/app-variants.ts",
-      "src/hooks/use-app-variant-config.ts",
-      "src/lib/resolve-app-variant-config.ts",
-      "src/types/app-variant.ts",
-    ],
-  },
-  "runtime-tenants": {
-    name: "tenkit-runtime-tenants",
-    label: "Runtime Tenant access",
-    description: "One App Variant with selectable business contexts",
-    defaultExpandedPaths: ["src", "src/constants"],
-    paths: [
-      "app.config.ts",
-      "assets/acme-app/icons/icon.png",
-      "src/constants/app-variant.ts",
-      "src/constants/runtime-tenants.ts",
-      "src/hooks/use-active-runtime-tenant.ts",
-      "src/lib/runtime-tenant-access.ts",
-      "src/storage/app-preferences.ts",
-      "src/types/app-variant.ts",
-      "src/types/runtime-tenant.ts",
-    ],
-  },
-  hybrid: {
-    name: "tenkit-generic-standalone",
-    label: "Shared + Standalone App Variants",
-    description: "One generic app plus a native app for selected partners",
-    defaultExpandedPaths: ["src", "src/constants", "assets"],
-    paths: [
-      "app.config.ts",
-      "assets/atlas-network/icons/icon.png",
-      "assets/west-studio/icons/icon.png",
-      "src/constants/app-variants.ts",
-      "src/constants/runtime-tenants.ts",
-      "src/hooks/use-active-runtime-tenant.ts",
-      "src/lib/runtime-tenant-access.ts",
-      "src/storage/app-preferences.ts",
-      "src/types/app-variant.ts",
-      "src/types/runtime-tenant.ts",
-    ],
-  },
-} satisfies Record<SetupTypeStoryId, GeneratedProjectHighlights>
+type GeneratedProjectHighlights =
+  (typeof SETUP_TYPE_GENERATED_PROJECT_HIGHLIGHTS)[SetupTypeStoryId]
 
 const fileIcons = createFileIcons({
   ".example": Settings2Icon,
@@ -232,7 +175,7 @@ export function SetupTypeGeneratedTree({
 }: {
   setupType: SetupTypeStoryId
 }) {
-  const project = generatedProjects[setupType]
+  const project = SETUP_TYPE_GENERATED_PROJECT_HIGHLIGHTS[setupType]
   const rootNode = createProjectRoot(project)
   const collection = createTreeCollection({ rootNode })
 
