@@ -3,7 +3,11 @@
 import { Pause, Play } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 
-import { HERO_POSTER_PATH, HERO_VIDEO_PATH } from "@/lib/hero-media"
+import {
+  HERO_POSTER_PATH,
+  HERO_VIDEO_HIGH_QUALITY_PATH,
+  HERO_VIDEO_PATH,
+} from "@/lib/hero-media"
 
 export function HeroDemoVideo() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -28,7 +32,6 @@ export function HeroDemoVideo() {
       <video
         ref={videoRef}
         aria-label="Tenkit product demo"
-        src={HERO_VIDEO_PATH}
         autoPlay
         muted
         loop
@@ -36,7 +39,13 @@ export function HeroDemoVideo() {
         poster={HERO_POSTER_PATH}
         preload="metadata"
         className="block h-full w-full object-cover"
-      />
+      >
+        <source
+          src={HERO_VIDEO_HIGH_QUALITY_PATH}
+          type='video/webm; codecs="av01"'
+        />
+        <source src={HERO_VIDEO_PATH} type="video/mp4" />
+      </video>
       <button
         type="button"
         onClick={togglePlay}

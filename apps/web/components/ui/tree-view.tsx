@@ -48,7 +48,7 @@ interface TreeViewContextProps {
   fileIcons?: Record<string, React.JSX.ElementType | null>
 }
 
-const TreeViewContext = React.createContext({} as TreeViewContextProps)
+const TreeViewContext = React.createContext<TreeViewContextProps | null>(null)
 
 interface TreeViewProps
   extends ArkTreeView.RootComponentProps, TreeViewContextProps {}
@@ -445,7 +445,7 @@ const TreeViewNodeInput = (
 }
 
 const useTreeViewContextValue = () => {
-  const context = React.useContext(TreeViewContext)
+  const context = React.use(TreeViewContext)
 
   if (!context) {
     throw new Error("useTreeViewContext must be used within a TreeViewProvider")

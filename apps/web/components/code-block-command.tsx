@@ -2,6 +2,7 @@
 
 import { useAtom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
+import { useSyncExternalStore } from "react"
 
 import {
   CommandActions,
@@ -9,6 +10,7 @@ import {
   type PackageManager,
 } from "@/components/command-block-primitives"
 import { Tabs, TabsContent } from "@/components/tabs"
+import { cn } from "@/lib/utils"
 
 const packageManagerAtom = atomWithStorage<PackageManager>(
   "tenkit:package-manager:v1",
@@ -16,6 +18,18 @@ const packageManagerAtom = atomWithStorage<PackageManager>(
 )
 
 const PACKAGE_MANAGERS = ["prompt", "pnpm", "yarn", "npm", "bun"] as const
+
+function subscribeToHydration() {
+  return () => undefined
+}
+
+function useHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  )
+}
 
 function isPackageManager(value: string): value is PackageManager {
   return (
@@ -50,6 +64,7 @@ export function CodeBlockCommand({
   onCopyError,
 }: CodeBlockCommandProps) {
   const [packageManager, setPackageManager] = useAtom(packageManagerAtom)
+  const hydrated = useHydrated()
 
   const tabs = {
     prompt,
@@ -65,7 +80,11 @@ export function CodeBlockCommand({
   return (
     <div
       data-slot="code-block-command"
-      className="relative overflow-hidden rounded-xl bg-accent dark:bg-background"
+      aria-hidden={hydrated ? undefined : true}
+      className={cn(
+        "relative overflow-hidden rounded-xl bg-accent dark:bg-background",
+        hydrated ? null : "invisible"
+      )}
     >
       <Tabs
         className="gap-0"

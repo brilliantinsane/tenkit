@@ -12,8 +12,17 @@ describe("CodeBlockCommand", () => {
       </CreateCommandAnalyticsProvider>
     )
 
-    expect(markup).toMatch(
-      /data-slot="code-block-command" class="[^"]*bg-accent dark:bg-background/
+    expect(markup).toMatch(/class="[^"]*bg-accent dark:bg-background/)
+  })
+
+  test("hides the server-rendered command until persisted state hydrates", () => {
+    const markup = renderToStaticMarkup(
+      <CreateCommandAnalyticsProvider value={{ surface: "landing" }}>
+        <CodeBlockCommand pnpm="pnpm create tenkit@latest" />
+      </CreateCommandAnalyticsProvider>
     )
+
+    expect(markup).toContain('aria-hidden="true"')
+    expect(markup).toMatch(/class="[^"]*invisible/)
   })
 })
