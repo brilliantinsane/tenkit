@@ -4,7 +4,6 @@ import { TextAlignStartIcon, TerminalIcon } from "lucide-react"
 
 import { CopyButton } from "@/components/copy-button"
 import { useCreateCommandAnalytics } from "@/components/create-command-analytics"
-import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { TabsList, TabsTrigger } from "@/components/tabs"
 import { trackDatabuddyEvent } from "@/lib/databuddy"
 import { cn } from "@/lib/utils"
@@ -31,15 +30,23 @@ export function CommandTabsHeader({
           "min-w-max"
         )}
       >
-        <IconSwap>
-          <IconSwapItem className="mr-2" key={packageManager}>
-            <PackageManagerIcon manager={packageManager} />
-          </IconSwapItem>
-        </IconSwap>
+        {tabKeys.map((key) => (
+          <span
+            key={key}
+            suppressHydrationWarning
+            data-package-manager-value={key}
+            data-state={key === packageManager ? "active" : "inactive"}
+            className="mr-2 data-[state=inactive]:hidden"
+          >
+            <PackageManagerIcon manager={key} />
+          </span>
+        ))}
 
         {tabKeys.map((key) => (
           <TabsTrigger
             key={key}
+            suppressHydrationWarning
+            data-package-manager-value={key}
             className="h-7 rounded-lg p-0 px-2 font-mono"
             value={key}
           >
