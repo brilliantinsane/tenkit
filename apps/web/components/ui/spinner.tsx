@@ -7,12 +7,17 @@ export const Spinner = (props: React.ComponentProps<"svg">) => {
   const { "aria-label": ariaLabel, className, ...rest } = props
 
   return (
-    <Loader2Icon
+    <span
       aria-label={ariaLabel ?? "Loading"}
-      className={cn("size-4 animate-spin", className)}
+      className="inline-flex animate-spin"
       data-slot="spinner"
       role="status"
-      {...rest}
-    />
+    >
+      <Loader2Icon
+        aria-hidden="true"
+        className={cn("size-4", className)}
+        {...rest}
+      />
+    </span>
   )
 }

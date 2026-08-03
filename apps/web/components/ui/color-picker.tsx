@@ -351,14 +351,10 @@ export const ColorPickerValueSwatch = (
   )
 }
 
-interface ColorPickerAreaProps extends React.ComponentProps<
-  typeof ArkColorPicker.Area
-> {
-  showDots?: boolean
-}
-
-export const ColorPickerArea = (props: ColorPickerAreaProps) => {
-  const { className, showDots = false, children, ...rest } = props
+export const ColorPickerArea = (
+  props: React.ComponentProps<typeof ArkColorPicker.Area>
+) => {
+  const { className, children, ...rest } = props
 
   return (
     <ArkColorPicker.Area
@@ -367,10 +363,6 @@ export const ColorPickerArea = (props: ColorPickerAreaProps) => {
         "aspect-square size-full",
         "rounded-xl border",
         "touch-none",
-        {
-          "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[radial-gradient(circle,#fff3_1px,#0000_1px)] after:bg-size-[8px_8px]":
-            showDots,
-        },
         className
       )}
       data-slot="color-picker-area"

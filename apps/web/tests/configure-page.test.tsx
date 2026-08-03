@@ -57,7 +57,14 @@ describe("ConfigurePageContent", () => {
     expect(markup).toContain("React Native StyleSheet")
     expect(markup).toContain("Tailwind for React Native")
     expect(markup).not.toContain("bg-code")
-    expect(markup).toContain("bg-background")
+    expect(
+      markup.match(
+        /data-slot="configurator-choice-card-content" class="[^"]*bg-accent dark:bg-background/g
+      )
+    ).toHaveLength(9)
+    expect(markup).toMatch(
+      /data-slot="expandable-code-block-command" class="[^"]*bg-accent dark:bg-background/
+    )
     expect(markup).toContain("focus-visible:ring-3")
     expect(markup).toContain("focus-visible:ring-ring/30")
     expect(markup).not.toContain("lg:border-l")

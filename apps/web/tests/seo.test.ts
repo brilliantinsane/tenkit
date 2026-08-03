@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-
 import { describe, expect, test } from "vitest"
 
 import { GET as getCommandsRoute } from "@/app/commands.md/route"
@@ -8,6 +5,16 @@ import { GET as getFaqRoute } from "@/app/faq.md/route"
 import { GET as getIndexRoute } from "@/app/index.md/route"
 import { GET as getLlmsFullRoute } from "@/app/llms-full.txt/route"
 import { GET as getLlmsRoute } from "@/app/llms.txt/route"
+import getOpenGraphImage, {
+  alt as openGraphImageAlt,
+  contentType as openGraphImageContentType,
+  size as openGraphImageSize,
+} from "@/app/opengraph-image"
+import getConfigureOpenGraphImage, {
+  alt as configureOpenGraphImageAlt,
+  contentType as configureOpenGraphImageContentType,
+  size as configureOpenGraphImageSize,
+} from "@/app/configure/opengraph-image"
 import { GET as getSetupTypesRoute } from "@/app/setup-types.md/route"
 import { GET as getRobotsRoute } from "@/app/robots.txt/route"
 import sitemap from "@/app/sitemap"
@@ -34,6 +41,18 @@ type JsonLdNode = {
   "@id": string
 }
 
+async function expectOpenGraphPng(response: Response) {
+  const image = Buffer.from(await response.arrayBuffer())
+
+  expect(response.headers.get("Content-Type")).toBe("image/png")
+  expect(image.subarray(0, 8)).toEqual(
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+  )
+  expect(image.readUInt32BE(16)).toBe(1200)
+  expect(image.readUInt32BE(20)).toBe(630)
+  expect(image.length).toBeGreaterThan(10_000)
+}
+
 describe("Tenkit Public Web App SEO", () => {
   test("uses www.tenkit.dev as the canonical URL", () => {
     expect(SITE_CONFIG.url).toBe("https://www.tenkit.dev")
@@ -42,43 +61,12 @@ describe("Tenkit Public Web App SEO", () => {
     expect(rootMetadata.alternates?.canonical).toBe("/")
   })
 
-  test("serves the branded preview from the static image path", () => {
-    const imagePath = fileURLToPath(
-      new URL("../public/og-image.png", import.meta.url)
-    )
-    const dynamicRoutePath = fileURLToPath(
-      new URL("../app/opengraph-image.tsx", import.meta.url)
-    )
-
-    expect(existsSync(imagePath)).toBe(true)
-
-    const image = readFileSync(imagePath)
-    const chunkTypes: string[] = []
-    let chunkOffset = 8
-
-    while (chunkOffset + 12 <= image.length) {
-      const chunkLength = image.readUInt32BE(chunkOffset)
-      const chunkType = image.toString(
-        "ascii",
-        chunkOffset + 4,
-        chunkOffset + 8
-      )
-
-      chunkTypes.push(chunkType)
-      chunkOffset += chunkLength + 12
-    }
-
-    expect(image.subarray(0, 8)).toEqual(
-      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-    )
-    expect(image.readUInt32BE(16)).toBe(1200)
-    expect(image.readUInt32BE(20)).toBe(630)
-    expect(chunkTypes).not.toContain("caBX")
-    expect(SITE_CONFIG.ogImage).toBe("/og-image.png?v=2")
-    expect(ogImageUrl()).toBe("https://www.tenkit.dev/og-image.png?v=2")
+  test("renders route-specific branded previews through App Router metadata", async () => {
+    expect(SITE_CONFIG.ogImage).toBe("/opengraph-image?v=3")
+    expect(ogImageUrl()).toBe("https://www.tenkit.dev/opengraph-image?v=3")
     expect(rootMetadata.openGraph?.images).toEqual([
       {
-        url: "https://www.tenkit.dev/og-image.png?v=2",
+        url: "https://www.tenkit.dev/opengraph-image?v=3",
         width: 1200,
         height: 630,
         alt: SITE_CONFIG.ogImageAlt,
@@ -86,9 +74,18 @@ describe("Tenkit Public Web App SEO", () => {
       },
     ])
     expect(rootMetadata.twitter?.images).toEqual([
-      "https://www.tenkit.dev/og-image.png?v=2",
+      "https://www.tenkit.dev/opengraph-image?v=3",
     ])
-    expect(existsSync(dynamicRoutePath)).toBe(false)
+
+    expect(openGraphImageAlt).toBe(SITE_CONFIG.ogImageAlt)
+    expect(openGraphImageSize).toEqual({ width: 1200, height: 630 })
+    expect(openGraphImageContentType).toBe("image/png")
+    await expectOpenGraphPng(await getOpenGraphImage())
+
+    expect(configureOpenGraphImageAlt).toBe(CONFIGURE_PAGE_SEO.ogImageAlt)
+    expect(configureOpenGraphImageSize).toEqual({ width: 1200, height: 630 })
+    expect(configureOpenGraphImageContentType).toBe("image/png")
+    await expectOpenGraphPng(await getConfigureOpenGraphImage())
   })
 
   test("uses the product description across web and social metadata", () => {
@@ -136,14 +133,17 @@ describe("Tenkit Public Web App SEO", () => {
     expect(metadata.openGraph.description).toBe(CONFIGURE_PAGE_SEO.description)
     expect(metadata.openGraph.images).toEqual([
       {
-        url: "https://www.tenkit.dev/og-image.png?v=2",
+        url: "https://www.tenkit.dev/configure/opengraph-image?v=1",
         width: 1200,
         height: 630,
-        alt: SITE_CONFIG.ogImageAlt,
+        alt: CONFIGURE_PAGE_SEO.ogImageAlt,
         type: "image/png",
       },
     ])
     expect(metadata.twitter.description).toBe(CONFIGURE_PAGE_SEO.description)
+    expect(metadata.twitter.images).toEqual([
+      "https://www.tenkit.dev/configure/opengraph-image?v=1",
+    ])
   })
 
   test("keeps Expo descriptive and separate from the Tenkit product name", () => {
