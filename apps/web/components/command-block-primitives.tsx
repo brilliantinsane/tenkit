@@ -1,9 +1,11 @@
 "use client"
 
 import { TextAlignStartIcon, TerminalIcon } from "lucide-react"
+import { useSyncExternalStore, type ReactNode } from "react"
 
 import { CopyButton } from "@/components/copy-button"
 import { useCreateCommandAnalytics } from "@/components/create-command-analytics"
+import { IconSwap, IconSwapItem } from "@/components/icon-swap"
 import { TabsList, TabsTrigger } from "@/components/tabs"
 import { trackDatabuddyEvent } from "@/lib/databuddy"
 import { cn } from "@/lib/utils"
@@ -15,11 +17,15 @@ type CopySuccessHandler = (data: {
   command: string
 }) => void
 
+function subscribeToHydration() {
+  return () => undefined
+}
+
 export function CommandTabsHeader({
-  packageManager,
+  children,
   tabKeys,
 }: {
-  packageManager: PackageManager
+  children: ReactNode
   tabKeys: readonly PackageManager[]
 }) {
   return (
@@ -30,17 +36,7 @@ export function CommandTabsHeader({
           "min-w-max"
         )}
       >
-        {tabKeys.map((key) => (
-          <span
-            key={key}
-            suppressHydrationWarning
-            data-package-manager-value={key}
-            data-state={key === packageManager ? "active" : "inactive"}
-            className="mr-2 data-[state=inactive]:hidden"
-          >
-            <PackageManagerIcon manager={key} />
-          </span>
-        ))}
+        {children}
 
         {tabKeys.map((key) => (
           <TabsTrigger
@@ -56,6 +52,57 @@ export function CommandTabsHeader({
       </TabsList>
     </div>
   )
+}
+
+export function AnimatedPackageManagerIcon({
+  packageManager,
+}: {
+  packageManager: PackageManager
+}) {
+  return (
+    <IconSwap>
+      <IconSwapItem
+        key={packageManager}
+        data-slot="animated-package-manager-icon"
+        data-package-manager-value={packageManager}
+        className="mr-2"
+      >
+        <PackageManagerIcon manager={packageManager} />
+      </IconSwapItem>
+    </IconSwap>
+  )
+}
+
+export function HydrationSafePackageManagerIcon({
+  packageManager,
+  packageManagers,
+}: {
+  packageManager: PackageManager
+  packageManagers: readonly PackageManager[]
+}) {
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  )
+
+  if (hydrated) {
+    return <AnimatedPackageManagerIcon packageManager={packageManager} />
+  }
+
+  return packageManagers.map((availablePackageManager) => (
+    <span
+      key={availablePackageManager}
+      suppressHydrationWarning
+      data-package-manager-value={availablePackageManager}
+      data-state={
+        availablePackageManager === packageManager ? "active" : "inactive"
+      }
+      className="mr-2 data-[state=inactive]:hidden"
+    >
+      <PackageManagerIcon manager={availablePackageManager} />
+    </span>
+  ))
 }
 
 export function CommandActions({

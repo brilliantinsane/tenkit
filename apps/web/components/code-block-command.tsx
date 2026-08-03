@@ -5,6 +5,7 @@ import { atomWithStorage } from "jotai/utils"
 import { useId } from "react"
 
 import {
+  HydrationSafePackageManagerIcon,
   CommandActions,
   CommandTabsHeader,
   type PackageManager,
@@ -90,10 +91,12 @@ export function CodeBlockCommand({
             }
           }}
         >
-          <CommandTabsHeader
-            packageManager={selectedPackageManager}
-            tabKeys={availablePackageManagers}
-          />
+          <CommandTabsHeader tabKeys={availablePackageManagers}>
+            <HydrationSafePackageManagerIcon
+              packageManager={selectedPackageManager}
+              packageManagers={availablePackageManagers}
+            />
+          </CommandTabsHeader>
 
           {availablePackageManagers.map((availablePackageManager) => {
             return (
