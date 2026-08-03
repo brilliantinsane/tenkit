@@ -43,7 +43,10 @@ export function ExpandableCodeBlockCommand({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-background">
+    <div
+      data-slot="expandable-code-block-command"
+      className="relative overflow-hidden rounded-xl bg-accent dark:bg-background"
+    >
       <Tabs
         className="gap-0"
         value={value}

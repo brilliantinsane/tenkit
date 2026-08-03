@@ -65,7 +65,7 @@ export function CodeBlockCommand({
   return (
     <div
       data-slot="code-block-command"
-      className="relative overflow-hidden rounded-xl bg-background"
+      className="relative overflow-hidden rounded-xl bg-accent dark:bg-background"
     >
       <Tabs
         className="gap-0"

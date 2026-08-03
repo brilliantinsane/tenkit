@@ -59,6 +59,14 @@ describe("SetupTypeStoriesSection", () => {
     })
 
     expect(whiteLabelChoice.getAttribute("aria-pressed")).toBe("true")
+    const choiceCardContents = container.querySelectorAll(
+      '[data-slot="configurator-choice-card-content"]'
+    )
+    expect(choiceCardContents).toHaveLength(3)
+    for (const choiceCardContent of choiceCardContents) {
+      expect(choiceCardContent.className).toContain("bg-accent")
+      expect(choiceCardContent.className).toContain("dark:bg-background")
+    }
     expect(
       screen.getByRole("heading", {
         name: "Give every customer their own app without copying your product.",

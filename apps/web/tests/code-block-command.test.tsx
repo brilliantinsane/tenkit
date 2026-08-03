@@ -5,7 +5,7 @@ import { CodeBlockCommand } from "@/components/code-block-command"
 import { CreateCommandAnalyticsProvider } from "@/components/create-command-analytics"
 
 describe("CodeBlockCommand", () => {
-  test("uses the page background for the command surface", () => {
+  test("uses the accent background in light mode and page background in dark mode", () => {
     const markup = renderToStaticMarkup(
       <CreateCommandAnalyticsProvider value={{ surface: "landing" }}>
         <CodeBlockCommand pnpm="pnpm create tenkit@latest" />
@@ -13,7 +13,7 @@ describe("CodeBlockCommand", () => {
     )
 
     expect(markup).toMatch(
-      /data-slot="code-block-command" class="[^"]*bg-background/
+      /data-slot="code-block-command" class="[^"]*bg-accent dark:bg-background/
     )
   })
 })
