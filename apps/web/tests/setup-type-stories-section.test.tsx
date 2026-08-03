@@ -73,7 +73,11 @@ describe("SetupTypeStoriesSection", () => {
       })
     ).toBeDefined()
     expect(screen.getAllByText("White Label Apps")).toHaveLength(2)
-    expect(container.querySelector('[data-slot="tree-view"]')).not.toBeNull()
+    const treeView = container.querySelector('[data-slot="tree-view"]')
+
+    expect(treeView).not.toBeNull()
+    expect(treeView?.className.split(" ")).toContain("p-2")
+    expect(treeView?.className.split(" ")).not.toContain("py-2")
     expect(screen.getByText("Branded App Variants")).toBeDefined()
     expect(
       screen.getByRole("heading", {

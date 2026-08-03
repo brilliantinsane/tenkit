@@ -256,7 +256,7 @@ export function SetupTypeGeneratedTree({
           collection={collection}
           defaultExpandedValue={[...project.defaultExpandedPaths]}
           fileIcons={fileIcons}
-          className="gap-0 py-2 [--indentation:--spacing(3)] [--item-gap:--spacing(1.5)] [--padding-block:--spacing(1)] [--padding-inline:--spacing(3)]"
+          className="gap-0 p-2 [--indentation:--spacing(3)] [--item-gap:--spacing(1.5)] [--padding-block:--spacing(1)] [--padding-inline:--spacing(3)]"
         >
           <TreeViewLabel className="sr-only">
             Key generated files for {project.label}
