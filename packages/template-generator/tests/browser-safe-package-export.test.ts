@@ -63,7 +63,7 @@ test('loads the browser-safe Setup Type definitions package subpath without runt
     publicModule.getGeneratedSetupTypeDefinition('white-label-apps'),
     publicModule.getGeneratedSetupTypeDefinitionByPublicSlug('white-label'),
   );
-  assert.notMatch(publicModuleSource, /^import\s/m);
+  assert.match(publicModuleSource, /@tenkit\/types\/setup-type-definitions/);
   assert.notMatch(
     publicModuleSource,
     /node:|fs-extra|handlebars|pathe|generated-setup-types|writer/,
@@ -88,7 +88,7 @@ test('loads the browser-safe Styling definitions package subpath without generat
     () => publicModule.normalizeGeneratedStylingChoice('nativewind'),
     /Unsupported generated Styling Choice "nativewind".*Expected one of: bare, uniwind, unistyles/,
   );
-  assert.notMatch(publicModuleSource, /^import\s/m);
+  assert.match(publicModuleSource, /@tenkit\/types\/styling-definitions/);
   assert.notMatch(
     publicModuleSource,
     /node:|fs-extra|handlebars|pathe|template-reader|writer|generator/,

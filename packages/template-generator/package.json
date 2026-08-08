@@ -40,7 +40,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown src/index.ts src/generator.ts src/generated-setup-type-definitions.ts src/generated-styling-choices.ts src/writer.ts src/local-proof.ts --format esm --dts",
+    "build": "pnpm -F @tenkit/types build && tsdown src/index.ts src/generator.ts src/generated-setup-type-definitions.ts src/generated-styling-choices.ts src/writer.ts src/local-proof.ts --format esm --dts",
     "pack:dry-run": "pnpm pack --dry-run",
     "prepack": "pnpm run build",
     "test": "pnpm run build && vitest run tests/browser-safe-package-export.test.ts tests/generated-setup-type-definitions.test.ts tests/generator.test.ts tests/writer.test.ts tests/generated-app-command-runner.test.ts tests/generated-app-verification.test.ts tests/maintainer-command-args.test.ts tests/template-composition-regression.test.ts",
@@ -58,6 +58,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@tenkit/types": "workspace:*",
     "fs-extra": "^11.3.5",
     "handlebars": "^4.7.9",
     "is-binary-path": "^3.0.0",
