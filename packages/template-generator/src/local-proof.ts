@@ -124,6 +124,7 @@ export async function runGenerationProof(
     packageName: options.packageName,
     packageManager: options.packageManager,
     stylingChoice: options.stylingChoice,
+    generatedAppOptions: options.generatedAppOptions,
   });
   const overwrite: WriteProjectOverwriteMode = options.force ? 'always' : 'never';
   const targetWasEmpty = await isExistingTargetDirectoryEmpty(options.targetDir);

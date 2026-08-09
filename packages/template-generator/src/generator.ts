@@ -1,4 +1,9 @@
 import {
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptionIssue,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupTypeDefinition,
@@ -38,6 +43,7 @@ export type WhiteLabelAppsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type SingleAppRuntimeTenantsProjectConfig = {
@@ -48,6 +54,7 @@ export type SingleAppRuntimeTenantsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
@@ -58,6 +65,7 @@ export type GenericWithStandaloneAppVariantsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type GenerateProjectConfig =
@@ -68,6 +76,23 @@ export type GenerateProjectConfig =
 function normalizeName(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : fallback;
+}
+
+function formatGeneratedAppOptionIssue(issue: GeneratedAppOptionIssue): string {
+  if (issue.code === 'unsupported-value') {
+    return `${issue.option} ${JSON.stringify(issue.value)} is not a public value`;
+  }
+
+  return `Unsupported Generated App Option combination ${JSON.stringify(issue.selection)}`;
+}
+
+function assertSupportedGeneratedAppOptions(rawOptions: RawGeneratedAppOptions | undefined): void {
+  const resolution = resolveGeneratedAppOptions(rawOptions ?? {});
+  if (resolution.status === 'invalid') {
+    throw new Error(
+      `${resolution.issues.map(formatGeneratedAppOptionIssue).join('. ')}. Template source was not read.`,
+    );
+  }
 }
 
 function normalizePackageName(value: string | undefined, fallback: string): string {
@@ -226,6 +251,8 @@ function readProjectTemplateTree({
 export function generateWhiteLabelAppsProject(
   config: WhiteLabelAppsProjectConfig = { setupType: 'white-label-apps' },
 ): VirtualFileTree {
+  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'white-label-apps') {
     throw new Error('The Template generator currently supports only White Label Apps output.');
   }
@@ -250,6 +277,8 @@ export function generateWhiteLabelAppsProject(
 export function generateSingleAppRuntimeTenantsProject(
   config: SingleAppRuntimeTenantsProjectConfig = { setupType: 'single-app-runtime-tenants' },
 ): VirtualFileTree {
+  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'single-app-runtime-tenants') {
     throw new Error('The Template generator expected Single App Runtime Tenants output.');
   }
@@ -276,6 +305,8 @@ export function generateGenericWithStandaloneAppVariantsProject(
     setupType: 'generic-with-standalone-app-variants',
   },
 ): VirtualFileTree {
+  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'generic-with-standalone-app-variants') {
     throw new Error('The Template generator expected Generic With Standalone App Variants output.');
   }
@@ -308,6 +339,7 @@ export function generateProject(config: GenerateProjectConfig): VirtualFileTree 
     packageName: config.packageName,
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
+    generatedAppOptions: config.generatedAppOptions,
   };
 
   switch (setupType) {

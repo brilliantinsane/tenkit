@@ -24,6 +24,7 @@
   ],
   "type": "module",
   "exports": {
+    "./generated-app-option-definitions": "./dist/generated-app-option-definitions.mjs",
     "./setup-type-definitions": "./dist/setup-type-definitions.mjs",
     "./styling-definitions": "./dist/styling-definitions.mjs"
   },
@@ -33,7 +34,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown src/setup-type-definitions.ts src/styling-definitions.ts --format esm --dts",
+    "build": "tsdown src/generated-app-option-definitions.ts src/setup-type-definitions.ts src/styling-definitions.ts --format esm --dts",
     "pack:dry-run": "pnpm pack --dry-run",
     "prepack": "pnpm run build",
     "pretypecheck": "pnpm run build",

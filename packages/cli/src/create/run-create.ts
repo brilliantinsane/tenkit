@@ -3,7 +3,7 @@ import { generateProject, preflightWriteProject, writeProject } from '@tenkit/te
 
 import { defaultRunCommand } from '../adapters/command-runner';
 import { prepareInitialGitSetup } from '../adapters/git';
-import { logFinalOutput } from './create-messages';
+import { logCreateSummary, logFinalOutput } from './create-messages';
 import { resolveCreateOptions } from './resolve-create-options';
 import type { CreateCommandOptions, CreateFlowEnvironment, CreateFlowResult } from './types';
 
@@ -12,6 +12,7 @@ export async function runCreateFlow(
   env: CreateFlowEnvironment,
 ): Promise<CreateFlowResult> {
   const resolvedOptions = await resolveCreateOptions(options, env);
+  logCreateSummary(resolvedOptions, env.output);
   const runCommand = env.runCommand ?? defaultRunCommand;
   const generate = env.generate ?? generateProject;
   const write =
@@ -24,6 +25,7 @@ export async function runCreateFlow(
 
   const tree = generate({
     setupType: resolvedOptions.setupType,
+    generatedAppOptions: resolvedOptions.generatedAppOptions,
     stylingChoice: resolvedOptions.stylingChoice,
     appVariantAccents: resolvedOptions.appVariantAccents,
     appVariantNames: resolvedOptions.appVariantNames,
@@ -46,6 +48,7 @@ export async function runCreateFlow(
       projectName: resolvedOptions.projectName,
       packageName: resolvedOptions.packageName,
       setupType: resolvedOptions.setupType,
+      generatedAppOptions: resolvedOptions.generatedAppOptions,
       stylingChoice: resolvedOptions.stylingChoice,
       appVariantAccents: resolvedOptions.appVariantAccents,
       appVariantNames: resolvedOptions.appVariantNames,
@@ -98,6 +101,7 @@ export async function runCreateFlow(
     projectName: resolvedOptions.projectName,
     packageName: resolvedOptions.packageName,
     setupType: resolvedOptions.setupType,
+    generatedAppOptions: resolvedOptions.generatedAppOptions,
     stylingChoice: resolvedOptions.stylingChoice,
     appVariantAccents: resolvedOptions.appVariantAccents,
     appVariantNames: resolvedOptions.appVariantNames,

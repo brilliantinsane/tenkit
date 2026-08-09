@@ -1,5 +1,21 @@
-import type { CreateFlowOutput, CreateFlowResult } from './types';
+import type { CreateFlowOutput, CreateFlowResult, ResolvedCreateOptions } from './types';
 import { formatInstallCommand, formatRunCommand } from './package-manager';
+
+export function logCreateSummary(options: ResolvedCreateOptions, output: CreateFlowOutput): void {
+  output.log('Configuration:');
+  output.log(`- Project: ${options.projectName}`);
+  output.log(`- Setup Type: ${options.setupType}`);
+  output.log(`- App Variants: ${options.appVariantNames.join(', ')}`);
+  output.log(`- Backend: ${options.generatedAppOptions.backend}`);
+  output.log(`- Auth: ${options.generatedAppOptions.auth}`);
+  output.log(`- Database: ${options.generatedAppOptions.database}`);
+  output.log(`- ORM: ${options.generatedAppOptions.orm}`);
+  output.log(`- Styling: ${options.stylingChoice}`);
+  output.log(`- Package Manager: ${options.packageManager}`);
+  output.log(`- Git: ${options.git ? 'initialize' : 'skip'}`);
+  output.log(`- Install: ${options.install ? 'install dependencies' : 'skip'}`);
+  output.log('');
+}
 
 export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutput): void {
   const projectShellArg = formatShellArg(result.projectName);

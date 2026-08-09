@@ -2,6 +2,10 @@ import { tmpdir } from 'node:os';
 
 import fs from 'fs-extra';
 import { basename, join } from 'pathe';
+import {
+  resolveGeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
 import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
 import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
@@ -30,6 +34,7 @@ export type VerifyGeneratedAppOptions = {
   appVariantNames?: readonly (string | undefined)[];
   stylingChoice: GeneratedStylingChoice;
   packageManager?: GeneratedProjectPackageManager;
+  generatedAppOptions?: RawGeneratedAppOptions;
   workspaceRoot: string;
   environment: Readonly<Record<string, string>>;
   profile: GeneratedProjectVerificationProfile;
@@ -99,12 +104,19 @@ export async function verifyGeneratedApp({
   appVariantNames,
   stylingChoice,
   packageManager = 'pnpm',
+  generatedAppOptions: rawGeneratedAppOptions,
   workspaceRoot,
   environment,
   profile,
   targetNamePrefix = `tenkit-generated-${setupType}-${stylingChoice}`,
   beforeSuccessfulTargetCleanup,
 }: VerifyGeneratedAppOptions): Promise<GeneratedProjectVerificationEvidence> {
+  const generatedAppOptionsResolution = resolveGeneratedAppOptions(rawGeneratedAppOptions ?? {});
+  if (generatedAppOptionsResolution.status === 'invalid') {
+    throw new Error('Generated app verification received unsupported Generated App Options.');
+  }
+  const generatedAppOptions = generatedAppOptionsResolution.selection;
+
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(targetNamePrefix)) {
     throw new Error('Generated verification target prefix must be a safe lowercase identity.');
   }
@@ -115,6 +127,7 @@ export async function verifyGeneratedApp({
     setupType,
     stylingChoice,
     packageManager,
+    generatedAppOptions,
     appVariantAccents,
     appVariantNames,
   } satisfies GeneratedProjectVerificationSelection;
@@ -129,6 +142,7 @@ export async function verifyGeneratedApp({
       appVariantNames,
       stylingChoice,
       packageManager,
+      generatedAppOptions,
       targetDir,
       git: false,
       workspaceRoot,

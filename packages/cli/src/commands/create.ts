@@ -4,6 +4,10 @@ import { Command } from 'commander';
 import {
   CLI_VERSION,
   DEFAULT_PROJECT_NAME,
+  supportedAuthValues,
+  supportedBackendValues,
+  supportedDatabaseValues,
+  supportedOrmValues,
   supportedSetupValues,
   supportedStylingValues,
 } from '../constants';
@@ -16,6 +20,10 @@ type CommanderOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  backend?: string;
+  auth?: string;
+  database?: string;
+  orm?: string;
   styling?: string;
   variantNames?: string;
   variantAccents?: string;
@@ -32,6 +40,10 @@ function normalizeCommanderOptions(options: CommanderOptions): CreateCommandOpti
     packageName: options.packageName,
     setup: options.setup,
     setupType: options.setupType,
+    backend: options.backend,
+    auth: options.auth,
+    database: options.database,
+    orm: options.orm,
     styling: options.styling,
     appVariantNamesInput: options.variantNames,
     appVariantAccentsInput: options.variantAccents,
@@ -55,6 +67,10 @@ export function createProgram(env: CreateFlowEnvironment): Command {
     .option('--package-name <name>', 'generated package.json name override')
     .option('-s, --setup <setup>', `public Setup slug: ${supportedSetupValues().join(', ')}`)
     .option('--setup-type <setupType>', 'canonical Setup Type ID or public Setup slug')
+    .option('--backend <backend>', `Backend: ${supportedBackendValues().join(', ')}`)
+    .option('--auth <auth>', `Auth: ${supportedAuthValues().join(', ')}`)
+    .option('--database <database>', `Database: ${supportedDatabaseValues().join(', ')}`)
+    .option('--orm <orm>', `ORM: ${supportedOrmValues().join(', ')}`)
     .option('--styling <styling>', `Styling Choice: ${supportedStylingValues().join(', ')}`)
     .option('--variant-names <names>', 'ordered comma-separated App Variant names')
     .option('--variant-accents <colors>', 'ordered comma-separated App Variant Accent colors')

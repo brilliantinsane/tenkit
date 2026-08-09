@@ -1,4 +1,10 @@
 import {
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptionIssue,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   formatSupportedGeneratedSetupTypes,
   normalizeGeneratedAccentColor,
   normalizeGeneratedSetupType,
@@ -74,6 +80,42 @@ export function normalizeStylingInput(value: string | undefined): GeneratedStyli
       `Unsupported Styling Choice ${JSON.stringify(value)}. Expected one of: ${supportedStylingValues().join(', ')}.`,
     );
   }
+}
+
+const GENERATED_APP_OPTION_LABELS = {
+  backend: 'Backend',
+  auth: 'Auth',
+  database: 'Database',
+  orm: 'ORM',
+} as const;
+
+function formatGeneratedAppOptionCombination(selection: Readonly<Partial<GeneratedAppOptions>>) {
+  return (['backend', 'auth', 'database', 'orm'] as const)
+    .map((option) => `${GENERATED_APP_OPTION_LABELS[option]} ${selection[option] ?? 'unspecified'}`)
+    .join(', ');
+}
+
+function formatGeneratedAppOptionIssue(issue: GeneratedAppOptionIssue): string {
+  if (issue.code === 'unsupported-value') {
+    return `Unsupported ${GENERATED_APP_OPTION_LABELS[issue.option]} ${JSON.stringify(issue.value)}. Expected one of: ${issue.supportedValues.join(', ')}.`;
+  }
+
+  return `Unsupported Generated App Option combination: ${formatGeneratedAppOptionCombination(issue.selection)}. Supported combinations: ${issue.supportedCombinations.map(formatGeneratedAppOptionCombination).join('; ')}.`;
+}
+
+export function invalidGeneratedAppOptionsError(issues: readonly GeneratedAppOptionIssue[]): Error {
+  return new Error(issues.map(formatGeneratedAppOptionIssue).join(' '));
+}
+
+export function normalizeGeneratedAppOptionsInput(
+  rawOptions: RawGeneratedAppOptions,
+): GeneratedAppOptions {
+  const resolution = resolveGeneratedAppOptions(rawOptions);
+  if (resolution.status === 'invalid') {
+    throw invalidGeneratedAppOptionsError(resolution.issues);
+  }
+
+  return resolution.selection;
 }
 
 export function normalizeAppVariantCustomization(

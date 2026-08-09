@@ -1,6 +1,10 @@
 import fs from 'fs-extra';
 import { join, relative } from 'pathe';
 import {
+  resolveGeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupType,
@@ -56,6 +60,7 @@ export type GeneratedProjectVerificationSelection = {
   setupType: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
   packageManager: GeneratedProjectPackageManager;
+  generatedAppOptions?: RawGeneratedAppOptions;
   appVariantAccents?: readonly (string | undefined)[];
   appVariantNames?: readonly (string | undefined)[];
   projectName?: string;
@@ -91,6 +96,12 @@ type PackageManifest = {
 export function resolveGeneratedProjectVerificationSelection(
   selection: GeneratedProjectVerificationSelection,
 ): GeneratedProjectVerificationEvidence['selection'] {
+  const generatedAppOptionsResolution = resolveGeneratedAppOptions(
+    selection.generatedAppOptions ?? {},
+  );
+  if (generatedAppOptionsResolution.status === 'invalid') {
+    throw new Error('Generated project verification received unsupported Generated App Options.');
+  }
   const setupTypeDefinition = getGeneratedSetupTypeDefinition(selection.setupType);
   const resolvedNames = setupTypeDefinition.appVariants.map(
     ({ defaultName }, index) => selection.appVariantNames?.[index] ?? defaultName,
@@ -98,6 +109,7 @@ export function resolveGeneratedProjectVerificationSelection(
 
   return {
     setupType: selection.setupType,
+    generatedAppOptions: generatedAppOptionsResolution.selection,
     stylingChoice: selection.stylingChoice,
     packageManager: selection.packageManager,
     appVariantSlugs: deriveAppVariantIdentities(resolvedNames).map(({ slug }) => slug),
@@ -155,6 +167,7 @@ function expectedWrittenTree(
     packageName: selection.packageName,
     packageManager: selection.packageManager,
     stylingChoice: selection.stylingChoice,
+    generatedAppOptions: selection.generatedAppOptions,
   });
   if (profile === 'deterministic') {
     return generatedTree;

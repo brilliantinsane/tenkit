@@ -1,5 +1,6 @@
 import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
 import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
+import type { GeneratedAppOptions } from '@tenkit/types/generated-app-option-definitions';
 
 import type { GeneratedAppCommandResult } from './generated-app-command-runner';
 import type {
@@ -54,6 +55,7 @@ export type GeneratedProjectVerificationEvidence = {
   profile: GeneratedProjectVerificationProfile;
   selection: {
     setupType: GeneratedSetupType;
+    generatedAppOptions: GeneratedAppOptions;
     stylingChoice: GeneratedStylingChoice;
     packageManager: GeneratedProjectPackageManager;
     appVariantSlugs: readonly string[];

@@ -4,6 +4,8 @@ import fs from 'fs-extra';
 import { dirname } from 'pathe';
 import { afterEach, expect, test, vi } from 'vitest';
 
+import { DEFAULT_GENERATED_APP_OPTIONS } from '@tenkit/types/generated-app-option-definitions';
+
 import { verifyGeneratedApp } from '../src/generated-app-verification';
 import {
   GENERATED_PROJECT_VERIFICATION_PHASES,
@@ -33,6 +35,7 @@ function coreEvidence(
     profile: 'deterministic',
     selection: {
       setupType: 'white-label-apps',
+      generatedAppOptions: DEFAULT_GENERATED_APP_OPTIONS,
       stylingChoice: 'bare',
       packageManager: 'pnpm',
       appVariantSlugs: ['first-tenant', 'second-tenant'],
@@ -85,6 +88,7 @@ test('generated app verification records generation through filesystem cleanup',
     targetDir,
     selection: {
       setupType: 'white-label-apps',
+      generatedAppOptions: DEFAULT_GENERATED_APP_OPTIONS,
       stylingChoice: 'bare',
       packageManager: 'pnpm',
       appVariantAccents: ['#123ABC', '#F59E0B'],

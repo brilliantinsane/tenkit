@@ -37,11 +37,19 @@ test('Public CLI consumes shared definitions from @tenkit/types', () => {
   assert.deepEqual(compatibilityConsumers, []);
   assert.match(
     readFileSync(join(packageRoot, 'tsconfig.json'), 'utf8'),
+    /@tenkit\/types\/generated-app-option-definitions/,
+  );
+  assert.match(
+    readFileSync(join(packageRoot, 'tsconfig.json'), 'utf8'),
     /@tenkit\/types\/setup-type-definitions/,
   );
   assert.match(
     readFileSync(join(packageRoot, 'tsconfig.json'), 'utf8'),
     /@tenkit\/types\/styling-definitions/,
+  );
+  assert.match(
+    readFileSync(join(packageRoot, 'vitest.config.ts'), 'utf8'),
+    /@tenkit\/types\/generated-app-option-definitions/,
   );
   assert.match(
     readFileSync(join(packageRoot, 'vitest.config.ts'), 'utf8'),

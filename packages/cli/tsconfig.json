@@ -8,6 +8,9 @@
     "noEmit": true,
     "paths": {
       "@tenkit/template-generator": ["../template-generator/src/index.ts"],
+      "@tenkit/types/generated-app-option-definitions": [
+        "../types/src/generated-app-option-definitions.ts"
+      ],
       "@tenkit/types/setup-type-definitions": ["../types/src/setup-type-definitions.ts"],
       "@tenkit/types/styling-definitions": ["../types/src/styling-definitions.ts"]
     },

@@ -2,6 +2,8 @@
 
 import { expect, test, vi } from 'vitest';
 
+import { DEFAULT_GENERATED_APP_OPTIONS } from '@tenkit/types/generated-app-option-definitions';
+
 import { GeneratedAppVerificationError } from '../src/generated-app-verification';
 import {
   runGeneratedVerificationMatrix,
@@ -61,6 +63,7 @@ function evidence(
     })),
     profile: 'deterministic',
     selection: {
+      generatedAppOptions: DEFAULT_GENERATED_APP_OPTIONS,
       appVariantSlugs: ['first-tenant', 'second-tenant'],
       packageManager: 'pnpm',
       setupType: 'white-label-apps',

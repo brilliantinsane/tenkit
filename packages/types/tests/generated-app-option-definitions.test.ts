@@ -1,0 +1,148 @@
+import { assert, test } from 'vitest';
+
+import {
+  DEFAULT_GENERATED_APP_OPTIONS,
+  getGeneratedAppOptionChoiceState,
+  resolveGeneratedAppOptions,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+  SUPPORTED_GENERATED_AUTH_VALUES,
+  SUPPORTED_GENERATED_BACKEND_VALUES,
+  SUPPORTED_GENERATED_DATABASE_VALUES,
+  SUPPORTED_GENERATED_ORM_VALUES,
+} from '@tenkit/types/generated-app-option-definitions';
+
+test('exposes every public Generated App Option value and the zero-service defaults', () => {
+  assert.deepEqual(SUPPORTED_GENERATED_BACKEND_VALUES, ['none', 'express', 'nestjs', 'convex']);
+  assert.deepEqual(SUPPORTED_GENERATED_AUTH_VALUES, ['none', 'better-auth', 'clerk']);
+  assert.deepEqual(SUPPORTED_GENERATED_DATABASE_VALUES, ['none', 'postgresql', 'mysql']);
+  assert.deepEqual(SUPPORTED_GENERATED_ORM_VALUES, ['none', 'prisma', 'drizzle']);
+  assert.deepEqual(DEFAULT_GENERATED_APP_OPTIONS, {
+    backend: 'none',
+    auth: 'none',
+    database: 'none',
+    orm: 'none',
+  });
+});
+
+test('owns one supported-combinations list containing only the zero-service slice', () => {
+  assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
+    {
+      backend: 'none',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+  ]);
+});
+
+test('resolves omitted and explicit zero-service selections to the same supported combination', () => {
+  assert.deepEqual(resolveGeneratedAppOptions({}), {
+    status: 'resolved',
+    selection: DEFAULT_GENERATED_APP_OPTIONS,
+  });
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'none',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    }),
+    {
+      status: 'resolved',
+      selection: DEFAULT_GENERATED_APP_OPTIONS,
+    },
+  );
+});
+
+test('does not expose mutable references to the canonical compatibility catalog', () => {
+  const resolution = resolveGeneratedAppOptions({});
+  assert.equal(resolution.status, 'resolved');
+  if (resolution.status !== 'resolved') {
+    return;
+  }
+
+  assert.equal(Reflect.set(resolution.selection, 'backend', 'express'), false);
+  assert.deepEqual(resolveGeneratedAppOptions({}), {
+    status: 'resolved',
+    selection: DEFAULT_GENERATED_APP_OPTIONS,
+  });
+  assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [DEFAULT_GENERATED_APP_OPTIONS]);
+});
+
+test('returns structured invalid-value and unsupported-combination facts', () => {
+  assert.deepEqual(resolveGeneratedAppOptions({ backend: 'hono' }), {
+    status: 'invalid',
+    issues: [
+      {
+        code: 'unsupported-value',
+        option: 'backend',
+        value: 'hono',
+        supportedValues: SUPPORTED_GENERATED_BACKEND_VALUES,
+      },
+    ],
+  });
+
+  assert.deepEqual(resolveGeneratedAppOptions({ backend: 'express' }), {
+    status: 'invalid',
+    issues: [
+      {
+        code: 'unsupported-combination',
+        selection: {
+          backend: 'express',
+          auth: 'none',
+          database: 'none',
+          orm: 'none',
+        },
+        supportedCombinations: SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+      },
+    ],
+  });
+});
+
+test('derives dependency-aware partial choices from the same supported list', () => {
+  assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
+    status: 'available',
+    backend: { status: 'resolved', values: ['none'], value: 'none' },
+    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'none' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['none'], value: 'none' },
+    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express' }), {
+    status: 'invalid',
+    issues: [
+      {
+        code: 'unsupported-combination',
+        selection: { backend: 'express' },
+        supportedCombinations: SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+      },
+    ],
+  });
+});
+
+test('accepts exactly the combinations present in the one supported list', () => {
+  const accepted: string[] = [];
+
+  for (const backend of SUPPORTED_GENERATED_BACKEND_VALUES) {
+    for (const auth of SUPPORTED_GENERATED_AUTH_VALUES) {
+      for (const database of SUPPORTED_GENERATED_DATABASE_VALUES) {
+        for (const orm of SUPPORTED_GENERATED_ORM_VALUES) {
+          const resolution = resolveGeneratedAppOptions({ backend, auth, database, orm });
+          if (resolution.status === 'resolved') {
+            accepted.push(`${backend}:${auth}:${database}:${orm}`);
+          }
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(accepted, ['none:none:none:none']);
+});
