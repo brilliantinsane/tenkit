@@ -1,4 +1,5 @@
 **
 !container/
 !container/Dockerfile
+!container/canonical-publish-manifest.cjs
 !container/pack-release-set.sh

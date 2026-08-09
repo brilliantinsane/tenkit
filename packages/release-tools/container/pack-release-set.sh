@@ -132,5 +132,9 @@ for index in "${!package_names[@]}"; do
 done
 
 for package_name in "${package_names[@]}"; do
-  run_quietly pnpm --filter "$package_name" pack --pack-destination "$artifact_root"
+  run_quietly pnpm \
+    --config.pnpmfile=/usr/local/lib/tenkit/canonical-publish-manifest.cjs \
+    --filter "$package_name" \
+    pack \
+    --pack-destination "$artifact_root"
 done
