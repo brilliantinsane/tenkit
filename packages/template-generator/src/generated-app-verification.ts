@@ -2,9 +2,10 @@ import { tmpdir } from 'node:os';
 
 import fs from 'fs-extra';
 import { join } from 'pathe';
+import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
+import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import { verifyGeneratedProject } from './generated-project-verification';
-import { type GeneratedSetupType, type GeneratedStylingChoice } from './generator';
 import { runGenerationProof } from './local-proof';
 
 export type VerifyGeneratedAppOptions = {

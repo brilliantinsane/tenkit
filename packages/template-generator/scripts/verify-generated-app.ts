@@ -1,16 +1,17 @@
 import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
-
 import {
-  formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedStylingChoice,
-  normalizeGeneratedSetupType,
-  SUPPORTED_GENERATED_STYLING_CHOICES,
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
+import {
+  normalizeGeneratedStylingChoice,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from '../src/generator';
+} from '@tenkit/types/styling-definitions';
+
+import { formatSupportedGeneratedSetupTypes, normalizeGeneratedSetupType } from '../src/generator';
 import { verifyGeneratedApp } from '../src/generated-app-verification';
 
 type ParsedArgs = {

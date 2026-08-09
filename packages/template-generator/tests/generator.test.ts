@@ -3,14 +3,16 @@
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
 import { assert, test } from 'vitest';
+import {
+  normalizeGeneratedStylingChoice,
+  type GeneratedStylingChoice,
+} from '@tenkit/types/styling-definitions';
 
 import {
   generateGenericWithStandaloneAppVariantsProject,
   generateProject,
   generateSingleAppRuntimeTenantsProject,
   generateWhiteLabelAppsProject,
-  normalizeGeneratedStylingChoice,
-  type GeneratedStylingChoice,
 } from '../src/generator';
 import {
   getVirtualFile,

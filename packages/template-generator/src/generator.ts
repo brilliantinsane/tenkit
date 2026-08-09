@@ -26,19 +26,8 @@ import { mergeVirtualFileTrees, type VirtualFileTree } from './virtual-file-tree
 export {
   formatSupportedGeneratedSetupTypes,
   normalizeGeneratedSetupType,
-  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  SUPPORTED_GENERATED_SETUP_TYPES,
-  SUPPORTED_PUBLIC_SETUP_SLUGS,
-  type GeneratedSetupType,
-  type GeneratedSetupTypeInput,
-  type PublicSetupSlug,
 } from './generated-setup-types';
 export { normalizeGeneratedAccentColor, type GeneratedAccentColor } from './generated-accent-color';
-export {
-  normalizeGeneratedStylingChoice,
-  SUPPORTED_GENERATED_STYLING_CHOICES,
-  type GeneratedStylingChoice,
-} from '@tenkit/types/styling-definitions';
 export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
