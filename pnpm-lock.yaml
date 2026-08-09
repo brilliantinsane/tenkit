@@ -152,9 +152,9 @@ importers:
       '@databuddy/sdk':
         specifier: ^2.6.0
         version: 2.6.0(react@19.2.4)
-      '@tenkit/template-generator':
+      '@tenkit/types':
         specifier: workspace:*
-        version: link:../../packages/template-generator
+        version: link:../../packages/types
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
