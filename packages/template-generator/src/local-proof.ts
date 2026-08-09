@@ -7,10 +7,17 @@ import { generateProject, type GenerateProjectConfig } from './generator';
 import { writeProject, type WriteProjectOverwriteMode, type WriteProjectResult } from './writer';
 
 export {
+  GENERATED_PROJECT_VERIFICATION_PHASES,
   verifyGeneratedProject,
+  type GeneratedProjectVerificationEvidence,
+  type GeneratedProjectVerificationFailure,
+  type GeneratedProjectVerificationPhase,
+  type GeneratedProjectVerificationPhaseEvidence,
+  type GeneratedProjectVerificationProfile,
+  type GeneratedProjectVerificationSelection,
+  type GeneratedProjectVerificationStatus,
   type VerifyGeneratedProjectOptions,
 } from './generated-project-verification';
-
 export type GeneratedProjectGitMode = false | 'init' | 'commit';
 
 export type RunGenerationProofOptions = GenerateProjectConfig & {

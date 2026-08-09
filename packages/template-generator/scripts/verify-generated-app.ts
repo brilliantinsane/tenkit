@@ -13,6 +13,7 @@ import {
 
 import { formatSupportedGeneratedSetupTypes, normalizeGeneratedSetupType } from '../src/generator';
 import { verifyGeneratedApp } from '../src/generated-app-verification';
+import { createGeneratedAppCommandEnvironment } from '../src/generated-app-command-runner';
 
 type ParsedArgs = {
   appVariantAccents?: string[];
@@ -107,13 +108,29 @@ async function main() {
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
 
-  await verifyGeneratedApp({
+  const evidence = await verifyGeneratedApp({
     setupType: args.setupType,
     appVariantAccents: args.appVariantAccents,
     appVariantNames: args.appVariantNames,
     stylingChoice: args.stylingChoice,
     workspaceRoot,
+    environment: createGeneratedAppCommandEnvironment(),
+    profile: 'deterministic',
   });
+
+  if (evidence.status === 'failed') {
+    const firstFailure = evidence.failures[0];
+    const retainedTarget = evidence.retainedTargetName
+      ? ` Failed target retained in the system temporary directory as ${evidence.retainedTargetName}.`
+      : '';
+    throw new Error(
+      firstFailure
+        ? `Generated app verification failed during ${firstFailure.phase}: ${firstFailure.message}${retainedTarget}`
+        : `Generated app verification failed without structured failure evidence.${retainedTarget}`,
+    );
+  }
+
+  console.log(`Verified generated ${args.setupType} Expo app with ${args.stylingChoice} Styling.`);
 }
 
 main().catch((error: unknown) => {
