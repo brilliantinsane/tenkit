@@ -4,20 +4,17 @@ import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 
-import {
-  generateProject,
-  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  type GeneratedSetupType,
-  type VirtualFileTree,
-} from '@tenkit/template-generator';
+import { generateProject, type VirtualFileTree } from '@tenkit/template-generator';
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from '@tenkit/template-generator/styling-definitions';
+} from '@tenkit/types/styling-definitions';
 import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
-} from '@tenkit/template-generator/setup-type-definitions';
+  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
+  type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
 import fs from 'fs-extra';
 import { basename, join, relative, resolve, sep } from 'pathe';
 
@@ -552,15 +549,13 @@ export function planInstalledProjectVerificationCommands({
       cwd: targetDir,
       operation: 'generated app Expo config',
     },
-    ...remainingAppVariantSlugs.map(
-      (appVariantSlug): ExternalVerificationCommand => ({
-        command: packageManager,
-        args: ['run', 'expo:config'],
-        cwd: targetDir,
-        env: { APP_VARIANT_SLUG: appVariantSlug },
-        operation: 'generated app Expo config for non-default App Variant',
-      }),
-    ),
+    ...remainingAppVariantSlugs.map((appVariantSlug): ExternalVerificationCommand => ({
+      command: packageManager,
+      args: ['run', 'expo:config'],
+      cwd: targetDir,
+      env: { APP_VARIANT_SLUG: appVariantSlug },
+      operation: 'generated app Expo config for non-default App Variant',
+    })),
   ];
 }
 

@@ -255,6 +255,9 @@ importers:
       '@tenkit/template-generator':
         specifier: workspace:*
         version: link:../template-generator
+      '@tenkit/types':
+        specifier: workspace:*
+        version: link:../types
       commander:
         specifier: ^15.0.0
         version: 15.0.0

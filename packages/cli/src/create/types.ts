@@ -1,10 +1,10 @@
 import type {
   GeneratedAccentColor,
-  GeneratedSetupType,
   VirtualFileTree,
   WriteProjectResult,
 } from '@tenkit/template-generator';
-import type { GeneratedStylingChoice } from '@tenkit/template-generator/styling-definitions';
+import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
+import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import { PROMPT_CANCELLED, type PromptChoice } from '../constants';
 import type { PublicCliPackageManager } from './package-manager';

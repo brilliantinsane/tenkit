@@ -5,10 +5,7 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import {
-  derivePackageName,
-  validatePackageName,
-} from '@tenkit/template-generator/setup-type-definitions';
+import { derivePackageName, validatePackageName } from '@tenkit/types/setup-type-definitions';
 
 import { isDirectCliRun } from '../src/adapters/workspace';
 import { createProgram } from '../src/commands/create';

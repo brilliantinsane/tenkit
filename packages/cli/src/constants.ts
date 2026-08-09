@@ -2,11 +2,11 @@ import {
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupTypeInput,
   type PublicSetupSlug,
-} from '@tenkit/template-generator';
+} from '@tenkit/types/setup-type-definitions';
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from '@tenkit/template-generator/styling-definitions';
+} from '@tenkit/types/styling-definitions';
 import cliPackageMetadata from '../package.json' with { type: 'json' };
 
 export const CLI_VERSION = cliPackageMetadata.version;

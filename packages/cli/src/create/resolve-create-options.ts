@@ -1,11 +1,12 @@
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
-import { normalizeGeneratedSetupType, type GeneratedSetupType } from '@tenkit/template-generator';
+import { normalizeGeneratedSetupType } from '@tenkit/template-generator';
 import {
   derivePackageName,
   getGeneratedSetupTypeDefinition,
+  type GeneratedSetupType,
   validatePackageName,
-} from '@tenkit/template-generator/setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
 
 import {
   DEFAULT_PROJECT_NAME,

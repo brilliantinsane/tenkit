@@ -3,18 +3,18 @@ import {
   normalizeGeneratedAccentColor,
   normalizeGeneratedSetupType,
   type GeneratedAccentColor,
-  type GeneratedSetupType,
 } from '@tenkit/template-generator';
 import {
   normalizeGeneratedStylingChoice,
   type GeneratedStylingChoice,
-} from '@tenkit/template-generator/styling-definitions';
+} from '@tenkit/types/styling-definitions';
 import {
   deriveAppVariantIdentity,
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   normalizeProjectName,
-} from '@tenkit/template-generator/setup-type-definitions';
+  type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
 
 import { DEFAULT_PUBLIC_SETUP_SLUG, supportedStylingValues } from '../constants';
 
