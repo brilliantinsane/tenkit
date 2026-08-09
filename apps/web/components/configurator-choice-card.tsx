@@ -34,7 +34,11 @@ function ChoiceCardContent({
   return (
     <span className="block p-1.5">
       <span
-        className={cn("relative block rounded-lg bg-background", className)}
+        data-slot="configurator-choice-card-content"
+        className={cn(
+          "relative block rounded-lg bg-accent dark:bg-background",
+          className
+        )}
       >
         {children}
       </span>

@@ -2,16 +2,19 @@
 
 import { useAtom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
+import { useId } from "react"
 
 import {
+  HydrationSafePackageManagerIcon,
   CommandActions,
   CommandTabsHeader,
   type PackageManager,
 } from "@/components/command-block-primitives"
 import { Tabs, TabsContent } from "@/components/tabs"
 
+const PACKAGE_MANAGER_STORAGE_KEY = "tenkit:package-manager:v1"
 const packageManagerAtom = atomWithStorage<PackageManager>(
-  "tenkit:package-manager:v1",
+  PACKAGE_MANAGER_STORAGE_KEY,
   "pnpm"
 )
 
@@ -25,6 +28,10 @@ function isPackageManager(value: string): value is PackageManager {
     value === "npm" ||
     value === "bun"
   )
+}
+
+function getPackageManagerInitScript(rootId: string) {
+  return `(()=>{try{const root=document.getElementById(${JSON.stringify(rootId)});if(!root)return;const preferred=JSON.parse(localStorage.getItem(${JSON.stringify(PACKAGE_MANAGER_STORAGE_KEY)})??"null");if(typeof preferred!=="string")return;const elements=root.querySelectorAll("[data-package-manager-value]");let available=false;elements.forEach((element)=>{if(element.getAttribute("data-package-manager-value")===preferred)available=true});if(!available)return;elements.forEach((element)=>{const active=element.getAttribute("data-package-manager-value")===preferred;element.setAttribute("data-state",active?"active":"inactive");if(element.getAttribute("role")==="tab")element.setAttribute("aria-selected",String(active))})}catch{}})()`
 }
 
 export type CodeBlockCommandProps = {
@@ -50,6 +57,7 @@ export function CodeBlockCommand({
   onCopyError,
 }: CodeBlockCommandProps) {
   const [packageManager, setPackageManager] = useAtom(packageManagerAtom)
+  const rootId = useId()
 
   const tabs = {
     prompt,
@@ -61,58 +69,77 @@ export function CodeBlockCommand({
   const availablePackageManagers = PACKAGE_MANAGERS.filter((packageManager) =>
     Boolean(tabs[packageManager])
   )
+  const selectedPackageManager = availablePackageManagers.includes(
+    packageManager
+  )
+    ? packageManager
+    : (availablePackageManagers[0] ?? "prompt")
 
   return (
-    <div
-      data-slot="code-block-command"
-      className="relative overflow-hidden rounded-xl bg-background"
-    >
-      <Tabs
-        className="gap-0"
-        value={packageManager}
-        onValueChange={(value) => {
-          if (isPackageManager(value)) {
-            setPackageManager(value)
-          }
-        }}
+    <>
+      <div
+        id={rootId}
+        data-slot="code-block-command"
+        className="relative overflow-hidden rounded-xl bg-accent dark:bg-background"
       >
-        <CommandTabsHeader
-          packageManager={packageManager}
-          tabKeys={availablePackageManagers}
-        />
+        <Tabs
+          className="gap-0"
+          value={selectedPackageManager}
+          onValueChange={(value) => {
+            if (isPackageManager(value)) {
+              setPackageManager(value)
+            }
+          }}
+        >
+          <CommandTabsHeader tabKeys={availablePackageManagers}>
+            <HydrationSafePackageManagerIcon
+              packageManager={selectedPackageManager}
+              packageManagers={availablePackageManagers}
+            />
+          </CommandTabsHeader>
 
-        {availablePackageManagers.map((availablePackageManager) => {
-          return (
-            <TabsContent
-              key={availablePackageManager}
-              value={availablePackageManager}
-            >
-              <pre
-                data-pm={availablePackageManager}
-                className="group/tabs-content-pre overscroll-x-contain p-4 leading-6 not-data-[pm=prompt]:overflow-x-auto"
+          {availablePackageManagers.map((availablePackageManager) => {
+            return (
+              <TabsContent
+                key={availablePackageManager}
+                value={availablePackageManager}
+                forceMount
+                suppressHydrationWarning
+                data-package-manager-value={availablePackageManager}
+                className="data-[state=inactive]:hidden"
               >
-                <code
-                  data-slot="code-block"
-                  data-language="bash"
-                  className="font-mono text-sm/none text-muted-foreground group-data-[pm=prompt]/tabs-content-pre:whitespace-normal"
+                <pre
+                  data-pm={availablePackageManager}
+                  className="group/tabs-content-pre overscroll-x-contain p-4 leading-6 not-data-[pm=prompt]:overflow-x-auto"
                 >
-                  <span className="select-none group-data-[pm=prompt]/tabs-content-pre:hidden">
-                    ${" "}
-                  </span>
-                  {tabs[availablePackageManager]}
-                </code>
-              </pre>
-            </TabsContent>
-          )
-        })}
-      </Tabs>
+                  <code
+                    data-slot="code-block"
+                    data-language="bash"
+                    className="font-mono text-sm/none text-muted-foreground group-data-[pm=prompt]/tabs-content-pre:whitespace-normal"
+                  >
+                    <span className="select-none group-data-[pm=prompt]/tabs-content-pre:hidden">
+                      ${" "}
+                    </span>
+                    {tabs[availablePackageManager]}
+                  </code>
+                </pre>
+              </TabsContent>
+            )
+          })}
+        </Tabs>
 
-      <CommandActions
-        packageManager={packageManager}
-        command={tabs[packageManager] ?? ""}
-        onCopySuccess={onCopySuccess}
-        onCopyError={onCopyError}
+        <CommandActions
+          packageManager={selectedPackageManager}
+          command={tabs[selectedPackageManager] ?? ""}
+          onCopySuccess={onCopySuccess}
+          onCopyError={onCopyError}
+        />
+      </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: getPackageManagerInitScript(rootId),
+        }}
       />
-    </div>
+    </>
   )
 }

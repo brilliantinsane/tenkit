@@ -23,7 +23,7 @@ export const SITE_CONFIG = {
   },
   publisher: "Tenkit",
   creator: "Tenkit",
-  ogImage: "/og-image.png?v=2",
+  ogImage: "/opengraph-image?v=3",
   ogImageWidth: 1200,
   ogImageHeight: 630,
   ogImageType: "image/png",
@@ -60,12 +60,17 @@ export const CONFIGURE_PAGE_SEO = {
   title: "Configure a Multi-Tenant App Built with Expo",
   description:
     "Configure a multi-tenant starter built with Expo: choose a Setup Type, Styling Option, App Variants, and a reproducible create-tenkit command.",
+  ogImage: "/configure/opengraph-image?v=1",
+  ogImageAlt:
+    "Tenkit Configurator preview for choosing a Setup Type, Styling Choice, and App Variants for a generated app built with Expo.",
 } as const
 
 type PageSeo = {
   path: string
   title: string
   description: string
+  ogImage: string
+  ogImageAlt: string
 }
 
 export function createPageMetadata(page: PageSeo) {
@@ -85,10 +90,10 @@ export function createPageMetadata(page: PageSeo) {
       description: page.description,
       images: [
         {
-          url: ogImageUrl(),
+          url: absoluteUrl(page.ogImage),
           width: SITE_CONFIG.ogImageWidth,
           height: SITE_CONFIG.ogImageHeight,
-          alt: SITE_CONFIG.ogImageAlt,
+          alt: page.ogImageAlt,
           type: SITE_CONFIG.ogImageType,
         },
       ],
@@ -97,7 +102,7 @@ export function createPageMetadata(page: PageSeo) {
       card: "summary_large_image",
       title: socialTitle,
       description: page.description,
-      images: [ogImageUrl()],
+      images: [absoluteUrl(page.ogImage)],
     },
   } satisfies Metadata
 }

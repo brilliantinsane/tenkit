@@ -13,10 +13,13 @@ const Databuddy = dynamic(
 )
 
 export function DatabuddyAnalytics() {
+  if (!IS_DATABUDDY_TRACKING_ENABLED) {
+    return null
+  }
+
   return (
     <Databuddy
       clientId={DATABUDDY_CLIENT_ID}
-      disabled={!IS_DATABUDDY_TRACKING_ENABLED}
       trackOutgoingLinks
       trackWebVitals
       trackInteractions

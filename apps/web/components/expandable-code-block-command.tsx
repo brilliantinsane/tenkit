@@ -4,6 +4,7 @@ import { ChevronDownIcon } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 
 import {
+  AnimatedPackageManagerIcon,
   CommandActions,
   CommandTabsHeader,
 } from "@/components/command-block-primitives"
@@ -43,7 +44,10 @@ export function ExpandableCodeBlockCommand({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-background">
+    <div
+      data-slot="expandable-code-block-command"
+      className="relative overflow-hidden rounded-xl bg-accent dark:bg-background"
+    >
       <Tabs
         className="gap-0"
         value={value}
@@ -57,10 +61,9 @@ export function ExpandableCodeBlockCommand({
           }
         }}
       >
-        <CommandTabsHeader
-          packageManager={value}
-          tabKeys={CONFIGURATOR_PACKAGE_MANAGER_VALUES}
-        />
+        <CommandTabsHeader tabKeys={CONFIGURATOR_PACKAGE_MANAGER_VALUES}>
+          <AnimatedPackageManagerIcon packageManager={value} />
+        </CommandTabsHeader>
 
         {CONFIGURATOR_PACKAGE_MANAGER_VALUES.map((packageManager) => {
           const command = tabs[packageManager]
