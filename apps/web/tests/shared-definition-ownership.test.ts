@@ -53,22 +53,26 @@ describe("Public Web App shared-definition ownership", () => {
     expect(CONFIGURATOR_SETUP_TYPE_VALUES).toEqual(SUPPORTED_PUBLIC_SETUP_SLUGS)
   })
 
-  test("prepares and declares only the shared package Web consumes", () => {
+  test("declares production and test-only workspace dependencies for fresh installs", () => {
     const packageMetadata = JSON.parse(
       readFileSync(join(packageRoot, "package.json"), "utf8")
     ) as {
       scripts?: Record<string, string>
       dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
     }
 
     expect(packageMetadata.dependencies?.["@tenkit/types"]).toBe("workspace:*")
     expect(packageMetadata.dependencies).not.toHaveProperty(
       "@tenkit/template-generator"
     )
+    expect(
+      packageMetadata.devDependencies?.["@tenkit/template-generator"]
+    ).toBe("workspace:*")
     expect(packageMetadata.scripts).toMatchObject({
       prebuild: "pnpm -F @tenkit/types build",
-      pretest: "pnpm -F @tenkit/types build",
-      pretypecheck: "pnpm -F @tenkit/types build",
+      pretest: "pnpm -F @tenkit/template-generator build",
+      pretypecheck: "pnpm -F @tenkit/template-generator build",
     })
   })
 })

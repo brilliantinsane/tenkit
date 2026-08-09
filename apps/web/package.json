@@ -8,11 +8,11 @@
     "prebuild": "pnpm -F @tenkit/types build",
     "build": "next build",
     "start": "next start",
-    "pretest": "pnpm -F @tenkit/types build",
+    "pretest": "pnpm -F @tenkit/template-generator build",
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "pretypecheck": "pnpm -F @tenkit/types build",
+    "pretypecheck": "pnpm -F @tenkit/template-generator build",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tenkit/template-generator": "workspace:*",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
