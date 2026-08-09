@@ -7,8 +7,8 @@
     "draft:build": "tsx scripts/build-draft-release-set.ts",
     "plan": "tsx scripts/plan-release.ts",
     "verify": "tsx scripts/verify-release.ts",
-    "test": "pnpm -F @tenkit/template-generator build && vitest run",
-    "typecheck": "pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false"
+    "test": "pnpm -F @tenkit/types build && pnpm -F @tenkit/template-generator build && vitest run",
+    "typecheck": "pnpm -F @tenkit/types build && pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false"
   },
   "devDependencies": {
     "@tenkit/template-generator": "workspace:*",

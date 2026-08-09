@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { assertReleaseSetArtifactsMatch, reproduceReleaseSet } from '../src/reproduce-release-set';
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from '../src/release-set.ts';
 import type { RunReleaseContainer } from '../src/run-release-container';
+import { normalizeArtifactTimes } from './release-artifact-fixture';
 
 const sourceSha = '041f79e50ff5e84f5883be026201bde10f77f93e';
 const version = '0.3.0';
@@ -36,6 +37,7 @@ async function writeArtifact(
     version?: string;
     internalDependencyVersion?: string;
     internalDependencySection?: 'dependencies' | 'peerDependencies';
+    omittedArtifactPath?: string;
     embeddedCliVersion?: string;
     content?: string;
   } = {},
@@ -46,17 +48,38 @@ async function writeArtifact(
   const packageRoot = join(packRoot, 'package');
   await mkdir(packageRoot);
   await writeFile(join(packageRoot, 'README.md'), overrides.content ?? packageFixture.name);
+  for (const requiredArtifactPath of packageFixture.requiredArtifactPaths) {
+    const relativePath = requiredArtifactPath.replace(/^package\//, '');
+
+    if (
+      relativePath === 'README.md' ||
+      relativePath === 'package.json' ||
+      requiredArtifactPath === overrides.omittedArtifactPath
+    ) {
+      continue;
+    }
+
+    const requiredPath = join(packageRoot, relativePath);
+    await mkdir(dirname(requiredPath), { recursive: true });
+    await writeFile(requiredPath, packageFixture.name);
+  }
   await writeFile(
     join(packageRoot, 'package.json'),
     `${JSON.stringify(
       {
         name: overrides.name ?? packageFixture.name,
         version: overrides.version ?? releaseVersion,
-        ...('internalDependency' in packageFixture
+        ...(packageFixture.internalDependencies.length > 0
           ? {
               [overrides.internalDependencySection ?? 'dependencies']: {
-                [packageFixture.internalDependency]:
-                  overrides.internalDependencyVersion ?? releaseVersion,
+                ...Object.fromEntries(
+                  packageFixture.internalDependencies.map((dependencyName) => [
+                    dependencyName,
+                    dependencyName === '@tenkit/template-generator'
+                      ? (overrides.internalDependencyVersion ?? releaseVersion)
+                      : releaseVersion,
+                  ]),
+                ),
               },
             }
           : {}),
@@ -65,20 +88,18 @@ async function writeArtifact(
       2,
     )}\n`,
   );
-  if (packageFixture.name === '@tenkit/cli') {
-    await mkdir(join(packageRoot, 'dist'));
+  if (
+    packageFixture.name === '@tenkit/cli' &&
+    overrides.omittedArtifactPath !== 'package/dist/index.mjs'
+  ) {
+    await mkdir(join(packageRoot, 'dist'), { recursive: true });
     await writeFile(
       join(packageRoot, 'dist/index.mjs'),
       `const CLI_VERSION = ${JSON.stringify(overrides.embeddedCliVersion ?? releaseVersion)};\n`,
     );
   }
   const fixedTime = new Date('2026-01-01T00:00:00.000Z');
-  await utimes(join(packageRoot, 'README.md'), fixedTime, fixedTime);
-  await utimes(join(packageRoot, 'package.json'), fixedTime, fixedTime);
-  if (packageFixture.name === '@tenkit/cli') {
-    await utimes(join(packageRoot, 'dist/index.mjs'), fixedTime, fixedTime);
-    await utimes(join(packageRoot, 'dist'), fixedTime, fixedTime);
-  }
+  await normalizeArtifactTimes(packageRoot, fixedTime);
   await utimes(packageRoot, fixedTime, fixedTime);
   const tarPath = join(packRoot, 'package.tar');
   execFileSync('tar', ['-cf', tarPath, 'package'], { cwd: packRoot });
@@ -166,7 +187,7 @@ describe('canonical Release Set reproduction', () => {
     }
   });
 
-  test('constructs the three canonical RC artifacts with exact prerelease pins', async () => {
+  test('constructs the four canonical RC artifacts with exact prerelease pins', async () => {
     const repositoryRoot = await createRepositoryFixture();
     const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
     tempRoots.push(outputParent);
@@ -184,6 +205,7 @@ describe('canonical Release Set reproduction', () => {
     });
 
     expect(reproduced.artifactPaths.map((artifactPath) => artifactPath.split('/').at(-1))).toEqual([
+      'tenkit-types-0.4.0-rc.2.tgz',
       'tenkit-template-generator-0.4.0-rc.2.tgz',
       'tenkit-cli-0.4.0-rc.2.tgz',
       'create-tenkit-0.4.0-rc.2.tgz',
@@ -192,14 +214,67 @@ describe('canonical Release Set reproduction', () => {
       releaseCandidateVersion,
       releaseCandidateVersion,
       releaseCandidateVersion,
+      releaseCandidateVersion,
     ]);
     expect(
       reproduced.packages.map((releasePackage) => releasePackage.internalDependencies),
     ).toEqual([
       [],
-      [{ name: '@tenkit/template-generator', version: releaseCandidateVersion }],
+      [{ name: '@tenkit/types', version: releaseCandidateVersion }],
+      [
+        { name: '@tenkit/types', version: releaseCandidateVersion },
+        { name: '@tenkit/template-generator', version: releaseCandidateVersion },
+      ],
       [{ name: '@tenkit/cli', version: releaseCandidateVersion }],
     ]);
+  });
+
+  test('rejects a tarball missing a required package file', async () => {
+    const repositoryRoot = await createRepositoryFixture();
+    const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
+    tempRoots.push(outputParent);
+
+    await expect(
+      reproduceReleaseSet({
+        repositoryRoot,
+        outputRoot: join(outputParent, 'verification'),
+        sourceSha,
+        version,
+        extractSource: fakeSourceExtraction,
+        async runContainer(input) {
+          await writeReleaseArtifacts(input.artifactRoot, {
+            packageName: '@tenkit/types',
+            overrides: { omittedArtifactPath: 'package/dist/styling-definitions.mjs' },
+          });
+        },
+      }),
+    ).rejects.toThrow(
+      /tenkit-types-0\.3\.0\.tgz is missing package\/dist\/styling-definitions\.mjs/,
+    );
+  });
+
+  test('rejects a Template generator tarball missing a public export', async () => {
+    const repositoryRoot = await createRepositoryFixture();
+    const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
+    tempRoots.push(outputParent);
+
+    await expect(
+      reproduceReleaseSet({
+        repositoryRoot,
+        outputRoot: join(outputParent, 'verification'),
+        sourceSha,
+        version,
+        extractSource: fakeSourceExtraction,
+        async runContainer(input) {
+          await writeReleaseArtifacts(input.artifactRoot, {
+            packageName: '@tenkit/template-generator',
+            overrides: { omittedArtifactPath: 'package/dist/generator.mjs' },
+          });
+        },
+      }),
+    ).rejects.toThrow(
+      /tenkit-template-generator-0\.3\.0\.tgz is missing package\/dist\/generator\.mjs/,
+    );
   });
 
   test.each([
@@ -213,7 +288,7 @@ describe('canonical Release Set reproduction', () => {
     [
       'non-runtime internal dependency edge',
       { internalDependencySection: 'peerDependencies' },
-      /direct dependency @tenkit\/template-generator/,
+      /direct dependency @tenkit\/types/,
     ],
     [
       'embedded Public CLI version',
@@ -272,7 +347,7 @@ describe('canonical Release Set reproduction', () => {
     ).rejects.toThrow(/tenkit-cli-0\.3\.0\.tgz shasum mismatch/);
   });
 
-  test('requires comparison metadata for the complete three-package Release Set', async () => {
+  test('requires comparison metadata for the complete four-package Release Set', async () => {
     const fixtureRepositoryRoot = await createRepositoryFixture();
     const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
     tempRoots.push(outputParent);
@@ -289,11 +364,67 @@ describe('canonical Release Set reproduction', () => {
 
     await expect(
       assertReleaseSetArtifactsMatch({
-        expectedPackages: reproduced.packages.slice(0, 2),
+        expectedPackages: reproduced.packages.slice(0, 3),
         artifactPaths: reproduced.artifactPaths,
         expectedVersion: version,
       }),
-    ).rejects.toThrow(/exactly 3 packages/);
+    ).rejects.toThrow(/exactly 4 packages/);
+  });
+
+  test.each([
+    ['missing', (artifactPaths: string[]) => artifactPaths.slice(0, 3)],
+    ['extra', (artifactPaths: string[]) => [...artifactPaths, artifactPaths[0]!]],
+  ] as const)('rejects a %s artifact input', async (_label, selectArtifactPaths) => {
+    const fixtureRepositoryRoot = await createRepositoryFixture();
+    const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
+    tempRoots.push(outputParent);
+    const reproduced = await reproduceReleaseSet({
+      repositoryRoot: fixtureRepositoryRoot,
+      outputRoot: join(outputParent, 'draft'),
+      sourceSha,
+      version,
+      extractSource: fakeSourceExtraction,
+      async runContainer(input) {
+        await writeReleaseArtifacts(input.artifactRoot);
+      },
+    });
+
+    await expect(
+      assertReleaseSetArtifactsMatch({
+        expectedPackages: reproduced.packages,
+        artifactPaths: selectArtifactPaths(reproduced.artifactPaths),
+        expectedVersion: version,
+      }),
+    ).rejects.toThrow(/exactly 4 artifacts/);
+  });
+
+  test('rejects reordered artifact inputs', async () => {
+    const fixtureRepositoryRoot = await createRepositoryFixture();
+    const outputParent = await mkdtemp(join(tmpdir(), 'tenkit-release-reproduction-'));
+    tempRoots.push(outputParent);
+    const reproduced = await reproduceReleaseSet({
+      repositoryRoot: fixtureRepositoryRoot,
+      outputRoot: join(outputParent, 'draft'),
+      sourceSha,
+      version,
+      extractSource: fakeSourceExtraction,
+      async runContainer(input) {
+        await writeReleaseArtifacts(input.artifactRoot);
+      },
+    });
+    const reorderedArtifactPaths = [...reproduced.artifactPaths];
+    [reorderedArtifactPaths[0], reorderedArtifactPaths[1]] = [
+      reorderedArtifactPaths[1]!,
+      reorderedArtifactPaths[0]!,
+    ];
+
+    await expect(
+      assertReleaseSetArtifactsMatch({
+        expectedPackages: reproduced.packages,
+        artifactPaths: reorderedArtifactPaths,
+        expectedVersion: version,
+      }),
+    ).rejects.toThrow(/@tenkit\/types artifact expected tenkit-types-0\.3\.0\.tgz/);
   });
 
   test.runIf(dockerAvailable)(

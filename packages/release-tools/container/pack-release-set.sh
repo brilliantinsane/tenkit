@@ -5,8 +5,8 @@ set -euo pipefail
 workspace_root=/workspace
 artifact_root=/artifacts
 # The reviewed source commit owns this graph; never accept package roots from the host checkout.
-package_names=('@tenkit/template-generator' '@tenkit/cli' 'create-tenkit')
-package_roots=('packages/template-generator' 'packages/cli' 'packages/create-tenkit')
+package_names=('@tenkit/types' '@tenkit/template-generator' '@tenkit/cli' 'create-tenkit')
+package_roots=('packages/types' 'packages/template-generator' 'packages/cli' 'packages/create-tenkit')
 
 export CI=true
 export INIT_CWD="$workspace_root"

@@ -35,6 +35,10 @@ test('workspace root is a private command router rather than an Expo app package
     'pnpm -F playground typecheck && pnpm -F @tenkit/types typecheck && pnpm -F @tenkit/template-generator typecheck && pnpm -F @tenkit/release-tools typecheck && pnpm -F @tenkit/cli typecheck && pnpm -F create-tenkit typecheck && pnpm -F @tenkit/web typecheck',
   );
   assert.equal(
+    workspacePackageJson.scripts?.['pack:dry-run'],
+    'pnpm -F @tenkit/types pack:dry-run && pnpm -F @tenkit/template-generator pack:dry-run && pnpm -F @tenkit/cli pack:dry-run && pnpm -F create-tenkit pack:dry-run',
+  );
+  assert.equal(
     workspacePackageJson.scripts?.['release:plan'],
     'pnpm -F @tenkit/release-tools plan',
   );

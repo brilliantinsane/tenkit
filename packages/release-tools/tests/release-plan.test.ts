@@ -44,7 +44,12 @@ describe('Release Set planning', () => {
         gitTag: 'v1.3.0',
         githubReleaseType: 'release',
         sourceSha: baseHistory.sourceSha,
-        dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+        dependencyApprovalOrder: [
+          '@tenkit/types',
+          '@tenkit/template-generator',
+          '@tenkit/cli',
+          'create-tenkit',
+        ],
       }),
     );
   });
@@ -306,7 +311,12 @@ describe('Release Set planning', () => {
       npmDistTag: 'latest',
       gitTag: 'v0.3.0',
       githubReleaseType: 'release',
-      dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+      dependencyApprovalOrder: [
+        '@tenkit/types',
+        '@tenkit/template-generator',
+        '@tenkit/cli',
+        'create-tenkit',
+      ],
       contributingCommits: [
         {
           sha: '3a10d24d0de14a4a0b175b58e046ecbc00a996f3',
@@ -324,6 +334,7 @@ describe('Release Set planning', () => {
   });
 
   test.each([
+    'packages/types/README.md',
     'packages/template-generator/README.md',
     'packages/cli/src/cli.ts',
     'packages/create-tenkit/package.json',

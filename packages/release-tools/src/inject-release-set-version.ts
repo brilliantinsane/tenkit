@@ -52,7 +52,7 @@ function parsePackageMetadata(contents: string, expectedName: string): Record<st
   return packageMetadata;
 }
 
-function withExactInternalDependency(
+function withExactInternalDependencies(
   packageMetadata: Record<string, unknown>,
   releasePackage: (typeof RELEASE_SET_PACKAGES)[number],
   version: string,
@@ -61,9 +61,7 @@ function withExactInternalDependency(
     packageMetadata,
     releasePackage.name,
   );
-  const internalDependency = internalDependencies[0];
-
-  if (!internalDependency) {
+  if (internalDependencies.length === 0) {
     return packageMetadata;
   }
 
@@ -73,7 +71,9 @@ function withExactInternalDependency(
     ...packageMetadata,
     dependencies: {
       ...dependencies,
-      [internalDependency.name]: version,
+      ...Object.fromEntries(
+        internalDependencies.map((internalDependency) => [internalDependency.name, version]),
+      ),
     },
   };
 }
@@ -88,7 +88,7 @@ export async function injectReleaseSetVersion(input: InjectReleaseSetVersionInpu
         await readFile(path, 'utf8'),
         releasePackage.name,
       );
-      const releaseMetadata = withExactInternalDependency(
+      const releaseMetadata = withExactInternalDependencies(
         packageMetadata,
         releasePackage,
         input.plan.version,

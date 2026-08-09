@@ -65,6 +65,35 @@ async function readEmbeddedPublicCliVersion(
   return [...embeddedVersions][0]!;
 }
 
+async function assertRequiredArtifactPaths(
+  artifactPath: string,
+  artifactFilename: string,
+  requiredPaths: readonly string[],
+): Promise<void> {
+  let entries: Set<string>;
+
+  try {
+    const result = await execFileAsync('tar', ['-tzf', artifactPath], {
+      encoding: 'utf8',
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    entries = new Set(
+      result.stdout
+        .split('\n')
+        .map((entry) => entry.replace(/^\.\//, '').replace(/\/$/, ''))
+        .filter(Boolean),
+    );
+  } catch (error) {
+    throw new Error(`Unable to list package files from ${artifactFilename}.`, { cause: error });
+  }
+
+  for (const requiredPath of requiredPaths) {
+    if (!entries.has(requiredPath)) {
+      throw new Error(`${artifactFilename} is missing ${requiredPath}.`);
+    }
+  }
+}
+
 export async function inspectReleaseArtifact(
   input: InspectReleaseArtifactInput,
 ): Promise<ReleaseArtifact> {
@@ -79,6 +108,12 @@ export async function inspectReleaseArtifact(
   if (artifactFilename !== expectedFilename) {
     throw new Error(`${input.expectedName} artifact expected ${expectedFilename}.`);
   }
+
+  await assertRequiredArtifactPaths(
+    input.artifactPath,
+    artifactFilename,
+    releasePackage.requiredArtifactPaths,
+  );
 
   let packageJsonContents: string;
 

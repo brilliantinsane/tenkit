@@ -13,12 +13,20 @@ describe('Draft Release Set build', () => {
     async (version) => {
       const packages = [
         {
+          name: '@tenkit/types' as const,
+          version,
+          artifactFilename: `tenkit-types-${version}.tgz`,
+          integrity: 'sha512-types',
+          shasum: '0'.repeat(40),
+          internalDependencies: [],
+        },
+        {
           name: '@tenkit/template-generator' as const,
           version,
           artifactFilename: `tenkit-template-generator-${version}.tgz`,
           integrity: 'sha512-template',
           shasum: '1'.repeat(40),
-          internalDependencies: [],
+          internalDependencies: [{ name: '@tenkit/types' as const, version }],
         },
         {
           name: '@tenkit/cli' as const,
@@ -26,7 +34,10 @@ describe('Draft Release Set build', () => {
           artifactFilename: `tenkit-cli-${version}.tgz`,
           integrity: 'sha512-cli',
           shasum: '2'.repeat(40),
-          internalDependencies: [{ name: '@tenkit/template-generator' as const, version }],
+          internalDependencies: [
+            { name: '@tenkit/types' as const, version },
+            { name: '@tenkit/template-generator' as const, version },
+          ],
         },
         {
           name: 'create-tenkit' as const,
