@@ -5,10 +5,10 @@ import Handlebars from 'handlebars';
 import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
+import { type GeneratedAppVariantRole } from '@tenkit/types/setup-type-definitions';
+import { type GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import { type GeneratedAccentColor } from './generated-accent-color';
-import { type GeneratedAppVariantRole } from './generated-setup-type-definitions';
-import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {

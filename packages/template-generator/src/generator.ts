@@ -1,18 +1,19 @@
 import {
-  formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedSetupType,
-} from './generated-setup-types';
-import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
-import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupTypeDefinition,
   validatePackageName,
-} from './generated-setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
 import {
   type GeneratedStylingChoice,
   normalizeGeneratedStylingChoice,
-} from './generated-styling-choices';
+} from '@tenkit/types/styling-definitions';
+
+import {
+  formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedSetupType,
+} from './generated-setup-types';
+import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
 import {
   GENERATED_PROJECT_PACKAGE_MANAGERS,
   readTemplateTree,
@@ -37,7 +38,7 @@ export {
   normalizeGeneratedStylingChoice,
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from './generated-styling-choices';
+} from '@tenkit/types/styling-definitions';
 export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {

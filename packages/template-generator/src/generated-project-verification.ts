@@ -1,8 +1,9 @@
-import { runGeneratedAppCommand } from './generated-app-command-runner';
 import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
-} from './generated-setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
+
+import { runGeneratedAppCommand } from './generated-app-command-runner';
 import type { GeneratedProjectPackageManager, GeneratedSetupType } from './generator';
 
 export type VerifyGeneratedProjectOptions = {
