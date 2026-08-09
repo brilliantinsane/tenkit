@@ -1,6 +1,7 @@
 import {
   resolveGeneratedAppOptions,
   type GeneratedAppOptionIssue,
+  type GeneratedAppOptions,
   type RawGeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
 import {
@@ -86,13 +87,17 @@ function formatGeneratedAppOptionIssue(issue: GeneratedAppOptionIssue): string {
   return `Unsupported Generated App Option combination ${JSON.stringify(issue.selection)}`;
 }
 
-function assertSupportedGeneratedAppOptions(rawOptions: RawGeneratedAppOptions | undefined): void {
+function resolveSupportedGeneratedAppOptions(
+  rawOptions: RawGeneratedAppOptions | undefined,
+): GeneratedAppOptions {
   const resolution = resolveGeneratedAppOptions(rawOptions ?? {});
   if (resolution.status === 'invalid') {
     throw new Error(
       `${resolution.issues.map(formatGeneratedAppOptionIssue).join('. ')}. Template source was not read.`,
     );
   }
+
+  return resolution.selection;
 }
 
 function normalizePackageName(value: string | undefined, fallback: string): string {
@@ -177,6 +182,7 @@ function normalizeTemplateContext({
   packageManager: rawPackageManager,
   stylingChoice: rawStylingChoice,
   setupTypeDefinition,
+  generatedAppOptions,
 }: {
   appVariantAccents?: readonly (string | undefined)[];
   appVariantNames?: readonly (string | undefined)[];
@@ -185,6 +191,7 @@ function normalizeTemplateContext({
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
   setupTypeDefinition: GeneratedSetupTypeDefinition;
+  generatedAppOptions: GeneratedAppOptions;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
   const packageManager = normalizePackageManager(rawPackageManager);
@@ -196,6 +203,7 @@ function normalizeTemplateContext({
       appVariantNames,
       setupTypeDefinition,
     }),
+    isExpressBackend: generatedAppOptions.backend === 'express',
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -208,9 +216,16 @@ function normalizeTemplateContext({
     packageManager,
     packageManagerInstallCommand: `${packageManager} install`,
     packageManagerRunCommand: `${packageManager} run`,
+    packageManagerServerRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir apps/server run'
+        : packageManager === 'npm'
+          ? 'npm --prefix apps/server run'
+          : 'bun --cwd apps/server run',
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
     stylingChoice,
+    setupType: setupTypeDefinition.setupType,
   };
 }
 
@@ -231,6 +246,9 @@ function readProjectTemplateTree({
     context.packageManager === 'pnpm'
       ? readTemplateTree('options/package-manager/pnpm/shared', context)
       : [];
+  const backendTree = context.isExpressBackend
+    ? readTemplateTree('options/backend/express/shared', context)
+    : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({
@@ -244,6 +262,7 @@ function readProjectTemplateTree({
     setupTypeSharedTree,
     setupTypeStylingTree,
     packageManagerTree,
+    backendTree,
     appVariantAssets,
   );
 }
@@ -251,7 +270,7 @@ function readProjectTemplateTree({
 export function generateWhiteLabelAppsProject(
   config: WhiteLabelAppsProjectConfig = { setupType: 'white-label-apps' },
 ): VirtualFileTree {
-  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
 
   if (normalizeGeneratedSetupType(config.setupType) !== 'white-label-apps') {
     throw new Error('The Template generator currently supports only White Label Apps output.');
@@ -266,6 +285,7 @@ export function generateWhiteLabelAppsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({
@@ -277,7 +297,7 @@ export function generateWhiteLabelAppsProject(
 export function generateSingleAppRuntimeTenantsProject(
   config: SingleAppRuntimeTenantsProjectConfig = { setupType: 'single-app-runtime-tenants' },
 ): VirtualFileTree {
-  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
 
   if (normalizeGeneratedSetupType(config.setupType) !== 'single-app-runtime-tenants') {
     throw new Error('The Template generator expected Single App Runtime Tenants output.');
@@ -292,6 +312,7 @@ export function generateSingleAppRuntimeTenantsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({
@@ -305,7 +326,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
     setupType: 'generic-with-standalone-app-variants',
   },
 ): VirtualFileTree {
-  assertSupportedGeneratedAppOptions(config.generatedAppOptions);
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
 
   if (normalizeGeneratedSetupType(config.setupType) !== 'generic-with-standalone-app-variants') {
     throw new Error('The Template generator expected Generic With Standalone App Variants output.');
@@ -322,6 +343,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({

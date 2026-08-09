@@ -1,11 +1,13 @@
 import { Text, View } from 'react-native';
 
+import { useBusinessProfile } from '@/business-data/use-business-profile';
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 export default function HomeScreen() {
   const { appVariant } = useAppVariantConfig();
   const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+  const { profile, error, isLoading } = useBusinessProfile();
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
@@ -16,6 +18,12 @@ export default function HomeScreen() {
         Runtime Tenants App
       </Text>
       <View className="min-w-56 gap-1">
+        <Text selectable className="font-mono text-sm text-foreground">
+          Business Data: {isLoading ? 'Loading' : (profile?.name ?? 'Unavailable')}
+        </Text>
+        {profile ? <Text className="text-base text-muted">{profile.description}</Text> : null}
+        {error ? <Text className="text-base text-muted">{error}</Text> : null}
+        <Text className="font-mono text-sm text-foreground">Auth: none</Text>
         <Text selectable className="font-mono text-sm text-foreground">
           App Variant: {appVariant.slug}
         </Text>

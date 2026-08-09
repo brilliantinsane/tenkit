@@ -2,14 +2,30 @@
   "name": "{{packageName}}",
   "version": "1.0.0",
   "private": true,
+  {{#if isExpressBackend}}
+  {{#if isNpmPackageManager}}
+  "workspaces": ["apps/server"],
+  {{/if}}
+  {{#if isBunPackageManager}}
+  "workspaces": ["apps/server"],
+  {{/if}}
+  {{/if}}
   "main": "{{#if isUnistylesStyling}}index.ts{{else}}expo-router/entry{{/if}}",
   "scripts": {
     "start": "expo start",
+    {{#if isExpressBackend}}
+    "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
+    "build": "{{packageManagerServerRunCommand}} build",
+    "server:dev": "{{packageManagerServerRunCommand}} dev",
+    "server:start:prod": "{{packageManagerServerRunCommand}} start:prod",
+    "test": "{{packageManagerServerRunCommand}} test",
+    "test:integration": "{{packageManagerServerRunCommand}} test:integration",
+    {{/if}}
     "tenkit": "tsx scripts/tenkit-cli.ts",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit --pretty false",
+    "typecheck": "tsc --noEmit --pretty false{{#if isExpressBackend}} && {{packageManagerServerRunCommand}} typecheck{{/if}}",
     "expo:config": "expo config --type public"
   },
   "dependencies": {
@@ -53,6 +69,9 @@
     "@types/node": "^25.9.3",
     "@types/react": "~19.2.2",
     "commander": "^15.0.0",
+    {{#if isExpressBackend}}
+    "concurrently": "^9.2.1",
+    {{/if}}
     {{#if isUniwindStyling}}
     "tailwindcss": "^4.3.2",
     {{/if}}

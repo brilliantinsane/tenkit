@@ -1,6 +1,12 @@
+import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
+import {
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
 import {
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
@@ -18,16 +24,18 @@ import { createGeneratedAppCommandEnvironment } from '../src/generated-app-comma
 type ParsedArgs = {
   appVariantAccents?: string[];
   appVariantNames?: string[];
+  generatedAppOptions: RawGeneratedAppOptions;
   setupType?: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
 };
 
-type ResolvedArgs = Omit<ParsedArgs, 'setupType'> & {
+type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
+  generatedAppOptions: GeneratedAppOptions;
   setupType: GeneratedSetupType;
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -66,6 +74,7 @@ function parseOrderedValues(value: string): string[] {
 
 function parseArgs(args: string[]): ResolvedArgs {
   const parsed: ParsedArgs = {
+    generatedAppOptions: {},
     stylingChoice: 'bare',
   };
 
@@ -78,6 +87,18 @@ function parseArgs(args: string[]): ResolvedArgs {
 
     if (arg === '--setup-type') {
       parsed.setupType = parseSetupType(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--backend') {
+      parsed.generatedAppOptions.backend = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--auth') {
+      parsed.generatedAppOptions.auth = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--database') {
+      parsed.generatedAppOptions.database = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--orm') {
+      parsed.generatedAppOptions.orm = readValue(args, index, arg);
       index += 1;
     } else if (arg === '--styling') {
       parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
@@ -97,25 +118,59 @@ function parseArgs(args: string[]): ResolvedArgs {
     throw new Error(`Missing --setup-type.\n${usage()}`);
   }
 
+  const generatedAppOptionsResolution = resolveGeneratedAppOptions(parsed.generatedAppOptions);
+  if (generatedAppOptionsResolution.status === 'invalid') {
+    throw new Error('Unsupported Generated App Option combination.');
+  }
+
   return {
     ...parsed,
+    generatedAppOptions: generatedAppOptionsResolution.selection,
     setupType: parsed.setupType,
   };
+}
+
+function acquireAvailablePort(): Promise<number> {
+  return new Promise((resolvePort, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close();
+        reject(new Error('Could not allocate a local verification port.'));
+        return;
+      }
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolvePort(address.port);
+      });
+    });
+  });
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
+  const isExpressBackend = args.generatedAppOptions.backend === 'express';
+  const port = isExpressBackend ? await acquireAvailablePort() : undefined;
+  const environment = createGeneratedAppCommandEnvironment(
+    port === undefined ? {} : { PORT: String(port), CLIENT_ORIGIN: 'http://localhost:8081' },
+  );
 
   const evidence = await verifyGeneratedApp({
     setupType: args.setupType,
     appVariantAccents: args.appVariantAccents,
     appVariantNames: args.appVariantNames,
+    generatedAppOptions: args.generatedAppOptions,
     stylingChoice: args.stylingChoice,
     workspaceRoot,
-    environment: createGeneratedAppCommandEnvironment(),
-    profile: 'deterministic',
+    environment,
+    profile: isExpressBackend ? 'node-server' : 'deterministic',
   });
 
   if (evidence.status === 'failed') {

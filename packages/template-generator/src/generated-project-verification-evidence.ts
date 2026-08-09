@@ -14,6 +14,7 @@ export const GENERATED_PROJECT_VERIFICATION_PHASES = [
   'shape',
   'install',
   'typecheck',
+  'test',
   'expo-config',
   'build',
   'start',

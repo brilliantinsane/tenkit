@@ -1,0 +1,132 @@
+{{#if isExpressBackend}}
+import { fetch } from 'expo/fetch';
+import { useEffect, useState } from 'react';
+{{/if}}
+
+{{#unless isExpressBackend}}
+import { appVariants } from '@/constants/app-variants';
+{{/unless}}
+import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
+
+export type BusinessProfile = {
+  name: string;
+  description: string;
+};
+
+export type BusinessProfileState = {
+  profile: BusinessProfile | null;
+  error: string | null;
+  isLoading: boolean;
+};
+
+{{#if isExpressBackend}}
+function resolveBackendUrl(): URL {
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (!configuredUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL is required for the Express Backend.');
+  }
+
+  let backendUrl: URL;
+  try {
+    backendUrl = new URL(configuredUrl);
+  } catch {
+    throw new Error('EXPO_PUBLIC_API_URL must be an absolute http or https URL.');
+  }
+  if (!['http:', 'https:'].includes(backendUrl.protocol)) {
+    throw new Error('EXPO_PUBLIC_API_URL must be an absolute http or https URL.');
+  }
+
+  return backendUrl;
+}
+
+function parseBusinessProfile(responseBody: unknown): BusinessProfile {
+  if (
+    typeof responseBody !== 'object' ||
+    responseBody === null ||
+    !('profile' in responseBody) ||
+    typeof responseBody.profile !== 'object' ||
+    responseBody.profile === null ||
+    !('name' in responseBody.profile) ||
+    typeof responseBody.profile.name !== 'string' ||
+    !('description' in responseBody.profile) ||
+    typeof responseBody.profile.description !== 'string'
+  ) {
+    throw new Error('Express returned invalid Business Data Example data.');
+  }
+
+  return {
+    name: responseBody.profile.name,
+    description: responseBody.profile.description,
+  };
+}
+
+export function useBusinessProfile(): BusinessProfileState {
+  const { appVariant } = useAppVariantConfig();
+  const [state, setState] = useState<BusinessProfileState>({
+    profile: null,
+    error: null,
+    isLoading: true,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let isActive = true;
+
+    setState({ profile: null, error: null, isLoading: true });
+    async function loadBusinessProfile(): Promise<void> {
+      try {
+        const requestUrl = new URL('/api/business-profile', resolveBackendUrl());
+        requestUrl.searchParams.set('setupType', '{{setupType}}');
+        requestUrl.searchParams.set('appVariantId', String(appVariant.id));
+        const response = await fetch(requestUrl, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`Business Data Example request failed with HTTP ${response.status}.`);
+        }
+        const responseBody: unknown = await response.json();
+        const profile = parseBusinessProfile(responseBody);
+        if (isActive) {
+          setState({ profile, error: null, isLoading: false });
+        }
+      } catch (error: unknown) {
+        if (!isActive || (error instanceof Error && error.name === 'AbortError')) {
+          return;
+        }
+        setState({
+          profile: null,
+          error: error instanceof Error ? error.message : 'Business Data Example request failed.',
+          isLoading: false,
+        });
+      }
+    }
+
+    void loadBusinessProfile();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [appVariant.id]);
+
+  return state;
+}
+{{else}}
+export function useBusinessProfile(): BusinessProfileState {
+  const { appVariant } = useAppVariantConfig();
+  const selectedAppVariant = appVariants.find(
+    (candidate) => candidate.appVariantId === appVariant.id,
+  );
+
+  if (!selectedAppVariant) {
+    throw new Error('Active App Variant is missing local Business Data.');
+  }
+
+  return {
+    profile: {
+      name: selectedAppVariant.name,
+      description: `The ${selectedAppVariant.name} local Business Data Example.`,
+    },
+    error: null,
+    isLoading: false,
+  };
+}
+{{/if}}

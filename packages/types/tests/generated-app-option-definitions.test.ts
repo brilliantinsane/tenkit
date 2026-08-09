@@ -24,10 +24,16 @@ test('exposes every public Generated App Option value and the zero-service defau
   });
 });
 
-test('owns one supported-combinations list containing only the zero-service slice', () => {
+test('owns one supported-combinations list containing the zero-service and first Express slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
       backend: 'none',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'express',
       auth: 'none',
       database: 'none',
       orm: 'none',
@@ -66,7 +72,15 @@ test('does not expose mutable references to the canonical compatibility catalog'
     status: 'resolved',
     selection: DEFAULT_GENERATED_APP_OPTIONS,
   });
-  assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [DEFAULT_GENERATED_APP_OPTIONS]);
+  assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
+    DEFAULT_GENERATED_APP_OPTIONS,
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+  ]);
 });
 
 test('returns structured invalid-value and unsupported-combination facts', () => {
@@ -83,26 +97,20 @@ test('returns structured invalid-value and unsupported-combination facts', () =>
   });
 
   assert.deepEqual(resolveGeneratedAppOptions({ backend: 'express' }), {
-    status: 'invalid',
-    issues: [
-      {
-        code: 'unsupported-combination',
-        selection: {
-          backend: 'express',
-          auth: 'none',
-          database: 'none',
-          orm: 'none',
-        },
-        supportedCombinations: SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
-      },
-    ],
+    status: 'resolved',
+    selection: {
+      backend: 'express',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
   });
 });
 
 test('derives dependency-aware partial choices from the same supported list', () => {
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
-    backend: { status: 'resolved', values: ['none'], value: 'none' },
+    backend: { status: 'selectable', values: ['none', 'express'] },
     auth: { status: 'resolved', values: ['none'], value: 'none' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
@@ -117,14 +125,11 @@ test('derives dependency-aware partial choices from the same supported list', ()
   });
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express' }), {
-    status: 'invalid',
-    issues: [
-      {
-        code: 'unsupported-combination',
-        selection: { backend: 'express' },
-        supportedCombinations: SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
-      },
-    ],
+    status: 'available',
+    backend: { status: 'selected', values: ['express'], value: 'express' },
+    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
 });
 
@@ -144,5 +149,5 @@ test('accepts exactly the combinations present in the one supported list', () =>
     }
   }
 
-  assert.deepEqual(accepted, ['none:none:none:none']);
+  assert.deepEqual(accepted, ['none:none:none:none', 'express:none:none:none']);
 });

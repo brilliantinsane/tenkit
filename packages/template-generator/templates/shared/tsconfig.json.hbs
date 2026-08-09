@@ -22,5 +22,8 @@
     "src/uniwind-env.d.ts"{{/if}},
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+  ]{{#if isExpressBackend}},
+  "exclude": [
+    "apps/server"
+  ]{{/if}}
 }

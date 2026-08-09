@@ -31,6 +31,33 @@ APP_VARIANT_SLUG={{appVariants.[1].slug}} {{packageManagerRunCommand}} expo:conf
 
 Full Runtime Tenant records are not stored in Expo `extra`; they live in `src/constants/runtime-tenants.ts`.
 
+{{#if isExpressBackend}}
+## Express Backend
+
+This project keeps Expo at the root and adds a private TypeScript server in `apps/server`.
+Copy the committed examples before starting local development:
+
+```bash
+cp .env.example .env.local
+cp apps/server/.env.example apps/server/.env.local
+```
+
+`EXPO_PUBLIC_API_URL` is embedded in the mobile bundle and must be an absolute Backend URL reachable by the target device. Replace the example address with your development machine's LAN address for physical devices, use `http://10.0.2.2:3000` for the Android emulator, or use `http://127.0.0.1:3000` for the iOS simulator. Production builds require the deployed HTTPS Backend URL. `PORT` and `CLIENT_ORIGIN` belong only to the Express server. Keep real local environment files uncommitted.
+
+Run Expo and Express together:
+
+```bash
+{{packageManagerRunCommand}} dev
+```
+
+Expo-only `{{packageManagerRunCommand}} start` remains available. Verify the server with `GET http://127.0.0.1:3000/health`, run its tests with `{{packageManagerRunCommand}} test`, and prove compiled production startup with:
+
+```bash
+{{packageManagerRunCommand}} build
+{{packageManagerRunCommand}} server:start:prod
+```
+{{/if}}
+
 ## Select an App Variant
 
 App Variant native identity is selected with `APP_VARIANT_SLUG`:

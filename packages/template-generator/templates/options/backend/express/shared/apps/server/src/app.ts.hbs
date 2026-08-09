@@ -1,0 +1,53 @@
+import cors from 'cors';
+import express, { type Express } from 'express';
+import { z } from 'zod';
+
+import {
+  BusinessProfileRequestError,
+  resolveBusinessProfile,
+} from './business-profile.js';
+
+const positiveIntegerQueryValue = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .transform((value) => Number(value));
+
+const businessProfileRequestSchema = z
+  .object({
+    appVariantId: positiveIntegerQueryValue,
+    runtimeTenantId: positiveIntegerQueryValue.optional(),
+    setupType: z.string(),
+  })
+  .strict();
+
+export function createApp(clientOrigin: string): Express {
+  const app = express();
+
+  app.disable('x-powered-by');
+  app.use(cors({ origin: clientOrigin }));
+
+  app.get('/health', (_request, response) => {
+    response.json({ status: 'ok' });
+  });
+
+  app.get('/api/business-profile', (request, response) => {
+    const parsedRequest = businessProfileRequestSchema.safeParse(request.query);
+    if (!parsedRequest.success) {
+      response.status(400).json({ error: 'Invalid Business Data Example context' });
+      return;
+    }
+
+    try {
+      response.json({ profile: resolveBusinessProfile(parsedRequest.data) });
+    } catch (error) {
+      if (error instanceof BusinessProfileRequestError) {
+        response.status(error.status).json({ error: error.message });
+        return;
+      }
+
+      throw error;
+    }
+  });
+
+  return app;
+}

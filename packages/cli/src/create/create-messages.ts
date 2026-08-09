@@ -32,6 +32,13 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
     output.log(`- ${formatInstallCommand(result.packageManager)}`);
   }
 
+  if (result.generatedAppOptions.backend === 'express') {
+    output.log('- cp .env.example .env.local');
+    output.log('- cp apps/server/.env.example apps/server/.env.local');
+    output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');
+    output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
+  }
+
   output.log(`- ${formatRunCommand(result.packageManager, 'android')}`);
   output.log(`- ${formatRunCommand(result.packageManager, 'ios')}`);
   output.log(`- ${formatRunCommand(result.packageManager, 'web')}`);

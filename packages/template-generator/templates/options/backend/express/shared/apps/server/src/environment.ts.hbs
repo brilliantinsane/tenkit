@@ -1,0 +1,23 @@
+import { z } from 'zod';
+
+const serverEnvironmentSchema = z.object({
+  CLIENT_ORIGIN: z.string().url().refine((origin) => {
+    const protocol = new URL(origin).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  }, 'CLIENT_ORIGIN must use http or https'),
+  PORT: z.coerce.number().int().min(1).max(65_535),
+});
+
+export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+
+export function readServerEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+): ServerEnvironment {
+  const parsedEnvironment = serverEnvironmentSchema.safeParse(environment);
+
+  if (!parsedEnvironment.success) {
+    throw new Error('Express requires valid PORT and CLIENT_ORIGIN environment values.');
+  }
+
+  return parsedEnvironment.data;
+}

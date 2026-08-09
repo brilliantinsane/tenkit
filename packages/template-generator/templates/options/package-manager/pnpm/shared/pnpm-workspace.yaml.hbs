@@ -1,5 +1,8 @@
 packages:
   - '.'
+{{#if isExpressBackend}}
+  - 'apps/server'
+{{/if}}
 
 allowBuilds:
   esbuild: true

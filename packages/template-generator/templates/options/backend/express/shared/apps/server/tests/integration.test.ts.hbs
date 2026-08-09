@@ -1,0 +1,47 @@
+import { expect, test } from 'vitest';
+
+function serverUrl(path: string): URL {
+  const port = process.env.PORT;
+  if (!port || !/^\d+$/.test(port)) {
+    throw new Error('Express integration requires a numeric PORT.');
+  }
+
+  return new URL(path, `http://127.0.0.1:${port}`);
+}
+
+test('compiled Express serves health and public Business Data', async () => {
+  const healthResponse = await fetch(serverUrl('/health'));
+  expect(healthResponse.status).toBe(200);
+  await expect(healthResponse.json()).resolves.toEqual({ status: 'ok' });
+
+  const businessProfileUrl = serverUrl('/api/business-profile');
+  businessProfileUrl.searchParams.set('setupType', '{{setupType}}');
+  businessProfileUrl.searchParams.set('appVariantId', '{{appVariants.[0].appVariantId}}');
+{{#if isSingleAppRuntimeTenants}}
+  businessProfileUrl.searchParams.set('runtimeTenantId', '100');
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  businessProfileUrl.searchParams.set('runtimeTenantId', '100');
+{{/ifSetupType}}
+
+  const profileResponse = await fetch(businessProfileUrl);
+  expect(profileResponse.status).toBe(200);
+  await expect(profileResponse.json()).resolves.toEqual({
+    profile: {
+{{#ifSetupType 'white-label-apps'}}
+      name: {{{appVariants.[0].displayNameStringLiteral}}},
+      description: 'The first white-label Business Data Example.',
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+      name: 'North Branch',
+      description: 'The northern branch Business Data Example.',
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+      name: 'North Studio',
+      description: 'The North Studio Business Data Example.',
+{{/ifSetupType}}
+    },
+  });
+
+  expect((await fetch(serverUrl('/api/auth/session'))).status).toBe(404);
+});

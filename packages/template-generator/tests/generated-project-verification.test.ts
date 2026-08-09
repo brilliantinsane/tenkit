@@ -15,6 +15,20 @@ import type { GeneratedAppProcess } from '../src/generated-app-process-runner';
 import { generateProject } from '../src/generator';
 import { writeProject } from '../src/writer';
 
+const EXPRESS_OPTIONS = {
+  backend: 'express',
+  auth: 'none',
+  database: 'none',
+  orm: 'none',
+} as const;
+
+const NODE_SELECTION = {
+  setupType: 'white-label-apps',
+  stylingChoice: 'bare',
+  packageManager: 'pnpm',
+  generatedAppOptions: EXPRESS_OPTIONS,
+} as const;
+
 const { runGeneratedAppCommand } = vi.hoisted(() => ({
   runGeneratedAppCommand: vi.fn(
     async (
@@ -102,34 +116,7 @@ async function createWrittenNodeProject(): Promise<string> {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-node-verification-'));
   const targetDir = join(tempRoot, 'generated-project');
   tempRoots.push(tempRoot);
-  const tree = generateProject({
-    setupType: 'white-label-apps',
-    stylingChoice: 'bare',
-    packageManager: 'pnpm',
-  }).map((file) => {
-    if (file.path !== 'package.json' || typeof file.contents !== 'string') {
-      return file;
-    }
-    const packageJson = JSON.parse(file.contents) as {
-      scripts: Record<string, string>;
-    };
-    return {
-      ...file,
-      contents: `${JSON.stringify(
-        {
-          ...packageJson,
-          scripts: {
-            ...packageJson.scripts,
-            build: 'tsc -b',
-            'server:start:prod': 'node dist/server.js',
-            'test:integration': 'vitest run',
-          },
-        },
-        null,
-        2,
-      )}\n`,
-    };
-  });
+  const tree = generateProject(NODE_SELECTION);
   await writeProject({ targetDir, tree, overwrite: 'never' });
   return targetDir;
 }
@@ -157,6 +144,7 @@ test('one written generated project returns ordered structured phase evidence', 
     ['shape', 'passed'],
     ['install', 'passed'],
     ['typecheck', 'passed'],
+    ['test', 'not-applicable'],
     ['expo-config', 'passed'],
     ['build', 'not-applicable'],
     ['start', 'not-applicable'],
@@ -222,6 +210,7 @@ test('a selection-specific shape mismatch stops commands and records cleanup', a
     ['shape', 'failed'],
     ['install', 'skipped'],
     ['typecheck', 'skipped'],
+    ['test', 'skipped'],
     ['expo-config', 'skipped'],
     ['build', 'skipped'],
     ['start', 'skipped'],
@@ -306,17 +295,18 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43123',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43123' },
     profile: 'node-server',
   });
 
   expect(evidence.status).toBe('passed');
   expect(evidence.phases.find(({ phase }) => phase === 'build')?.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'test')?.status).toBe('passed');
   expect(evidence.phases.find(({ phase }) => phase === 'start')?.status).toBe('passed');
   expect(evidence.phases.find(({ phase }) => phase === 'runtime')?.status).toBe('passed');
   expect(evidence.phases.find(({ phase }) => phase === 'shutdown')?.status).toBe('passed');
@@ -325,6 +315,31 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
     'pnpm',
     ['run', 'server:start:prod'],
     expect.objectContaining({ readinessUrl: 'http://127.0.0.1:43123/health' }),
+  );
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'test'],
+    expect.any(Object),
+  );
+  expect(
+    runGeneratedAppCommand.mock.invocationCallOrder[
+      runGeneratedAppCommand.mock.calls.findIndex((call) => call[2].join(' ') === 'run test')
+    ],
+  ).toBeLessThan(startGeneratedAppProcess.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER);
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    process.execPath,
+    ['--input-type=module', '--eval', expect.stringContaining('await import(moduleName)')],
+    expect.objectContaining({
+      env: expect.any(Object),
+    }),
+  );
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'test:integration'],
+    expect.any(Object),
   );
 });
 
@@ -349,12 +364,12 @@ test('readiness timeout stops runtime but always shuts down the process', async 
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43124',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43124' },
     profile: 'node-server',
   });
 
@@ -366,6 +381,7 @@ test('readiness timeout stops runtime but always shuts down the process', async 
 
 test.each([
   { failedArgs: ['run', 'build'], phase: 'build' },
+  { failedArgs: ['run', 'test'], phase: 'test' },
   { failedArgs: ['run', 'test:integration'], phase: 'runtime' },
 ] as const)('a Node $phase command failure owns its phase', async ({ failedArgs, phase }) => {
   const targetDir = await createWrittenNodeProject();
@@ -377,12 +393,12 @@ test.each([
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43126',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43126' },
     profile: 'node-server',
   });
 
@@ -414,12 +430,12 @@ test('premature server exit owns start and still runs shutdown cleanup', async (
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43127',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43127' },
     profile: 'node-server',
   });
 
@@ -451,12 +467,12 @@ test('forced shutdown fails lifecycle proof after runtime passes', async () => {
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43125',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43125' },
     profile: 'node-server',
   });
 
@@ -487,12 +503,12 @@ test('a leaked process tree fails shutdown and cleanup evidence', async () => {
 
   const evidence = await verifyGeneratedProject({
     targetDir,
-    selection: {
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
+    selection: NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43128',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
-    environment: { PATH: '/safe/bin', PORT: '43128' },
     profile: 'node-server',
   });
 
@@ -522,13 +538,13 @@ test('a shutdown boundary rejection fails shutdown and cleanup evidence', async 
   });
 
   const evidence = await verifyGeneratedProject({
-    environment: { PATH: '/safe/bin', PORT: '43129' },
-    profile: 'node-server',
-    selection: {
-      packageManager: 'pnpm',
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43129',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
+    profile: 'node-server',
+    selection: NODE_SELECTION,
     targetDir,
   });
 
@@ -545,13 +561,13 @@ test('an unexpected server start rejection carries the completed phase ledger', 
   startGeneratedAppProcess.mockRejectedValueOnce(new Error('unsupported process boundary'));
 
   const failure: unknown = await verifyGeneratedProject({
-    environment: { PATH: '/safe/bin', PORT: '43130' },
-    profile: 'node-server',
-    selection: {
-      packageManager: 'pnpm',
-      setupType: 'white-label-apps',
-      stylingChoice: 'bare',
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43130',
+      CLIENT_ORIGIN: 'http://localhost:8081',
     },
+    profile: 'node-server',
+    selection: NODE_SELECTION,
     targetDir,
   }).catch((error: unknown) => error);
 

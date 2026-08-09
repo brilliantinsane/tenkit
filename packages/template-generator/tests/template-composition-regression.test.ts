@@ -54,7 +54,20 @@ test('Template source paths use ADR 0009 owners', () => {
 
   assert.deepEqual(
     paths.filter((path) => path.endsWith('package.json.hbs')),
-    setupTypeTemplatePaths.map((setupType) => `${setupType}/shared/package.json.hbs`).sort(),
+    [
+      'generic-standalone/shared/package.json.hbs',
+      'options/backend/express/shared/apps/server/package.json.hbs',
+      'runtime-tenants/shared/package.json.hbs',
+      'white-label/shared/package.json.hbs',
+    ],
+  );
+
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/backend/express/'))
+      .map((path) => path.replace('options/backend/express/shared/', ''))
+      .filter((path) => !path.startsWith('apps/server/')),
+    [],
   );
 
   const appShellPaths = paths.filter(

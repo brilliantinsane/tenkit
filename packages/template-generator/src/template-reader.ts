@@ -5,7 +5,10 @@ import Handlebars from 'handlebars';
 import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
-import { type GeneratedAppVariantRole } from '@tenkit/types/setup-type-definitions';
+import {
+  type GeneratedAppVariantRole,
+  type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
 import { type GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import { type GeneratedAccentColor } from './generated-accent-color';
@@ -13,6 +16,7 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
+  isExpressBackend: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -23,10 +27,12 @@ export type TemplateContext = {
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
   packageManagerRunCommand: string;
+  packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;
   projectName: string;
   projectNameStringLiteral: string;
   stylingChoice: GeneratedStylingChoice;
+  setupType: GeneratedSetupType;
 };
 
 export type TemplateAppVariantContext = {
@@ -48,6 +54,17 @@ export type GeneratedProjectPackageManager = (typeof GENERATED_PROJECT_PACKAGE_M
 
 const templatesRoot = resolve(fileURLToPath(new URL('../templates', import.meta.url)));
 const handlebars = Handlebars.create();
+
+handlebars.registerHelper(
+  'ifSetupType',
+  function (
+    this: TemplateContext,
+    expectedSetupType: GeneratedSetupType,
+    options: Handlebars.HelperOptions,
+  ) {
+    return this.setupType === expectedSetupType ? options.fn(this) : options.inverse(this);
+  },
+);
 
 function toVirtualPath(path: string): string {
   return path.split('\\').join('/');

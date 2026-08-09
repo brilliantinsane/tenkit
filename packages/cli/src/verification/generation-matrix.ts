@@ -6,6 +6,10 @@ import { promisify } from 'node:util';
 
 import { generateProject, type VirtualFileTree } from '@tenkit/template-generator';
 import {
+  DEFAULT_GENERATED_APP_OPTIONS,
+  type GeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
 } from '@tenkit/types/styling-definitions';
@@ -35,6 +39,12 @@ const MATRIX_GIT_ENV = {
   GIT_COMMITTER_NAME: 'Tenkit Matrix',
   GIT_COMMITTER_EMAIL: 'matrix@tenkit.dev',
 } as const;
+const EXPRESS_NONE_GENERATED_APP_OPTIONS = {
+  backend: 'express',
+  auth: 'none',
+  database: 'none',
+  orm: 'none',
+} as const satisfies GeneratedAppOptions;
 
 export const GENERATION_MATRIX_ROOT = '/tmp/tenkit-test';
 
@@ -66,6 +76,7 @@ export type GenerationMatrixCase = {
   setupType: GeneratedSetupType;
   publicSetupSlug: string;
   stylingChoice: GeneratedStylingChoice;
+  generatedAppOptions: GeneratedAppOptions;
   packageManager: PublicCliPackageManager;
   valueProfile: ValueProfile;
   appVariantNames: readonly string[];
@@ -128,12 +139,22 @@ function matrixCaseId({
   stylingChoice,
   packageManager,
   valueProfile,
+  generatedAppOptions,
 }: Pick<
   GenerationMatrixCase,
-  'phase' | 'publicSetupSlug' | 'stylingChoice' | 'packageManager' | 'valueProfile'
+  | 'phase'
+  | 'publicSetupSlug'
+  | 'stylingChoice'
+  | 'packageManager'
+  | 'valueProfile'
+  | 'generatedAppOptions'
 >): string {
   const prefix = phase === 'installed' ? 'installed-' : '';
-  return `${prefix}${publicSetupSlug}-${stylingChoice}-${packageManager}-${valueProfile}`;
+  const generatedAppOptionsSuffix =
+    generatedAppOptions.backend === 'none'
+      ? ''
+      : `-${generatedAppOptions.backend}-${generatedAppOptions.auth}-${generatedAppOptions.database}-${generatedAppOptions.orm}`;
+  return `${prefix}${publicSetupSlug}-${stylingChoice}-${packageManager}-${valueProfile}${generatedAppOptionsSuffix}`;
 }
 
 function createMatrixCase({
@@ -144,10 +165,13 @@ function createMatrixCase({
   valueProfile,
   install,
   git,
+  generatedAppOptions = DEFAULT_GENERATED_APP_OPTIONS,
 }: Pick<
   GenerationMatrixCase,
   'phase' | 'setupType' | 'stylingChoice' | 'packageManager' | 'valueProfile' | 'install' | 'git'
->): GenerationMatrixCase {
+> & {
+  generatedAppOptions?: GeneratedAppOptions;
+}): GenerationMatrixCase {
   const definition = getGeneratedSetupTypeDefinition(setupType);
 
   const appVariantValues =
@@ -169,6 +193,7 @@ function createMatrixCase({
     appVariantAccents: [...appVariantValues.accents],
     install,
     git,
+    generatedAppOptions,
   } as const;
 
   return {
@@ -283,12 +308,29 @@ export function createInstalledVerificationCases(): readonly GenerationMatrixCas
   ];
 }
 
+export function createExpressInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+    createMatrixCase({
+      phase: 'installed',
+      setupType,
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+      generatedAppOptions: EXPRESS_NONE_GENERATED_APP_OPTIONS,
+    }),
+  );
+}
+
 async function listProjectFiles({
   rootDir,
   ignoredTopLevelDirectories,
+  ignoredDirectories,
 }: {
   rootDir: string;
   ignoredTopLevelDirectories: ReadonlySet<string>;
+  ignoredDirectories: ReadonlySet<string>;
 }): Promise<string[]> {
   const files: string[] = [];
 
@@ -301,6 +343,10 @@ async function listProjectFiles({
       const topLevelName = relativePath.split('/')[0];
 
       if (topLevelName && ignoredTopLevelDirectories.has(topLevelName)) {
+        continue;
+      }
+
+      if (entry.isDirectory() && ignoredDirectories.has(entry.name)) {
         continue;
       }
 
@@ -325,11 +371,13 @@ export async function assertGeneratedProjectMatches({
   tree,
   allowedUnexpectedFiles = [],
   ignoredTopLevelDirectories = [],
+  ignoredDirectories = [],
 }: {
   targetDir: string;
   tree: VirtualFileTree;
   allowedUnexpectedFiles?: readonly string[];
   ignoredTopLevelDirectories?: readonly string[];
+  ignoredDirectories?: readonly string[];
 }): Promise<void> {
   const expectedPaths = new Set(tree.map(({ path }) => path));
   const allowedPaths = new Set(allowedUnexpectedFiles);
@@ -351,6 +399,7 @@ export async function assertGeneratedProjectMatches({
   const actualPaths = await listProjectFiles({
     rootDir: targetDir,
     ignoredTopLevelDirectories: new Set(ignoredTopLevelDirectories),
+    ignoredDirectories: new Set(ignoredDirectories),
   });
 
   for (const path of actualPaths) {
@@ -586,6 +635,10 @@ async function verifyMatrixCase(
       setup: matrixCase.publicSetupSlug,
       styling: matrixCase.stylingChoice,
       packageManager: matrixCase.packageManager,
+      backend: matrixCase.generatedAppOptions.backend,
+      auth: matrixCase.generatedAppOptions.auth,
+      database: matrixCase.generatedAppOptions.database,
+      orm: matrixCase.generatedAppOptions.orm,
       appVariantNamesInput:
         matrixCase.valueProfile === 'custom' ? matrixCase.appVariantNames.join(',') : undefined,
       appVariantAccentsInput:
@@ -607,6 +660,7 @@ async function verifyMatrixCase(
     result.setupType !== matrixCase.setupType ||
     result.stylingChoice !== matrixCase.stylingChoice ||
     result.packageManager !== matrixCase.packageManager ||
+    JSON.stringify(result.generatedAppOptions) !== JSON.stringify(matrixCase.generatedAppOptions) ||
     JSON.stringify(result.appVariantNames) !== JSON.stringify(matrixCase.appVariantNames) ||
     JSON.stringify(result.appVariantAccents) !== JSON.stringify(matrixCase.appVariantAccents)
   ) {
@@ -629,6 +683,7 @@ async function verifyMatrixCase(
     projectName: matrixCase.id,
     packageName: matrixCase.id,
     packageManager: matrixCase.packageManager,
+    generatedAppOptions: matrixCase.generatedAppOptions,
   });
   const allowedUnexpectedFiles = matrixCase.install
     ? [selectedLockfile(matrixCase.packageManager)]
@@ -638,7 +693,8 @@ async function verifyMatrixCase(
     targetDir: result.targetDir,
     tree: expectedTree,
     allowedUnexpectedFiles,
-    ignoredTopLevelDirectories: ['node_modules', '.git'],
+    ignoredTopLevelDirectories: ['.git'],
+    ignoredDirectories: ['node_modules'],
   });
   await assertInstallArtifacts(matrixCase, result.targetDir);
   await assertGitArtifacts(matrixCase, result.targetDir);
@@ -698,7 +754,11 @@ export async function runGenerationMatrix({
     return report;
   }
 
-  const cases = [...createExhaustiveGenerationCases(), ...createInstalledVerificationCases()];
+  const cases = [
+    ...createExhaustiveGenerationCases(),
+    ...createInstalledVerificationCases(),
+    ...createExpressInstalledVerificationCases(),
+  ];
 
   for (const matrixCase of cases) {
     process.stdout.write(`Verifying ${matrixCase.id}...\n`);

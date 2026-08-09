@@ -45,17 +45,14 @@ const VERIFICATION_PHASE_TIMEOUT_MS = {
   'expo-config': 2 * 60 * 1000,
   install: 15 * 60 * 1000,
   runtime: 5 * 60 * 1000,
+  test: 5 * 60 * 1000,
   typecheck: 5 * 60 * 1000,
 } as const;
 
+const FORBIDDEN_SQL_RUNTIME_MODULES = ['@prisma/client', 'drizzle-orm', 'mysql2', 'pg'] as const;
+
 const PROCESS_READINESS_TIMEOUT_MS = 2 * 60 * 1000;
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 15 * 1000;
-const NODE_SERVER_LIFECYCLE_SCRIPTS = {
-  build: 'tsc -b',
-  'server:start:prod': 'node dist/server.js',
-  'test:integration': 'vitest run',
-} as const;
-
 export type GeneratedProjectVerificationSelection = {
   setupType: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
@@ -155,11 +152,8 @@ async function listWrittenFiles(targetDir: string, directory = targetDir): Promi
   return paths.sort();
 }
 
-function expectedWrittenTree(
-  selection: GeneratedProjectVerificationSelection,
-  profile: GeneratedProjectVerificationProfile,
-): VirtualFileTree {
-  const generatedTree = generateProject({
+function expectedWrittenTree(selection: GeneratedProjectVerificationSelection): VirtualFileTree {
+  return generateProject({
     setupType: selection.setupType,
     appVariantAccents: selection.appVariantAccents,
     appVariantNames: selection.appVariantNames,
@@ -169,39 +163,34 @@ function expectedWrittenTree(
     stylingChoice: selection.stylingChoice,
     generatedAppOptions: selection.generatedAppOptions,
   });
-  if (profile === 'deterministic') {
-    return generatedTree;
-  }
+}
 
-  return generatedTree.map((file) => {
-    if (file.path !== 'package.json' || typeof file.contents !== 'string') {
-      return file;
-    }
-    const packageJson: unknown = JSON.parse(file.contents);
-    if (!isUnknownRecord(packageJson)) {
-      throw new Error('The selected generated project package manifest is invalid.');
-    }
-    const manifest = readPackageManifest(packageJson);
-    return {
-      ...file,
-      contents: `${JSON.stringify(
-        {
-          ...packageJson,
-          scripts: { ...manifest.scripts, ...NODE_SERVER_LIFECYCLE_SCRIPTS },
-        },
-        null,
-        2,
-      )}\n`,
-    };
-  });
+function expectedNodeServerLifecycleScripts(
+  packageManager: GeneratedProjectPackageManager,
+): Readonly<
+  Record<'build' | 'server:start:prod' | 'test' | 'test:integration' | 'typecheck', string>
+> {
+  const serverRunCommand =
+    packageManager === 'pnpm'
+      ? 'pnpm --dir apps/server run'
+      : packageManager === 'npm'
+        ? 'npm --prefix apps/server run'
+        : 'bun --cwd apps/server run';
+
+  return {
+    build: `${serverRunCommand} build`,
+    'server:start:prod': `${serverRunCommand} start:prod`,
+    test: `${serverRunCommand} test`,
+    'test:integration': `${serverRunCommand} test:integration`,
+    typecheck: `${serverRunCommand} typecheck`,
+  };
 }
 
 async function assertSelectedGeneratedShape(
   targetDir: string,
   selection: GeneratedProjectVerificationSelection,
-  profile: GeneratedProjectVerificationProfile,
 ): Promise<PackageManifest> {
-  const expectedTree = expectedWrittenTree(selection, profile);
+  const expectedTree = expectedWrittenTree(selection);
   const expectedPaths = expectedTree.map(({ path }) => path).sort();
   const writtenPaths = await listWrittenFiles(targetDir);
 
@@ -233,22 +222,33 @@ async function inspectWrittenGeneratedProject(
     throw new Error('The generated project target is not a directory.');
   }
 
-  const manifest = await assertSelectedGeneratedShape(targetDir, selection, profile);
+  const manifest = await assertSelectedGeneratedShape(targetDir, selection);
+  const resolvedSelection = resolveGeneratedProjectVerificationSelection(selection);
 
-  if (manifest.scripts.typecheck !== 'tsc --noEmit --pretty false') {
+  if (profile === 'node-server' && resolvedSelection.generatedAppOptions.backend !== 'express') {
+    throw new Error('The Node server verification profile requires the Express Backend option.');
+  }
+
+  const expectedTypecheck =
+    profile === 'node-server'
+      ? `tsc --noEmit --pretty false && ${expectedNodeServerLifecycleScripts(selection.packageManager).typecheck}`
+      : 'tsc --noEmit --pretty false';
+  if (manifest.scripts.typecheck !== expectedTypecheck) {
     throw new Error('The generated project package manifest has no canonical typecheck command.');
   }
   if (manifest.scripts['expo:config'] !== 'expo config --type public') {
     throw new Error('The generated project package manifest has no canonical Expo config command.');
   }
-  if (
-    profile === 'node-server' &&
-    (manifest.scripts.build !== NODE_SERVER_LIFECYCLE_SCRIPTS.build ||
-      manifest.scripts['server:start:prod'] !==
-        NODE_SERVER_LIFECYCLE_SCRIPTS['server:start:prod'] ||
-      manifest.scripts['test:integration'] !== NODE_SERVER_LIFECYCLE_SCRIPTS['test:integration'])
-  ) {
-    throw new Error('The generated Node project has an incomplete lifecycle manifest.');
+  if (profile === 'node-server') {
+    const expectedScripts = expectedNodeServerLifecycleScripts(selection.packageManager);
+    if (
+      manifest.scripts.build !== expectedScripts.build ||
+      manifest.scripts['server:start:prod'] !== expectedScripts['server:start:prod'] ||
+      manifest.scripts.test !== expectedScripts.test ||
+      manifest.scripts['test:integration'] !== expectedScripts['test:integration']
+    ) {
+      throw new Error('The generated Node project has an incomplete lifecycle manifest.');
+    }
   }
 
   return manifest;
@@ -266,6 +266,21 @@ function commandFailure(
         ? `The ${phase} command exceeded its bounded timeout.`
         : `The ${phase} command exited unsuccessfully.`,
   };
+}
+
+function databaseNoneModuleResolutionGuardScript(): string {
+  return `const forbiddenModules = ${JSON.stringify(FORBIDDEN_SQL_RUNTIME_MODULES)};
+for (const moduleName of forbiddenModules) {
+  try {
+    await import(moduleName);
+    process.stderr.write('Database none resolved a forbidden SQL or ORM runtime module.');
+    process.exitCode = 1;
+  } catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ERR_MODULE_NOT_FOUND') {
+      throw error;
+    }
+  }
+}`;
 }
 
 export async function verifyGeneratedProject({
@@ -288,33 +303,40 @@ export async function verifyGeneratedProject({
   let processCleanupProven = true;
 
   const recordCommandPhase = async (
-    phase: 'install' | 'typecheck' | 'build' | 'runtime',
-    args: string[],
+    phase: 'install' | 'typecheck' | 'test' | 'build' | 'runtime',
+    commandPlans: readonly { command: string; args: string[] }[],
   ): Promise<void> => {
     if (stopped) {
       phases.push(createSkippedVerificationPhase(phase));
       return;
     }
 
-    let command: GeneratedAppCommandResult;
-    try {
-      command = await runGeneratedAppCommand(targetDir, selection.packageManager, args, {
-        env: environment,
-        timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS[phase],
-      });
-    } catch {
-      throw new GeneratedProjectVerificationError(phase, phases);
+    const commands: GeneratedAppCommandResult[] = [];
+    let phaseFailed = false;
+    for (const { command: commandName, args } of commandPlans) {
+      let command: GeneratedAppCommandResult;
+      try {
+        command = await runGeneratedAppCommand(targetDir, commandName, args, {
+          env: environment,
+          timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS[phase],
+        });
+      } catch {
+        throw new GeneratedProjectVerificationError(phase, phases);
+      }
+      commands.push(command);
+      if (command.status !== 'passed') {
+        stopped = true;
+        phaseFailed = true;
+        failures.push(commandFailure(phase, command));
+        break;
+      }
     }
     phases.push(
-      createVerificationPhaseEvidence(phase, command.status === 'passed' ? 'passed' : 'failed', {
-        commands: [command],
-        durationMs: command.durationMs,
+      createVerificationPhaseEvidence(phase, phaseFailed ? 'failed' : 'passed', {
+        commands,
+        durationMs: commands.reduce((duration, command) => duration + command.durationMs, 0),
       }),
     );
-    if (command.status !== 'passed') {
-      stopped = true;
-      failures.push(commandFailure(phase, command));
-    }
   };
 
   const shapeStartedAt = performance.now();
@@ -339,8 +361,25 @@ export async function verifyGeneratedProject({
     });
   }
 
-  await recordCommandPhase('install', ['install']);
-  await recordCommandPhase('typecheck', ['run', 'typecheck']);
+  await recordCommandPhase('install', [{ command: selection.packageManager, args: ['install'] }]);
+  await recordCommandPhase('typecheck', [
+    { command: selection.packageManager, args: ['run', 'typecheck'] },
+  ]);
+
+  if (profile === 'node-server') {
+    await recordCommandPhase('test', [
+      { command: selection.packageManager, args: ['run', 'test'] },
+    ]);
+  } else {
+    phases.push(
+      stopped
+        ? createSkippedVerificationPhase('test')
+        : createVerificationPhaseEvidence('test', 'not-applicable', {
+            durationMs: 0,
+            reason: 'The deterministic Expo profile has no root test command.',
+          }),
+    );
+  }
 
   if (stopped) {
     phases.push(createSkippedVerificationPhase('expo-config'));
@@ -377,7 +416,17 @@ export async function verifyGeneratedProject({
   }
 
   if (profile === 'node-server') {
-    await recordCommandPhase('build', ['run', 'build']);
+    await recordCommandPhase('build', [
+      { command: selection.packageManager, args: ['run', 'build'] },
+      ...(resolvedSelection.generatedAppOptions.database === 'none'
+        ? [
+            {
+              command: process.execPath,
+              args: ['--input-type=module', '--eval', databaseNoneModuleResolutionGuardScript()],
+            },
+          ]
+        : []),
+    ]);
   } else {
     phases.push(
       stopped
@@ -403,13 +452,15 @@ export async function verifyGeneratedProject({
       phases.push(createSkippedVerificationPhase('start'));
     } else {
       const port = environment.PORT;
-      if (!port || !/^\d+$/.test(port)) {
+      const clientOrigin = environment.CLIENT_ORIGIN;
+      if (!port || !/^\d+$/.test(port) || !clientOrigin || !/^https?:\/\//.test(clientOrigin)) {
         stopped = true;
         phases.push(createVerificationPhaseEvidence('start', 'failed', { durationMs: 0 }));
         failures.push({
           phase: 'start',
           kind: 'process-failed',
-          message: 'The Node server verification profile requires a numeric PORT.',
+          message:
+            'The Node server verification profile requires a numeric PORT and HTTP(S) CLIENT_ORIGIN.',
         });
       } else {
         try {
@@ -450,7 +501,9 @@ export async function verifyGeneratedProject({
     }
 
     if (profile === 'node-server') {
-      await recordCommandPhase('runtime', ['run', 'test:integration']);
+      await recordCommandPhase('runtime', [
+        { command: selection.packageManager, args: ['run', 'test:integration'] },
+      ]);
     } else {
       phases.push(
         stopped

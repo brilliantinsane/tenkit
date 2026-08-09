@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { useBusinessProfile } from '@/business-data/use-business-profile';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { globalStyles } from '@/constants/globals';
@@ -9,6 +10,7 @@ import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 export default function HomeScreen() {
   const { appVariant } = useAppVariantConfig();
   const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+  const { profile, error, isLoading } = useBusinessProfile();
 
   return (
     <ThemedView style={[globalStyles.centeredContainer, styles.screen]}>
@@ -19,6 +21,12 @@ export default function HomeScreen() {
         Runtime Tenants App
       </ThemedText>
       <View style={styles.details}>
+        <ThemedText type="code" selectable>
+          Business Data: {isLoading ? 'Loading' : (profile?.name ?? 'Unavailable')}
+        </ThemedText>
+        {profile ? <ThemedText>{profile.description}</ThemedText> : null}
+        {error ? <ThemedText>{error}</ThemedText> : null}
+        <ThemedText type="code">Auth: none</ThemedText>
         <ThemedText type="code" selectable>
           App Variant: {appVariant.slug}
         </ThemedText>

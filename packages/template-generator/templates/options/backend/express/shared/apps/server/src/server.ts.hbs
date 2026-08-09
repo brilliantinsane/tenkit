@@ -1,0 +1,30 @@
+import { config } from 'dotenv';
+
+import { createApp } from './app.js';
+import { readServerEnvironment } from './environment.js';
+
+config({ path: '.env.local', quiet: true });
+
+const environment = readServerEnvironment();
+const server = createApp(environment.CLIENT_ORIGIN).listen(environment.PORT, () => {
+  console.log(`Tenkit Express server listening on port ${environment.PORT}.`);
+});
+
+let shutdownStarted = false;
+
+function shutdown(): void {
+  if (shutdownStarted) {
+    return;
+  }
+
+  shutdownStarted = true;
+  server.close((error) => {
+    if (error) {
+      console.error('Tenkit Express server could not close cleanly.');
+      process.exitCode = 1;
+    }
+  });
+}
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

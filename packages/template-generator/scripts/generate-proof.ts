@@ -3,6 +3,11 @@ import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
 import {
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
 } from '@tenkit/types/setup-type-definitions';
@@ -19,6 +24,7 @@ import { runGenerationProof, tryCommitInitialGitSnapshot } from '../src/local-pr
 type ParsedArgs = {
   appVariantAccents?: string[];
   appVariantNames?: string[];
+  generatedAppOptions: RawGeneratedAppOptions;
   setupType?: GeneratedSetupType;
   target?: string;
   force: boolean;
@@ -28,13 +34,14 @@ type ParsedArgs = {
   stylingChoice: GeneratedStylingChoice;
 };
 
-type ResolvedArgs = ParsedArgs & {
+type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions'> & {
+  generatedAppOptions: GeneratedAppOptions;
   setupType: GeneratedSetupType;
   target: string;
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -74,6 +81,7 @@ function parseOrderedValues(value: string): string[] {
 function parseArgs(args: string[]): ResolvedArgs {
   const parsed: ParsedArgs = {
     force: false,
+    generatedAppOptions: {},
     install: true,
     stylingChoice: 'bare',
   };
@@ -87,6 +95,18 @@ function parseArgs(args: string[]): ResolvedArgs {
 
     if (arg === '--setup-type') {
       parsed.setupType = parseSetupType(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--backend') {
+      parsed.generatedAppOptions.backend = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--auth') {
+      parsed.generatedAppOptions.auth = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--database') {
+      parsed.generatedAppOptions.database = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--orm') {
+      parsed.generatedAppOptions.orm = readValue(args, index, arg);
       index += 1;
     } else if (arg === '--target') {
       parsed.target = readValue(args, index, arg);
@@ -123,8 +143,14 @@ function parseArgs(args: string[]): ResolvedArgs {
     throw new Error(`Missing --target.\n${usage()}`);
   }
 
+  const generatedAppOptionsResolution = resolveGeneratedAppOptions(parsed.generatedAppOptions);
+  if (generatedAppOptionsResolution.status === 'invalid') {
+    throw new Error('Unsupported Generated App Option combination.');
+  }
+
   return {
     ...parsed,
+    generatedAppOptions: generatedAppOptionsResolution.selection,
     setupType: parsed.setupType,
     target: parsed.target,
   };
@@ -164,6 +190,7 @@ async function main() {
     setupType: args.setupType,
     appVariantAccents: args.appVariantAccents,
     appVariantNames: args.appVariantNames,
+    generatedAppOptions: args.generatedAppOptions,
     targetDir,
     force: args.force,
     git: 'init',
@@ -203,6 +230,9 @@ async function main() {
   console.log('');
   console.log('To run your project:');
   console.log(`- cd ${displayTargetDir}`);
+  if (args.generatedAppOptions.backend === 'express') {
+    console.log('- pnpm run dev');
+  }
   console.log('- pnpm run android');
   console.log('- pnpm run ios');
   console.log('- pnpm run web');
