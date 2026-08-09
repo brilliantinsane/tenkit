@@ -7,8 +7,10 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { verifyGeneratedApp } from '../src/generated-app-verification';
 import {
   GENERATED_PROJECT_VERIFICATION_PHASES,
+  GeneratedProjectVerificationError,
   type GeneratedProjectVerificationEvidence,
 } from '../src/generated-project-verification';
+import { runGeneratedVerificationMatrix } from '../src/generated-verification-matrix';
 
 const { runGenerationProof, verifyGeneratedProject } = vi.hoisted(() => ({
   runGenerationProof: vi.fn().mockResolvedValue(undefined),
@@ -92,6 +94,7 @@ test('generated app verification records generation through filesystem cleanup',
     profile: 'deterministic',
   });
   expect(evidence.status).toBe('passed');
+  expect(evidence.targetName).toMatch(/^tenkit-generated-white-label-apps-bare-/);
   expect(evidence.phases.find(({ phase }) => phase === 'generation')).toEqual(
     expect.objectContaining({ phase: 'generation', status: 'passed' }),
   );
@@ -173,6 +176,66 @@ test('an unexpected verifier failure is bounded without false phase ownership', 
   expect(await fs.pathExists(dirname(targetDir))).toBe(true);
 });
 
+test('matrix evidence preserves completed phases and failure ownership across target retention', async () => {
+  verifyGeneratedProject.mockRejectedValueOnce(
+    new GeneratedProjectVerificationError('start', [
+      { durationMs: 1, phase: 'generation', status: 'not-applicable' },
+      { durationMs: 2, phase: 'shape', status: 'passed' },
+      { durationMs: 3, phase: 'install', status: 'passed' },
+      { durationMs: 4, phase: 'typecheck', status: 'passed' },
+      { durationMs: 5, phase: 'expo-config', status: 'passed' },
+      { durationMs: 6, phase: 'build', status: 'passed' },
+    ]),
+  );
+
+  const report = await runGeneratedVerificationMatrix({
+    cells: [
+      {
+        environment: {
+          evidence: {
+            environmentKeys: ['PATH'],
+            profile: 'deterministic',
+            resourceClasses: [],
+            sourceName: 'test-fixture',
+          },
+          values: { PATH: '/safe/bin' },
+        },
+        id: 'phase-ownership',
+        selection: {
+          packageManager: 'pnpm',
+          setupType: 'white-label-apps',
+          stylingChoice: 'bare',
+        },
+        verificationProfile: 'deterministic',
+      },
+    ],
+    cellEvidenceSink: async () => undefined,
+    concurrency: 1,
+    sourceSha: '8888888888888888888888888888888888888888',
+    workspaceRoot: '/workspace',
+  });
+
+  const targetDir = runGenerationProof.mock.calls[0]?.[0]?.targetDir;
+  createdTargetRoots.push(dirname(targetDir));
+  expect(report.cells[0]?.evidence).toEqual(
+    expect.objectContaining({
+      phases: expect.arrayContaining([
+        expect.objectContaining({ phase: 'generation', status: 'passed' }),
+        expect.objectContaining({ phase: 'shape', status: 'passed' }),
+        expect.objectContaining({ phase: 'build', status: 'passed' }),
+        expect.objectContaining({ phase: 'start', status: 'failed' }),
+      ]),
+      failures: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Generated project verification terminated unexpectedly during start.',
+          phase: 'start',
+        }),
+      ]),
+      retainedTargetName: expect.stringMatching(/^tenkit-generated-phase-ownership-/),
+    }),
+  );
+});
+
 test('filesystem cleanup failure makes successful verification fail', async () => {
   verifyGeneratedProject.mockResolvedValue(coreEvidence());
   const remove = vi.spyOn(fs, 'remove').mockRejectedValueOnce(new Error('cleanup secret path'));
@@ -195,5 +258,101 @@ test('filesystem cleanup failure makes successful verification fail', async () =
   expect(JSON.stringify(evidence)).not.toContain('cleanup secret path');
   expect(evidence.phases.at(-1)).toEqual(
     expect.objectContaining({ phase: 'cleanup', status: 'failed' }),
+  );
+});
+
+test('process cleanup failure remains failed when the generated target is retained', async () => {
+  const failedCleanupEvidence = coreEvidence('failed');
+  verifyGeneratedProject.mockResolvedValue({
+    ...failedCleanupEvidence,
+    failures: [
+      {
+        kind: 'cleanup-failed',
+        message: 'The generated server process tree leaked after forced shutdown.',
+        phase: 'shutdown',
+      },
+    ],
+    phases: failedCleanupEvidence.phases.map((phase) =>
+      phase.phase === 'cleanup' ? { ...phase, status: 'failed' as const } : phase,
+    ),
+  });
+
+  const evidence = await verifyGeneratedApp({
+    setupType: 'white-label-apps',
+    stylingChoice: 'bare',
+    workspaceRoot: '/workspace',
+    environment: { PATH: '/safe/bin' },
+    profile: 'deterministic',
+  });
+
+  const targetDir = runGenerationProof.mock.calls[0]?.[0]?.targetDir;
+  createdTargetRoots.push(dirname(targetDir));
+  expect(evidence.status).toBe('failed');
+  expect(evidence.phases.find(({ phase }) => phase === 'cleanup')?.status).toBe('failed');
+  expect(evidence.failures).toEqual([
+    expect.objectContaining({ kind: 'cleanup-failed', phase: 'shutdown' }),
+  ]);
+
+  const report = await runGeneratedVerificationMatrix({
+    cells: [
+      {
+        environment: {
+          evidence: {
+            environmentKeys: ['PATH'],
+            profile: 'deterministic',
+            resourceClasses: [],
+            sourceName: 'test-fixture',
+          },
+          values: { PATH: '/safe/bin' },
+        },
+        id: 'cleanup-propagation',
+        selection: {
+          packageManager: 'pnpm',
+          setupType: 'white-label-apps',
+          stylingChoice: 'bare',
+        },
+        verificationProfile: 'deterministic',
+      },
+    ],
+    concurrency: 1,
+    sourceSha: '4444444444444444444444444444444444444444',
+    verifyCell: async () => evidence,
+    workspaceRoot: '/workspace',
+  });
+  expect(report.finalReadiness).toBe('not-ready');
+  expect(report.cells[0]).toEqual(
+    expect.objectContaining({
+      status: 'failed',
+      failures: [expect.objectContaining({ kind: 'cleanup-failed', phase: 'shutdown' })],
+    }),
+  );
+});
+
+test('verified evidence is durable before a successful target is deleted', async () => {
+  verifyGeneratedProject.mockResolvedValue(coreEvidence());
+  const order: string[] = [];
+  const beforeSuccessfulTargetCleanup = vi.fn(async () => {
+    order.push('evidence');
+  });
+  const remove = vi.spyOn(fs, 'remove').mockImplementation(async () => {
+    order.push('remove');
+  });
+
+  const evidence = await verifyGeneratedApp({
+    setupType: 'white-label-apps',
+    stylingChoice: 'bare',
+    workspaceRoot: '/workspace',
+    environment: { PATH: '/safe/bin' },
+    profile: 'deterministic',
+    beforeSuccessfulTargetCleanup,
+  });
+
+  const targetDir = runGenerationProof.mock.calls[0]?.[0]?.targetDir;
+  createdTargetRoots.push(dirname(targetDir));
+  remove.mockRestore();
+  expect(evidence.status).toBe('passed');
+  expect(order).toEqual(['evidence', 'remove']);
+  expect(beforeSuccessfulTargetCleanup).toHaveBeenCalledWith(
+    expect.objectContaining({ status: 'passed', targetName: expect.any(String) }),
   );
 });

@@ -7,9 +7,11 @@ import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import {
   GENERATED_PROJECT_VERIFICATION_PHASES,
+  GeneratedProjectVerificationError,
   resolveGeneratedProjectVerificationSelection,
   verifyGeneratedProject,
   type GeneratedProjectVerificationEvidence,
+  type GeneratedProjectVerificationPhase,
   type GeneratedProjectVerificationPhaseEvidence,
   type GeneratedProjectVerificationProfile,
   type GeneratedProjectVerificationSelection,
@@ -20,16 +22,40 @@ import {
   replaceVerificationPhase,
 } from './generated-project-verification-evidence';
 import { runGenerationProof } from './local-proof';
+import type { GeneratedProjectPackageManager } from './generator';
 
 export type VerifyGeneratedAppOptions = {
   setupType: GeneratedSetupType;
   appVariantAccents?: readonly (string | undefined)[];
   appVariantNames?: readonly (string | undefined)[];
   stylingChoice: GeneratedStylingChoice;
+  packageManager?: GeneratedProjectPackageManager;
   workspaceRoot: string;
   environment: Readonly<Record<string, string>>;
   profile: GeneratedProjectVerificationProfile;
+  targetNamePrefix?: string;
+  beforeSuccessfulTargetCleanup?: (evidence: GeneratedProjectVerificationEvidence) => Promise<void>;
 };
+
+export class GeneratedAppVerificationError extends Error {
+  readonly retainedTargetName: string;
+  readonly phase: GeneratedProjectVerificationPhase;
+  readonly completedPhases: readonly GeneratedProjectVerificationPhaseEvidence[];
+
+  constructor(
+    retainedTargetName: string,
+    phase: GeneratedProjectVerificationPhase,
+    completedPhases: readonly GeneratedProjectVerificationPhaseEvidence[] = [],
+  ) {
+    super(
+      `Generated project verification terminated unexpectedly. Failed target retained in the system temporary directory as ${retainedTargetName}.`,
+    );
+    this.name = 'GeneratedAppVerificationError';
+    this.phase = phase;
+    this.completedPhases = completedPhases;
+    this.retainedTargetName = retainedTargetName;
+  }
+}
 
 function stoppedVerificationEvidence({
   selection,
@@ -72,18 +98,23 @@ export async function verifyGeneratedApp({
   appVariantAccents,
   appVariantNames,
   stylingChoice,
+  packageManager = 'pnpm',
   workspaceRoot,
   environment,
   profile,
+  targetNamePrefix = `tenkit-generated-${setupType}-${stylingChoice}`,
+  beforeSuccessfulTargetCleanup,
 }: VerifyGeneratedAppOptions): Promise<GeneratedProjectVerificationEvidence> {
-  const tempRoot = await fs.mkdtemp(
-    join(tmpdir(), `tenkit-generated-${setupType}-${stylingChoice}-`),
-  );
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(targetNamePrefix)) {
+    throw new Error('Generated verification target prefix must be a safe lowercase identity.');
+  }
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), `${targetNamePrefix}-`));
+  const targetName = basename(tempRoot);
   const targetDir = join(tempRoot, 'app');
   const selection = {
     setupType,
     stylingChoice,
-    packageManager: 'pnpm',
+    packageManager,
     appVariantAccents,
     appVariantNames,
   } satisfies GeneratedProjectVerificationSelection;
@@ -97,6 +128,7 @@ export async function verifyGeneratedApp({
       appVariantAccents,
       appVariantNames,
       stylingChoice,
+      packageManager,
       targetDir,
       git: false,
       workspaceRoot,
@@ -127,13 +159,16 @@ export async function verifyGeneratedApp({
         environment,
         profile,
       });
-    } catch {
-      throw new Error(
-        `Generated project verification terminated unexpectedly. Failed target retained in the system temporary directory as ${basename(tempRoot)}.`,
+    } catch (error) {
+      throw new GeneratedAppVerificationError(
+        targetName,
+        error instanceof GeneratedProjectVerificationError ? error.phase : 'shape',
+        error instanceof GeneratedProjectVerificationError ? error.completedPhases : [],
       );
     }
     evidence = {
       ...evidence,
+      targetName,
       phases: replaceVerificationPhase(
         evidence.phases,
         createVerificationPhaseEvidence('generation', 'passed', {
@@ -144,16 +179,49 @@ export async function verifyGeneratedApp({
   }
 
   if (evidence.status === 'failed') {
+    const cleanupFailed = evidence.phases.some(
+      ({ phase, status }) => phase === 'cleanup' && status === 'failed',
+    );
     return {
       ...evidence,
+      targetName,
       retainedTargetName: basename(tempRoot),
+      phases: cleanupFailed
+        ? evidence.phases
+        : replaceVerificationPhase(
+            evidence.phases,
+            createVerificationPhaseEvidence('cleanup', 'passed', {
+              durationMs: 0,
+              reason:
+                'Process resources were cleaned; failed generated target retained for diagnosis.',
+            }),
+          ),
+    };
+  }
+
+  try {
+    await beforeSuccessfulTargetCleanup?.({ ...evidence, targetName });
+  } catch {
+    return {
+      ...evidence,
+      failures: [
+        ...evidence.failures,
+        {
+          kind: 'cleanup-failed',
+          message: 'Verified evidence could not be made durable before target cleanup.',
+          phase: 'cleanup',
+        },
+      ],
       phases: replaceVerificationPhase(
         evidence.phases,
-        createVerificationPhaseEvidence('cleanup', 'passed', {
+        createVerificationPhaseEvidence('cleanup', 'failed', {
           durationMs: 0,
-          reason: 'Process resources were cleaned; failed generated target retained for diagnosis.',
+          reason: 'The verified generated target was retained because evidence persistence failed.',
         }),
       ),
+      retainedTargetName: targetName,
+      status: 'failed',
+      targetName,
     };
   }
 
@@ -185,6 +253,7 @@ export async function verifyGeneratedApp({
 
   return {
     ...evidence,
+    targetName,
     phases: replaceVerificationPhase(evidence.phases, cleanupEvidence),
   };
 }

@@ -69,6 +69,21 @@ export type VerifyGeneratedProjectOptions = {
   profile: GeneratedProjectVerificationProfile;
 };
 
+export class GeneratedProjectVerificationError extends Error {
+  readonly phase: GeneratedProjectVerificationPhase;
+  readonly completedPhases: readonly GeneratedProjectVerificationPhaseEvidence[];
+
+  constructor(
+    phase: GeneratedProjectVerificationPhase,
+    completedPhases: readonly GeneratedProjectVerificationPhaseEvidence[] = [],
+  ) {
+    super(`Generated project verification terminated unexpectedly during ${phase}.`);
+    this.name = 'GeneratedProjectVerificationError';
+    this.phase = phase;
+    this.completedPhases = completedPhases;
+  }
+}
+
 type PackageManifest = {
   scripts: Record<string, string>;
 };
@@ -256,6 +271,8 @@ export async function verifyGeneratedProject({
   const failures: GeneratedProjectVerificationFailure[] = [];
   let stopped = false;
   let generatedProcess: GeneratedAppProcess | undefined;
+  let leakedProcessResource = false;
+  let processCleanupProven = true;
 
   const recordCommandPhase = async (
     phase: 'install' | 'typecheck' | 'build' | 'runtime',
@@ -266,10 +283,15 @@ export async function verifyGeneratedProject({
       return;
     }
 
-    const command = await runGeneratedAppCommand(targetDir, selection.packageManager, args, {
-      env: environment,
-      timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS[phase],
-    });
+    let command: GeneratedAppCommandResult;
+    try {
+      command = await runGeneratedAppCommand(targetDir, selection.packageManager, args, {
+        env: environment,
+        timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS[phase],
+      });
+    } catch {
+      throw new GeneratedProjectVerificationError(phase, phases);
+    }
     phases.push(
       createVerificationPhaseEvidence(phase, command.status === 'passed' ? 'passed' : 'failed', {
         commands: [command],
@@ -312,15 +334,20 @@ export async function verifyGeneratedProject({
   } else {
     const commands: GeneratedAppCommandResult[] = [];
     for (const appVariantSlug of resolvedSelection.appVariantSlugs) {
-      const command = await runGeneratedAppCommand(
-        targetDir,
-        selection.packageManager,
-        ['run', 'expo:config'],
-        {
-          env: { ...environment, APP_VARIANT_SLUG: appVariantSlug },
-          timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS['expo-config'],
-        },
-      );
+      let command: GeneratedAppCommandResult;
+      try {
+        command = await runGeneratedAppCommand(
+          targetDir,
+          selection.packageManager,
+          ['run', 'expo:config'],
+          {
+            env: { ...environment, APP_VARIANT_SLUG: appVariantSlug },
+            timeoutMs: VERIFICATION_PHASE_TIMEOUT_MS['expo-config'],
+          },
+        );
+      } catch {
+        throw new GeneratedProjectVerificationError('expo-config', phases);
+      }
       commands.push(command);
       if (command.status !== 'passed') {
         stopped = true;
@@ -372,17 +399,21 @@ export async function verifyGeneratedProject({
           message: 'The Node server verification profile requires a numeric PORT.',
         });
       } else {
-        generatedProcess = await startGeneratedAppProcess(
-          targetDir,
-          selection.packageManager,
-          ['run', 'server:start:prod'],
-          {
-            env: environment,
-            readinessUrl: `http://127.0.0.1:${port}/health`,
-            readinessTimeoutMs: PROCESS_READINESS_TIMEOUT_MS,
-            shutdownTimeoutMs: PROCESS_SHUTDOWN_TIMEOUT_MS,
-          },
-        );
+        try {
+          generatedProcess = await startGeneratedAppProcess(
+            targetDir,
+            selection.packageManager,
+            ['run', 'server:start:prod'],
+            {
+              env: environment,
+              readinessUrl: `http://127.0.0.1:${port}/health`,
+              readinessTimeoutMs: PROCESS_READINESS_TIMEOUT_MS,
+              shutdownTimeoutMs: PROCESS_SHUTDOWN_TIMEOUT_MS,
+            },
+          );
+        } catch {
+          throw new GeneratedProjectVerificationError('start', phases);
+        }
         const processStart = generatedProcess.startEvidence;
         phases.push(
           createVerificationPhaseEvidence(
@@ -438,13 +469,17 @@ export async function verifyGeneratedProject({
           ),
         );
         if (processShutdown.status !== 'passed') {
+          leakedProcessResource = processShutdown.leaked;
           failures.push({
             phase: 'shutdown',
             kind: 'cleanup-failed',
-            message: 'The generated server required forced shutdown.',
+            message: processShutdown.leaked
+              ? 'The generated server process tree leaked after forced shutdown.'
+              : 'The generated server required forced shutdown.',
           });
         }
       } catch {
+        processCleanupProven = false;
         phases.push(createVerificationPhaseEvidence('shutdown', 'failed'));
         failures.push({
           phase: 'shutdown',
@@ -455,10 +490,15 @@ export async function verifyGeneratedProject({
     }
   }
 
+  const cleanupFailed = leakedProcessResource || !processCleanupProven;
   phases.push(
-    createVerificationPhaseEvidence('cleanup', 'passed', {
+    createVerificationPhaseEvidence('cleanup', cleanupFailed ? 'failed' : 'passed', {
       durationMs: 0,
-      reason: 'The verifier retained no running process or process resource.',
+      reason: leakedProcessResource
+        ? 'The generated server process tree remained active after forced shutdown.'
+        : !processCleanupProven
+          ? 'The generated server process cleanup boundary failed before cleanup could be proven.'
+          : 'The verifier retained no running process or process resource.',
     }),
   );
 

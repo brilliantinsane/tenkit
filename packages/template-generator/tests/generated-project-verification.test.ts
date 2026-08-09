@@ -6,7 +6,10 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { verifyGeneratedProject } from '../src/generated-project-verification';
+import {
+  GeneratedProjectVerificationError,
+  verifyGeneratedProject,
+} from '../src/generated-project-verification';
 import type { GeneratedAppCommandResult } from '../src/generated-app-command-runner';
 import type { GeneratedAppProcess } from '../src/generated-app-process-runner';
 import { generateProject } from '../src/generator';
@@ -58,7 +61,13 @@ beforeEach(() => {
       durationMs: 5,
       status: 'passed',
     },
-    shutdown: vi.fn().mockResolvedValue({ durationMs: 5, forced: false, status: 'passed' }),
+    shutdown: vi.fn().mockResolvedValue({
+      descendantsTerminated: true,
+      durationMs: 5,
+      forced: false,
+      leaked: false,
+      status: 'passed',
+    }),
   });
 });
 
@@ -320,7 +329,13 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
 });
 
 test('readiness timeout stops runtime but always shuts down the process', async () => {
-  const shutdown = vi.fn().mockResolvedValue({ durationMs: 5, forced: false, status: 'passed' });
+  const shutdown = vi.fn().mockResolvedValue({
+    descendantsTerminated: true,
+    durationMs: 5,
+    forced: false,
+    leaked: false,
+    status: 'passed',
+  });
   startGeneratedAppProcess.mockResolvedValueOnce({
     startEvidence: {
       args: ['run', 'server:start:prod'],
@@ -378,7 +393,13 @@ test.each([
 });
 
 test('premature server exit owns start and still runs shutdown cleanup', async () => {
-  const shutdown = vi.fn().mockResolvedValue({ durationMs: 0, forced: false, status: 'passed' });
+  const shutdown = vi.fn().mockResolvedValue({
+    descendantsTerminated: true,
+    durationMs: 0,
+    forced: false,
+    leaked: false,
+    status: 'passed',
+  });
   startGeneratedAppProcess.mockResolvedValueOnce({
     startEvidence: {
       args: ['run', 'server:start:prod'],
@@ -418,7 +439,13 @@ test('forced shutdown fails lifecycle proof after runtime passes', async () => {
       durationMs: 5,
       status: 'passed',
     },
-    shutdown: vi.fn().mockResolvedValue({ durationMs: 15, forced: true, status: 'failed' }),
+    shutdown: vi.fn().mockResolvedValue({
+      descendantsTerminated: true,
+      durationMs: 15,
+      forced: true,
+      leaked: false,
+      status: 'failed',
+    }),
   });
   const targetDir = await createWrittenNodeProject();
 
@@ -438,4 +465,104 @@ test('forced shutdown fails lifecycle proof after runtime passes', async () => {
     expect.objectContaining({ kind: 'cleanup-failed', phase: 'shutdown' }),
   ]);
   expect(evidence.phases.find(({ phase }) => phase === 'cleanup')?.status).toBe('passed');
+});
+
+test('a leaked process tree fails shutdown and cleanup evidence', async () => {
+  startGeneratedAppProcess.mockResolvedValueOnce({
+    startEvidence: {
+      args: ['run', 'server:start:prod'],
+      command: 'pnpm',
+      durationMs: 5,
+      status: 'passed',
+    },
+    shutdown: vi.fn().mockResolvedValue({
+      descendantsTerminated: false,
+      durationMs: 1_015,
+      forced: true,
+      leaked: true,
+      status: 'failed',
+    }),
+  });
+  const targetDir = await createWrittenNodeProject();
+
+  const evidence = await verifyGeneratedProject({
+    targetDir,
+    selection: {
+      setupType: 'white-label-apps',
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+    },
+    environment: { PATH: '/safe/bin', PORT: '43128' },
+    profile: 'node-server',
+  });
+
+  expect(evidence.status).toBe('failed');
+  expect(evidence.failures).toEqual([
+    expect.objectContaining({
+      kind: 'cleanup-failed',
+      message: 'The generated server process tree leaked after forced shutdown.',
+      phase: 'shutdown',
+    }),
+  ]);
+  expect(evidence.phases.find(({ phase }) => phase === 'cleanup')).toEqual(
+    expect.objectContaining({ phase: 'cleanup', status: 'failed' }),
+  );
+});
+
+test('a shutdown boundary rejection fails shutdown and cleanup evidence', async () => {
+  const targetDir = await createWrittenNodeProject();
+  startGeneratedAppProcess.mockResolvedValueOnce({
+    startEvidence: {
+      args: ['run', 'server:start:prod'],
+      command: 'pnpm',
+      durationMs: 5,
+      status: 'passed',
+    },
+    shutdown: vi.fn().mockRejectedValue(new Error('shutdown boundary failed')),
+  });
+
+  const evidence = await verifyGeneratedProject({
+    environment: { PATH: '/safe/bin', PORT: '43129' },
+    profile: 'node-server',
+    selection: {
+      packageManager: 'pnpm',
+      setupType: 'white-label-apps',
+      stylingChoice: 'bare',
+    },
+    targetDir,
+  });
+
+  expect(evidence.status).toBe('failed');
+  expect(evidence.phases.find(({ phase }) => phase === 'shutdown')?.status).toBe('failed');
+  expect(evidence.phases.find(({ phase }) => phase === 'cleanup')?.status).toBe('failed');
+  expect(evidence.failures).toContainEqual(
+    expect.objectContaining({ kind: 'cleanup-failed', phase: 'shutdown' }),
+  );
+});
+
+test('an unexpected server start rejection carries the completed phase ledger', async () => {
+  const targetDir = await createWrittenNodeProject();
+  startGeneratedAppProcess.mockRejectedValueOnce(new Error('unsupported process boundary'));
+
+  const failure: unknown = await verifyGeneratedProject({
+    environment: { PATH: '/safe/bin', PORT: '43130' },
+    profile: 'node-server',
+    selection: {
+      packageManager: 'pnpm',
+      setupType: 'white-label-apps',
+      stylingChoice: 'bare',
+    },
+    targetDir,
+  }).catch((error: unknown) => error);
+
+  expect(failure).toBeInstanceOf(GeneratedProjectVerificationError);
+  expect(failure).toEqual(
+    expect.objectContaining({
+      phase: 'start',
+      completedPhases: expect.arrayContaining([
+        expect.objectContaining({ phase: 'shape', status: 'passed' }),
+        expect.objectContaining({ phase: 'build', status: 'passed' }),
+      ]),
+    }),
+  );
 });

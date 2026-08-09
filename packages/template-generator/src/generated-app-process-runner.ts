@@ -24,6 +24,8 @@ export type GeneratedAppProcessShutdownEvidence = {
   durationMs: number;
   status: 'passed' | 'failed';
   forced: boolean;
+  leaked: boolean;
+  descendantsTerminated: boolean;
 };
 
 export type GeneratedAppProcess = {
@@ -63,6 +65,41 @@ function sendSignalToProcessTree(child: ChildProcess, signal: NodeJS.Signals): v
   }
 }
 
+function isProcessTreeRunning(child: ChildProcess): boolean {
+  if (child.pid === undefined) {
+    return false;
+  }
+
+  if (nodeProcess.platform === 'win32') {
+    return child.exitCode === null && child.signalCode === null;
+  }
+
+  try {
+    nodeProcess.kill(-child.pid, 0);
+    return true;
+  } catch (error) {
+    return !(
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'ESRCH'
+    );
+  }
+}
+
+async function waitForProcessTreeExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+  const deadline = performance.now() + timeoutMs;
+
+  while (performance.now() < deadline) {
+    if (!isProcessTreeRunning(child)) {
+      return true;
+    }
+    await delay(25);
+  }
+
+  return !isProcessTreeRunning(child);
+}
+
 async function waitForReadiness(
   readinessUrl: string,
   timeoutMs: number,
@@ -99,6 +136,11 @@ export async function startGeneratedAppProcess(
   args: string[],
   options: StartGeneratedAppProcessOptions,
 ): Promise<GeneratedAppProcess> {
+  if (nodeProcess.platform === 'win32') {
+    throw new Error(
+      'Generated server process-tree verification is unsupported on Windows because descendant cleanup cannot be proven.',
+    );
+  }
   const startedAt = performance.now();
   const output: string[] = [];
   let capturedOutputCharacters = 0;
@@ -109,7 +151,7 @@ export async function startGeneratedAppProcess(
   });
   const child = spawn(command, args, {
     cwd,
-    detached: nodeProcess.platform !== 'win32',
+    detached: true,
     env: { ...options.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -167,35 +209,39 @@ export async function startGeneratedAppProcess(
     shutdownPromise = (async () => {
       const shutdownStartedAt = performance.now();
 
-      if (exit !== undefined) {
+      if (!isProcessTreeRunning(child)) {
         return {
           durationMs: Math.max(0, Math.round(performance.now() - shutdownStartedAt)),
           status: 'passed' as const,
           forced: false,
+          leaked: false,
+          descendantsTerminated: true,
         };
       }
 
       sendSignalToProcessTree(child, 'SIGTERM');
-      const gracefulExit = await Promise.race([
-        exitPromise.then(() => true),
-        delay(options.shutdownTimeoutMs).then(() => false),
-      ]);
+      const gracefulExit = await waitForProcessTreeExit(child, options.shutdownTimeoutMs);
 
       if (gracefulExit) {
         return {
           durationMs: Math.max(0, Math.round(performance.now() - shutdownStartedAt)),
           status: 'passed' as const,
           forced: false,
+          leaked: false,
+          descendantsTerminated: true,
         };
       }
 
       sendSignalToProcessTree(child, 'SIGKILL');
       await Promise.race([exitPromise, delay(1_000)]);
+      const forcedExit = await waitForProcessTreeExit(child, 1_000);
 
       return {
         durationMs: Math.max(0, Math.round(performance.now() - shutdownStartedAt)),
         status: 'failed' as const,
         forced: true,
+        leaked: !forcedExit,
+        descendantsTerminated: forcedExit,
       };
     })();
 

@@ -61,6 +61,7 @@ export type GeneratedProjectVerificationEvidence = {
   environmentKeys: readonly string[];
   phases: readonly GeneratedProjectVerificationPhaseEvidence[];
   failures: readonly GeneratedProjectVerificationFailure[];
+  targetName?: string;
   retainedTargetName?: string;
 };
 

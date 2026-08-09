@@ -16,6 +16,20 @@ const GENERATED_APP_COMMAND_HOST_ENVIRONMENT_ALLOWLIST = [
   'USERPROFILE',
 ] as const;
 
+export function assertGeneratedAppCommandHostEnvironment(
+  environment: Readonly<Record<string, string>>,
+): void {
+  for (const environmentKey of Object.keys(environment)) {
+    if (
+      !GENERATED_APP_COMMAND_HOST_ENVIRONMENT_ALLOWLIST.some(
+        (allowedKey) => allowedKey === environmentKey,
+      )
+    ) {
+      throw new Error(`Unexpected host environment key: ${environmentKey}.`);
+    }
+  }
+}
+
 export type GeneratedAppCommandOptions = {
   env: Readonly<Record<string, string>>;
   timeoutMs?: number;
