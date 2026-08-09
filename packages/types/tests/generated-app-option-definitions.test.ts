@@ -3,6 +3,7 @@ import { assert, test } from 'vitest';
 import {
   DEFAULT_GENERATED_APP_OPTIONS,
   getGeneratedAppOptionChoiceState,
+  isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
   SUPPORTED_GENERATED_AUTH_VALUES,
@@ -24,7 +25,14 @@ test('exposes every public Generated App Option value and the zero-service defau
   });
 });
 
-test('owns one supported-combinations list containing the zero-service and first Express slices', () => {
+test('identifies only the generated Node Backends', () => {
+  assert.equal(isGeneratedNodeBackend('none'), false);
+  assert.equal(isGeneratedNodeBackend('express'), true);
+  assert.equal(isGeneratedNodeBackend('nestjs'), true);
+  assert.equal(isGeneratedNodeBackend('convex'), false);
+});
+
+test('owns one supported-combinations list containing the zero-service and Database-free Node slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
       backend: 'none',
@@ -34,6 +42,12 @@ test('owns one supported-combinations list containing the zero-service and first
     },
     {
       backend: 'express',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'nestjs',
       auth: 'none',
       database: 'none',
       orm: 'none',
@@ -80,6 +94,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
   ]);
 });
 
@@ -110,7 +130,7 @@ test('returns structured invalid-value and unsupported-combination facts', () =>
 test('derives dependency-aware partial choices from the same supported list', () => {
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
-    backend: { status: 'selectable', values: ['none', 'express'] },
+    backend: { status: 'selectable', values: ['none', 'express', 'nestjs'] },
     auth: { status: 'resolved', values: ['none'], value: 'none' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
@@ -127,6 +147,14 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express' }), {
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
+    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
     auth: { status: 'resolved', values: ['none'], value: 'none' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
@@ -149,5 +177,9 @@ test('accepts exactly the combinations present in the one supported list', () =>
     }
   }
 
-  assert.deepEqual(accepted, ['none:none:none:none', 'express:none:none:none']);
+  assert.deepEqual(accepted, [
+    'none:none:none:none',
+    'express:none:none:none',
+    'nestjs:none:none:none',
+  ]);
 });

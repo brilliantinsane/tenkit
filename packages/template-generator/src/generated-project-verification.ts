@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import { join, relative } from 'pathe';
 import {
+  isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type RawGeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
@@ -49,7 +50,13 @@ const VERIFICATION_PHASE_TIMEOUT_MS = {
   typecheck: 5 * 60 * 1000,
 } as const;
 
-const FORBIDDEN_SQL_RUNTIME_MODULES = ['@prisma/client', 'drizzle-orm', 'mysql2', 'pg'] as const;
+const FORBIDDEN_SQL_RUNTIME_MODULES = [
+  '@prisma/client',
+  '@tenkit/db',
+  'drizzle-orm',
+  'mysql2',
+  'pg',
+] as const;
 
 const PROCESS_READINESS_TIMEOUT_MS = 2 * 60 * 1000;
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 15 * 1000;
@@ -225,8 +232,11 @@ async function inspectWrittenGeneratedProject(
   const manifest = await assertSelectedGeneratedShape(targetDir, selection);
   const resolvedSelection = resolveGeneratedProjectVerificationSelection(selection);
 
-  if (profile === 'node-server' && resolvedSelection.generatedAppOptions.backend !== 'express') {
-    throw new Error('The Node server verification profile requires the Express Backend option.');
+  if (
+    profile === 'node-server' &&
+    !isGeneratedNodeBackend(resolvedSelection.generatedAppOptions.backend)
+  ) {
+    throw new Error('The Node server verification profile requires Express or NestJS.');
   }
 
   const expectedTypecheck =

@@ -937,6 +937,7 @@ describe('interactive prompts', () => {
       options: [
         { label: 'None', value: 'none' },
         { label: 'Express', value: 'express' },
+        { label: 'NestJS', value: 'nestjs' },
       ],
     });
     expect(selectCalls).toHaveBeenNthCalledWith(3, {
@@ -1001,6 +1002,7 @@ describe('interactive prompts', () => {
       options: [
         { label: 'None', value: 'none' },
         { label: 'Express', value: 'express' },
+        { label: 'NestJS', value: 'nestjs' },
       ],
     });
     expect(selectCalls).toHaveBeenNthCalledWith(2, {

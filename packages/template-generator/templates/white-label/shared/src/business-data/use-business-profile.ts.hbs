@@ -1,9 +1,9 @@
-{{#if isExpressBackend}}
+{{#if isNodeBackend}}
 import { fetch } from 'expo/fetch';
 import { useEffect, useState } from 'react';
 {{/if}}
 
-{{#unless isExpressBackend}}
+{{#unless isNodeBackend}}
 import { appVariants } from '@/constants/app-variants';
 {{/unless}}
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
@@ -19,11 +19,11 @@ export type BusinessProfileState = {
   isLoading: boolean;
 };
 
-{{#if isExpressBackend}}
+{{#if isNodeBackend}}
 function resolveBackendUrl(): URL {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!configuredUrl) {
-    throw new Error('EXPO_PUBLIC_API_URL is required for the Express Backend.');
+    throw new Error('EXPO_PUBLIC_API_URL is required for the selected Node Backend.');
   }
 
   let backendUrl: URL;
@@ -51,7 +51,7 @@ function parseBusinessProfile(responseBody: unknown): BusinessProfile {
     !('description' in responseBody.profile) ||
     typeof responseBody.profile.description !== 'string'
   ) {
-    throw new Error('Express returned invalid Business Data Example data.');
+    throw new Error('The Node Backend returned invalid Business Data Example data.');
   }
 
   return {

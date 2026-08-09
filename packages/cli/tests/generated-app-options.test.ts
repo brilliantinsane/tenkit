@@ -135,6 +135,7 @@ test('interactive creation can select Express while non-interactive creation kee
     options: [
       { value: 'none', label: 'None' },
       { value: 'express', label: 'Express' },
+      { value: 'nestjs', label: 'NestJS' },
     ],
   });
   expect(prompts.confirm).toHaveBeenCalledOnce();
@@ -203,6 +204,46 @@ test('explicit Express flags resolve the stack and write Express-owned output', 
   expect(await fs.pathExists(join(tempRoot, 'express-app/apps/server/package.json'))).toBe(true);
   expect(await fs.pathExists(join(tempRoot, 'express-app/packages/auth'))).toBe(false);
   expect(await fs.pathExists(join(tempRoot, 'express-app/packages/db'))).toBe(false);
+});
+
+test('explicit NestJS flags resolve the stack and write NestJS-owned output', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'nestjs-app',
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'nestjs',
+    auth: 'none',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Backend: nestjs');
+  expect(environment.lines).toContain('- pnpm run dev');
+  expect(environment.lines).toContain('- cp .env.example .env.local');
+  expect(environment.lines).toContain('- cp apps/server/.env.example apps/server/.env.local');
+  expect(environment.lines).toContain(
+    '- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target',
+  );
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-app/apps/server/package.json'))).toBe(true);
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-app/packages/auth'))).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-app/packages/db'))).toBe(false);
 });
 
 test('Commander exposes all public Generated App Option flags and validates their combination', async () => {

@@ -128,6 +128,31 @@ test('proof accepts the Express Backend with all other options at none', async (
   assert.equal(await fs.pathExists(join(targetDir, 'packages/db')), false);
 });
 
+test('proof accepts NestJS and reports the combined Expo and Backend command', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  const { stdout } = await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--backend',
+    'nestjs',
+    '--auth',
+    'none',
+    '--database',
+    'none',
+    '--orm',
+    'none',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'apps/server/nest-cli.json')), true);
+  assert.match(stdout, /pnpm run dev/);
+});
+
 test('verify accepts --styling before validating the Setup Type', async () => {
   await expectScriptFailure(
     verifyScript,

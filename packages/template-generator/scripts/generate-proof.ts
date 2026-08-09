@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
 import {
+  isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type GeneratedAppOptions,
   type RawGeneratedAppOptions,
@@ -41,7 +42,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express|nestjs>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -230,7 +231,7 @@ async function main() {
   console.log('');
   console.log('To run your project:');
   console.log(`- cd ${displayTargetDir}`);
-  if (args.generatedAppOptions.backend === 'express') {
+  if (isGeneratedNodeBackend(args.generatedAppOptions.backend)) {
     console.log('- pnpm run dev');
   }
   console.log('- pnpm run android');

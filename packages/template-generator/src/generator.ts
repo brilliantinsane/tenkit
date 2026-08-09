@@ -1,4 +1,5 @@
 import {
+  isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type GeneratedAppOptionIssue,
   type GeneratedAppOptions,
@@ -204,6 +205,8 @@ function normalizeTemplateContext({
       setupTypeDefinition,
     }),
     isExpressBackend: generatedAppOptions.backend === 'express',
+    isNestjsBackend: generatedAppOptions.backend === 'nestjs',
+    isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -224,6 +227,12 @@ function normalizeTemplateContext({
           : 'bun --cwd apps/server run',
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
+    nodeBackendDisplayName:
+      generatedAppOptions.backend === 'express'
+        ? 'Express'
+        : generatedAppOptions.backend === 'nestjs'
+          ? 'NestJS'
+          : undefined,
     stylingChoice,
     setupType: setupTypeDefinition.setupType,
   };
@@ -248,7 +257,9 @@ function readProjectTemplateTree({
       : [];
   const backendTree = context.isExpressBackend
     ? readTemplateTree('options/backend/express/shared', context)
-    : [];
+    : context.isNestjsBackend
+      ? readTemplateTree('options/backend/nestjs/shared', context)
+      : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({

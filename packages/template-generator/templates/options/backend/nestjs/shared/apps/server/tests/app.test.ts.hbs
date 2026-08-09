@@ -1,0 +1,117 @@
+import type { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+
+import { AppModule } from '../src/app.module.js';
+import { configureApplication } from '../src/configure-application.js';
+import type { ServerEnvironment } from '../src/server-environment.js';
+
+describe('NestJS Backend', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    const moduleReference = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleReference.createNestApplication();
+    const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
+    configureApplication(app, environment.getOrThrow('CLIENT_ORIGIN', { infer: true }));
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  test('exposes public health without an Auth route', async () => {
+    const health = await request(app.getHttpServer()).get('/health').expect(200);
+    expect(health.body).toMatchObject({ status: 'ok' });
+    await request(app.getHttpServer()).get('/api/auth/session').expect(404);
+  });
+
+  test('validates context and returns Setup Type-scoped Business Data', async () => {
+    await request(app.getHttpServer()).get('/api/business-profile').expect(400);
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 'not-an-integer' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 999 })
+      .expect(404);
+{{#ifSetupType 'white-label-apps'}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: 'single-app-runtime-tenants', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(400);
+{{else}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: 'white-label-apps', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(400);
+{{/ifSetupType}}
+
+{{#ifSetupType 'white-label-apps'}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(200, {
+        profile: {
+          name: {{{appVariants.[0].displayNameStringLiteral}}},
+          description: 'The first white-label Business Data Example.',
+        },
+      });
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 100 })
+      .expect(403);
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 100 })
+      .expect(200, {
+        profile: {
+          name: 'North Branch',
+          description: 'The northern branch Business Data Example.',
+        },
+      });
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 999 })
+      .expect(403);
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 100 })
+      .expect(200, {
+        profile: {
+          name: 'North Studio',
+          description: 'The North Studio Business Data Example.',
+        },
+      });
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 103 })
+      .expect(403);
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[1].appVariantId}} })
+      .expect(403);
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[1].appVariantId}}, runtimeTenantId: 100 })
+      .expect(403);
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[1].appVariantId}}, runtimeTenantId: 103 })
+      .expect(200, {
+        profile: {
+          name: 'West Studio',
+          description: 'The standalone West Studio Business Data Example.',
+        },
+      });
+{{/ifSetupType}}
+  });
+});

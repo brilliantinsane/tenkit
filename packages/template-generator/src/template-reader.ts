@@ -17,6 +17,8 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
   isExpressBackend: boolean;
+  isNestjsBackend: boolean;
+  isNodeBackend: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -29,6 +31,7 @@ export type TemplateContext = {
   packageManagerRunCommand: string;
   packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;
+  nodeBackendDisplayName?: 'Express' | 'NestJS';
   projectName: string;
   projectNameStringLiteral: string;
   stylingChoice: GeneratedStylingChoice;

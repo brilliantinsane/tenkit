@@ -22,11 +22,23 @@ const EXPRESS_OPTIONS = {
   orm: 'none',
 } as const;
 
+const NESTJS_OPTIONS = {
+  backend: 'nestjs',
+  auth: 'none',
+  database: 'none',
+  orm: 'none',
+} as const;
+
 const NODE_SELECTION = {
   setupType: 'white-label-apps',
   stylingChoice: 'bare',
   packageManager: 'pnpm',
   generatedAppOptions: EXPRESS_OPTIONS,
+} as const;
+
+const NESTJS_NODE_SELECTION = {
+  ...NODE_SELECTION,
+  generatedAppOptions: NESTJS_OPTIONS,
 } as const;
 
 const { runGeneratedAppCommand } = vi.hoisted(() => ({
@@ -112,11 +124,13 @@ async function createWrittenGeneratedProject(
   return targetDir;
 }
 
-async function createWrittenNodeProject(): Promise<string> {
+async function createWrittenNodeProject(
+  selection: typeof NODE_SELECTION | typeof NESTJS_NODE_SELECTION = NODE_SELECTION,
+): Promise<string> {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-node-verification-'));
   const targetDir = join(tempRoot, 'generated-project');
   tempRoots.push(tempRoot);
-  const tree = generateProject(NODE_SELECTION);
+  const tree = generateProject(selection);
   await writeProject({ targetDir, tree, overwrite: 'never' });
   return targetDir;
 }
@@ -340,6 +354,33 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
     'pnpm',
     ['run', 'test:integration'],
     expect.any(Object),
+  );
+});
+
+test('the Node server profile proves the NestJS lifecycle and host-side SQL absence', async () => {
+  const targetDir = await createWrittenNodeProject(NESTJS_NODE_SELECTION);
+
+  const evidence = await verifyGeneratedProject({
+    targetDir,
+    selection: NESTJS_NODE_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      PORT: '43131',
+      CLIENT_ORIGIN: 'http://localhost:8081',
+    },
+    profile: 'node-server',
+  });
+
+  expect(evidence.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'build')?.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'start')?.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'runtime')?.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'shutdown')?.status).toBe('passed');
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    process.execPath,
+    ['--input-type=module', '--eval', expect.stringContaining('"@tenkit/db"')],
+    expect.objectContaining({ env: expect.any(Object) }),
   );
 });
 

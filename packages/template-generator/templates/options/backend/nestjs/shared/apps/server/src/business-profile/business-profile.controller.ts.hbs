@@ -1,0 +1,24 @@
+import { Controller, Get, HttpException, Query } from '@nestjs/common';
+
+import { BusinessProfileQueryDto } from './business-profile-query.dto.js';
+import {
+  BusinessProfileRequestError,
+  BusinessProfileService,
+} from './business-profile.service.js';
+
+@Controller('api/business-profile')
+export class BusinessProfileController {
+  constructor(private readonly businessProfiles: BusinessProfileService) {}
+
+  @Get()
+  read(@Query() query: BusinessProfileQueryDto) {
+    try {
+      return { profile: this.businessProfiles.resolve(query) };
+    } catch (error) {
+      if (error instanceof BusinessProfileRequestError) {
+        throw new HttpException({ error: error.message }, error.status);
+      }
+      throw error;
+    }
+  }
+}

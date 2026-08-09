@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
 import {
+  isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type GeneratedAppOptions,
   type RawGeneratedAppOptions,
@@ -35,7 +36,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -156,8 +157,8 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
-  const isExpressBackend = args.generatedAppOptions.backend === 'express';
-  const port = isExpressBackend ? await acquireAvailablePort() : undefined;
+  const isNodeBackend = isGeneratedNodeBackend(args.generatedAppOptions.backend);
+  const port = isNodeBackend ? await acquireAvailablePort() : undefined;
   const environment = createGeneratedAppCommandEnvironment(
     port === undefined ? {} : { PORT: String(port), CLIENT_ORIGIN: 'http://localhost:8081' },
   );
@@ -170,7 +171,7 @@ async function main() {
     stylingChoice: args.stylingChoice,
     workspaceRoot,
     environment,
-    profile: isExpressBackend ? 'node-server' : 'deterministic',
+    profile: isNodeBackend ? 'node-server' : 'deterministic',
   });
 
   if (evidence.status === 'failed') {

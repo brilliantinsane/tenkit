@@ -1,3 +1,5 @@
+import { isGeneratedNodeBackend } from '@tenkit/types/generated-app-option-definitions';
+
 import type { CreateFlowOutput, CreateFlowResult, ResolvedCreateOptions } from './types';
 import { formatInstallCommand, formatRunCommand } from './package-manager';
 
@@ -32,7 +34,7 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
     output.log(`- ${formatInstallCommand(result.packageManager)}`);
   }
 
-  if (result.generatedAppOptions.backend === 'express') {
+  if (isGeneratedNodeBackend(result.generatedAppOptions.backend)) {
     output.log('- cp .env.example .env.local');
     output.log('- cp apps/server/.env.example apps/server/.env.local');
     output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');

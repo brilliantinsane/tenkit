@@ -52,6 +52,7 @@ test('loads only the intended browser-safe Generated App Option entrypoint expor
     'SUPPORTED_GENERATED_DATABASE_VALUES',
     'SUPPORTED_GENERATED_ORM_VALUES',
     'getGeneratedAppOptionChoiceState',
+    'isGeneratedNodeBackend',
     'resolveGeneratedAppOptions',
   ]);
   assert.notMatch(publicModuleSource, /^import\s|^export\s.+\sfrom\s/m);

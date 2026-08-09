@@ -1,0 +1,12 @@
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
+
+export function configureApplication(app: INestApplication, clientOrigin: string): void {
+  app.enableCors({ origin: clientOrigin });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      forbidNonWhitelisted: true,
+      transform: true,
+      whitelist: true,
+    }),
+  );
+}

@@ -17,9 +17,14 @@ export const SUPPORTED_GENERATED_DATABASE_VALUES = Object.freeze([
 export const SUPPORTED_GENERATED_ORM_VALUES = Object.freeze(['none', 'prisma', 'drizzle'] as const);
 
 export type GeneratedBackend = (typeof SUPPORTED_GENERATED_BACKEND_VALUES)[number];
+export type GeneratedNodeBackend = Extract<GeneratedBackend, 'express' | 'nestjs'>;
 export type GeneratedAuth = (typeof SUPPORTED_GENERATED_AUTH_VALUES)[number];
 export type GeneratedDatabase = (typeof SUPPORTED_GENERATED_DATABASE_VALUES)[number];
 export type GeneratedOrm = (typeof SUPPORTED_GENERATED_ORM_VALUES)[number];
+
+export function isGeneratedNodeBackend(backend: GeneratedBackend): backend is GeneratedNodeBackend {
+  return backend === 'express' || backend === 'nestjs';
+}
 
 export type GeneratedAppOptions = {
   readonly backend: GeneratedBackend;
@@ -46,6 +51,12 @@ export const SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS = Object.freeze([
   DEFAULT_GENERATED_APP_OPTIONS,
   Object.freeze({
     backend: 'express',
+    auth: 'none',
+    database: 'none',
+    orm: 'none',
+  } as const satisfies GeneratedAppOptions),
+  Object.freeze({
+    backend: 'nestjs',
     auth: 'none',
     database: 'none',
     orm: 'none',

@@ -1,0 +1,20 @@
+import 'reflect-metadata';
+
+import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+
+import { AppModule } from './app.module.js';
+import { configureApplication } from './configure-application.js';
+import type { ServerEnvironment } from './server-environment.js';
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule);
+  const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
+
+  configureApplication(app, environment.getOrThrow('CLIENT_ORIGIN', { infer: true }));
+  app.enableShutdownHooks();
+
+  await app.listen(environment.getOrThrow('PORT', { infer: true }));
+}
+
+await bootstrap();

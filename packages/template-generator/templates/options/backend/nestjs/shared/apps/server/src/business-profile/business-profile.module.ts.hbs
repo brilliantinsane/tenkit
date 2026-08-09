@@ -1,0 +1,10 @@
+import { Module } from '@nestjs/common';
+
+import { BusinessProfileController } from './business-profile.controller.js';
+import { BusinessProfileService } from './business-profile.service.js';
+
+@Module({
+  controllers: [BusinessProfileController],
+  providers: [BusinessProfileService],
+})
+export class BusinessProfileModule {}

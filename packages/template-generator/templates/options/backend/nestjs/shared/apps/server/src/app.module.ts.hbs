@@ -1,0 +1,22 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { BusinessProfileModule } from './business-profile/business-profile.module.js';
+import { HealthModule } from './health/health.module.js';
+import {
+  serverEnvironmentFile,
+  validateServerEnvironment,
+} from './server-environment.js';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath: serverEnvironmentFile,
+      isGlobal: true,
+      validate: validateServerEnvironment,
+    }),
+    HealthModule,
+    BusinessProfileModule,
+  ],
+})
+export class AppModule {}

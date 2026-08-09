@@ -1,0 +1,147 @@
+import { Injectable } from '@nestjs/common';
+
+import type { BusinessProfileQueryDto } from './business-profile-query.dto.js';
+
+export type BusinessProfile = {
+  name: string;
+  description: string;
+};
+
+type AppVariantBusinessData = {
+  appVariantId: number;
+  role: 'white-label' | 'single-app' | 'generic' | 'standalone';
+  standaloneRuntimeTenantId?: number;
+  profile?: BusinessProfile;
+};
+
+type RuntimeTenantBusinessData = BusinessProfile & {
+  runtimeTenantId: number;
+};
+
+const selectedSetupType = '{{setupType}}';
+
+const appVariants: AppVariantBusinessData[] = [
+{{#ifSetupType 'white-label-apps'}}
+  {
+    appVariantId: {{appVariants.[0].appVariantId}},
+    role: 'white-label',
+    profile: {
+      name: {{{appVariants.[0].displayNameStringLiteral}}},
+      description: 'The first white-label Business Data Example.',
+    },
+  },
+  {
+    appVariantId: {{appVariants.[1].appVariantId}},
+    role: 'white-label',
+    profile: {
+      name: {{{appVariants.[1].displayNameStringLiteral}}},
+      description: 'The second white-label Business Data Example.',
+    },
+  },
+{{/ifSetupType}}
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, role: 'single-app' },
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, role: 'generic' },
+  {
+    appVariantId: {{appVariants.[1].appVariantId}},
+    role: 'standalone',
+    standaloneRuntimeTenantId: 103,
+  },
+{{/ifSetupType}}
+];
+
+const runtimeTenants: RuntimeTenantBusinessData[] = [
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  { runtimeTenantId: 100, name: 'North Branch', description: 'The northern branch Business Data Example.' },
+  { runtimeTenantId: 101, name: 'South Branch', description: 'The southern branch Business Data Example.' },
+  { runtimeTenantId: 102, name: 'East Branch', description: 'The eastern branch Business Data Example.' },
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  { runtimeTenantId: 100, name: 'North Studio', description: 'The North Studio Business Data Example.' },
+  { runtimeTenantId: 101, name: 'South Studio', description: 'The South Studio Business Data Example.' },
+  { runtimeTenantId: 102, name: 'East Studio', description: 'The East Studio Business Data Example.' },
+  { runtimeTenantId: 103, name: 'West Studio', description: 'The standalone West Studio Business Data Example.' },
+{{/ifSetupType}}
+];
+
+const runtimeTenantAccess = new Map<number, readonly number[]>([
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  [{{appVariants.[0].appVariantId}}, [100, 101, 102]],
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  [{{appVariants.[0].appVariantId}}, [100, 101, 102]],
+{{/ifSetupType}}
+]);
+
+export class BusinessProfileRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: 400 | 403 | 404,
+  ) {
+    super(message);
+    this.name = 'BusinessProfileRequestError';
+  }
+}
+
+@Injectable()
+export class BusinessProfileService {
+  resolve({ setupType, appVariantId, runtimeTenantId }: BusinessProfileQueryDto): BusinessProfile {
+    if (setupType !== selectedSetupType) {
+      throw new BusinessProfileRequestError('Setup Type does not match this generated project', 400);
+    }
+
+    const appVariant = appVariants.find((candidate) => candidate.appVariantId === appVariantId);
+    if (!appVariant) {
+      throw new BusinessProfileRequestError('App Variant does not exist', 404);
+    }
+
+    if (appVariant.role === 'white-label') {
+      if (runtimeTenantId !== undefined) {
+        throw new BusinessProfileRequestError(
+          'White Label Apps do not accept Runtime Tenant context',
+          403,
+        );
+      }
+      if (!appVariant.profile) {
+        throw new Error('White Label App Variant is missing Business Data.');
+      }
+      return appVariant.profile;
+    }
+
+    const selectedRuntimeTenantId =
+      appVariant.role === 'standalone' ? appVariant.standaloneRuntimeTenantId : runtimeTenantId;
+
+    if (selectedRuntimeTenantId === undefined) {
+      throw new BusinessProfileRequestError('Runtime Tenant context is required', 400);
+    }
+    if (
+      appVariant.role === 'standalone' &&
+      runtimeTenantId !== appVariant.standaloneRuntimeTenantId
+    ) {
+      throw new BusinessProfileRequestError(
+        'Standalone App Variant requires its fixed Runtime Tenant context',
+        403,
+      );
+    }
+    if (
+      appVariant.role !== 'standalone' &&
+      !runtimeTenantAccess.get(appVariant.appVariantId)?.includes(selectedRuntimeTenantId)
+    ) {
+      throw new BusinessProfileRequestError(
+        'Runtime Tenant is not allowed by this App Variant',
+        403,
+      );
+    }
+
+    const runtimeTenant = runtimeTenants.find(
+      (candidate) => candidate.runtimeTenantId === selectedRuntimeTenantId,
+    );
+    if (!runtimeTenant) {
+      throw new BusinessProfileRequestError('Runtime Tenant does not exist', 404);
+    }
+
+    return { name: runtimeTenant.name, description: runtimeTenant.description };
+  }
+}
