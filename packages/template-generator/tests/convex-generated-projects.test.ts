@@ -149,6 +149,10 @@ test('generates the exact Auth-free Convex-managed shape for every Setup Type', 
       /export const check = query/,
     );
     assert.match(readVirtualText(tree, 'apps/server/convex/starterData.ts'), /internalMutation/);
+    assert.match(
+      readVirtualText(tree, 'apps/server/convex/starterData.ts'),
+      /export const clear = internalMutation/,
+    );
     assert.match(readVirtualText(tree, 'README.md'), /## Convex Backend/);
     assert.match(generatedText, /Auth: none/);
     assert.notMatch(

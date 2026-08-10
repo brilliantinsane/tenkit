@@ -9,6 +9,11 @@ async function clearStarterData(ctx: MutationCtx) {
   }
 }
 
+export const clear = internalMutation({
+  args: {},
+  handler: clearStarterData,
+});
+
 export const seed = internalMutation({
   args: {},
   handler: async (ctx) => {

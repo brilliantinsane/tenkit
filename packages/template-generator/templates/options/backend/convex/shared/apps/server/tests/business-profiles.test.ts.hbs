@@ -139,4 +139,17 @@ test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async 
     }),
   ).rejects.toThrow(/INVALID_CONTEXT/);
 {{/ifSetupType}}
+
+  await convex.mutation(internal.starterData.clear, {});
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    }),
+  ).rejects.toThrow(/UNKNOWN_APP_VARIANT/);
+  await convex.run(async (ctx) => {
+    for (const table of ['appVariants', 'runtimeTenants', 'runtimeTenantAccess'] as const) {
+      await expect(ctx.db.query(table).collect()).resolves.toEqual([]);
+    }
+  });
 });
