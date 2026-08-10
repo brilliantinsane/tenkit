@@ -16,6 +16,8 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
+  hasServerWorkspace: boolean;
+  isConvexBackend: boolean;
   isExpressBackend: boolean;
   isNestjsBackend: boolean;
   isNodeBackend: boolean;

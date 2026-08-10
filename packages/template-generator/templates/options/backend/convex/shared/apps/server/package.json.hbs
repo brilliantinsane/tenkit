@@ -1,0 +1,22 @@
+{
+  "name": "@{{packageName}}/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "convex codegen",
+    "dev": "convex dev",
+    "seed": "convex run starterData:seed",
+    "sync": "convex dev --once",
+    "test": "vitest run tests/business-profiles.test.ts",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    "convex": "1.43.0"
+  },
+  "devDependencies": {
+    "convex-test": "0.0.55",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

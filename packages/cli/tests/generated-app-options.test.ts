@@ -136,9 +136,52 @@ test('interactive creation can select Express while non-interactive creation kee
       { value: 'none', label: 'None' },
       { value: 'express', label: 'Express' },
       { value: 'nestjs', label: 'NestJS' },
+      { value: 'convex', label: 'Convex' },
     ],
   });
   expect(prompts.confirm).toHaveBeenCalledOnce();
+});
+
+test('explicit Convex flags resolve managed persistence and write Convex-owned output', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'convex-app',
+      backend: 'convex',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'convex',
+    auth: 'none',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Backend: convex');
+  expect(environment.lines).toContain('- Database: Convex-managed');
+  expect(environment.lines).toContain('- ORM: not applicable');
+  expect(environment.lines).toContain('- pnpm run convex:sync');
+  expect(environment.lines).toContain(
+    '- Set EXPO_PUBLIC_CONVEX_URL in .env.local to the synced deployment HTTPS URL',
+  );
+  expect(environment.lines).toContain('- pnpm run convex:seed');
+  expect(environment.lines).toContain('- pnpm run dev');
+  expect(await fs.pathExists(join(tempRoot, 'convex-app/apps/server/convex/schema.ts'))).toBe(true);
+  expect(await fs.pathExists(join(tempRoot, 'convex-app/packages/auth'))).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'convex-app/packages/db'))).toBe(false);
 });
 
 test('rejects invalid values and unsupported combinations before generation or writing', async () => {

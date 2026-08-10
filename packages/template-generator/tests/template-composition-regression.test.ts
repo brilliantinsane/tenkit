@@ -56,6 +56,7 @@ test('Template source paths use ADR 0009 owners', () => {
     paths.filter((path) => path.endsWith('package.json.hbs')),
     [
       'generic-standalone/shared/package.json.hbs',
+      'options/backend/convex/shared/apps/server/package.json.hbs',
       'options/backend/express/shared/apps/server/package.json.hbs',
       'options/backend/nestjs/shared/apps/server/package.json.hbs',
       'runtime-tenants/shared/package.json.hbs',
@@ -63,6 +64,13 @@ test('Template source paths use ADR 0009 owners', () => {
     ],
   );
 
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/backend/convex/'))
+      .map((path) => path.replace('options/backend/convex/shared/', ''))
+      .filter((path) => !path.startsWith('apps/server/')),
+    [],
+  );
   assert.deepEqual(
     paths
       .filter((path) => path.startsWith('options/backend/express/'))

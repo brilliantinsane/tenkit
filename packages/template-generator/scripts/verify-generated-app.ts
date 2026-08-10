@@ -36,7 +36,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -171,7 +171,12 @@ async function main() {
     stylingChoice: args.stylingChoice,
     workspaceRoot,
     environment,
-    profile: isNodeBackend ? 'node-server' : 'deterministic',
+    profile:
+      args.generatedAppOptions.backend === 'convex'
+        ? 'convex'
+        : isNodeBackend
+          ? 'node-server'
+          : 'deterministic',
   });
 
   if (evidence.status === 'failed') {

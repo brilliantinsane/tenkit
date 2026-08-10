@@ -1,6 +1,34 @@
 import { ThemeProvider } from 'expo-router/react-navigation';
 import { StatusBar } from 'expo-status-bar';
 
+{{#if isConvexBackend}}
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
+
+function resolveConvexDeploymentUrl(): string {
+  const deploymentUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+  if (!deploymentUrl) {
+    throw new Error('EXPO_PUBLIC_CONVEX_URL is required for the selected Convex Backend.');
+  }
+
+  let parsedDeploymentUrl: URL;
+  try {
+    parsedDeploymentUrl = new URL(deploymentUrl);
+  } catch {
+    throw new Error('EXPO_PUBLIC_CONVEX_URL must be a valid HTTPS URL.');
+  }
+  if (parsedDeploymentUrl.protocol !== 'https:') {
+    throw new Error('EXPO_PUBLIC_CONVEX_URL must be a valid HTTPS URL.');
+  }
+
+  return deploymentUrl;
+}
+
+const convexClient = new ConvexReactClient(resolveConvexDeploymentUrl(), {
+  unsavedChangesWarning: false,
+});
+{{/if}}
+
+
 import AppTabs from '@/components/app-tabs';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 import { getNavigationTheme } from '@/theme/colors';
@@ -29,7 +57,13 @@ export default function RootLayout() {
         accent: theme.accent,
       }}
     >
+      {{#if isConvexBackend}}
+      <ConvexProvider client={convexClient}>
+      {{/if}}
       <RootLayoutInner />
+      {{#if isConvexBackend}}
+      </ConvexProvider>
+      {{/if}}
     </ColorsProvider>
   );
 }

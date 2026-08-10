@@ -42,7 +42,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express|nestjs>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express|nestjs|convex>] [--auth <none>] [--database <none>] [--orm <none>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {

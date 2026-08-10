@@ -61,6 +61,29 @@ Expo-only `{{packageManagerRunCommand}} start` remains available. Verify the ser
 ```
 {{/if}}
 
+{{#if isConvexBackend}}
+## Convex Backend
+
+This project keeps Expo at the root and adds Convex-owned schema, functions, Starter Data, generated support, and tests in `apps/server`. Convex manages persistence, so no SQL Database, ORM, or Node production process is part of this project.
+
+Copy the committed examples, then connect only to a Convex development deployment you own:
+
+```bash
+cp .env.example .env.local
+cp apps/server/.env.example apps/server/.env.local
+{{packageManagerRunCommand}} convex:sync
+```
+
+The Convex CLI writes deployment metadata to the ignored `apps/server/.env.local`. Set `EXPO_PUBLIC_CONVEX_URL` in the root `.env.local` to that deployment's public HTTPS URL, then seed Convex-owned Starter Data and run Expo with Convex sync:
+
+```bash
+{{packageManagerRunCommand}} convex:seed
+{{packageManagerRunCommand}} dev
+```
+
+Use `{{packageManagerRunCommand}} convex:codegen` to refresh committed generated support, `{{packageManagerRunCommand}} convex:sync` for a one-time development sync, and `{{packageManagerRunCommand}} test` for local schema and function checks. Deploy Backend functions with Convex's documented deployment workflow.
+{{/if}}
+
 ## Build Preparation
 
 Use the local Tenkit CLI when you are preparing native projects for a real App Variant build or local native run:
@@ -184,6 +207,12 @@ Shared product assets that are not part of native app identity belong in `assets
 {{packageManagerRunCommand}} dev           # run Expo and {{nodeBackendDisplayName}} together
 {{packageManagerRunCommand}} test          # run {{nodeBackendDisplayName}} tests
 {{packageManagerRunCommand}} build         # build compiled {{nodeBackendDisplayName}} output
+{{/if}}
+{{#if isConvexBackend}}
+{{packageManagerRunCommand}} dev           # run Expo and Convex sync together
+{{packageManagerRunCommand}} convex:sync   # sync Convex functions once
+{{packageManagerRunCommand}} convex:seed   # seed Convex-owned Starter Data
+{{packageManagerRunCommand}} test          # run local Convex function tests
 {{/if}}
 ```
 

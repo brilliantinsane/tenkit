@@ -1,0 +1,63 @@
+import type { SetupType } from './setupType';
+
+export type BusinessProfileRequest = {
+  setupType: SetupType;
+  appVariantId: number;
+  runtimeTenantId?: number;
+};
+
+export type BusinessProfileAppVariant = {
+  setupType: SetupType;
+  appVariantId: number;
+  role?: 'generic' | 'standalone';
+  standaloneRuntimeTenantId?: number;
+};
+
+export type BusinessProfileTarget =
+  | { kind: 'app-variant' }
+  | { kind: 'runtime-tenant'; runtimeTenantId: number; requiresAccessGrant: boolean }
+  | { kind: 'denied'; code: 'RUNTIME_TENANT_NOT_ALLOWED' | 'RUNTIME_TENANT_REQUIRED' };
+
+export function resolveBusinessProfileTarget(
+  request: BusinessProfileRequest,
+  appVariant: BusinessProfileAppVariant,
+): BusinessProfileTarget {
+{{#ifSetupType 'white-label-apps'}}
+  return request.runtimeTenantId === undefined
+    ? { kind: 'app-variant' }
+    : { kind: 'denied', code: 'RUNTIME_TENANT_NOT_ALLOWED' };
+{{/ifSetupType}}
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  if (request.runtimeTenantId === undefined) {
+    return { kind: 'denied', code: 'RUNTIME_TENANT_REQUIRED' };
+  }
+
+  return {
+    kind: 'runtime-tenant',
+    runtimeTenantId: request.runtimeTenantId,
+    requiresAccessGrant: true,
+  };
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  if (appVariant.role === 'standalone') {
+    return appVariant.standaloneRuntimeTenantId !== undefined &&
+      request.runtimeTenantId === appVariant.standaloneRuntimeTenantId
+      ? {
+          kind: 'runtime-tenant',
+          runtimeTenantId: appVariant.standaloneRuntimeTenantId,
+          requiresAccessGrant: false,
+        }
+      : { kind: 'denied', code: 'RUNTIME_TENANT_NOT_ALLOWED' };
+  }
+
+  if (request.runtimeTenantId === undefined) {
+    return { kind: 'denied', code: 'RUNTIME_TENANT_REQUIRED' };
+  }
+
+  return {
+    kind: 'runtime-tenant',
+    runtimeTenantId: request.runtimeTenantId,
+    requiresAccessGrant: true,
+  };
+{{/ifSetupType}}
+}

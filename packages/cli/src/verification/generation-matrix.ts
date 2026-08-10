@@ -51,6 +51,12 @@ const NESTJS_NONE_GENERATED_APP_OPTIONS = {
   database: 'none',
   orm: 'none',
 } as const satisfies GeneratedAppOptions;
+const CONVEX_NONE_GENERATED_APP_OPTIONS = {
+  backend: 'convex',
+  auth: 'none',
+  database: 'none',
+  orm: 'none',
+} as const satisfies GeneratedAppOptions;
 
 export const GENERATION_MATRIX_ROOT = '/tmp/tenkit-test';
 
@@ -340,6 +346,21 @@ export function createNestjsInstalledVerificationCases(): readonly GenerationMat
       install: true,
       git: true,
       generatedAppOptions: NESTJS_NONE_GENERATED_APP_OPTIONS,
+    }),
+  );
+}
+
+export function createConvexInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+    createMatrixCase({
+      phase: 'installed',
+      setupType,
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+      generatedAppOptions: CONVEX_NONE_GENERATED_APP_OPTIONS,
     }),
   );
 }
@@ -780,6 +801,7 @@ export async function runGenerationMatrix({
     ...createInstalledVerificationCases(),
     ...createExpressInstalledVerificationCases(),
     ...createNestjsInstalledVerificationCases(),
+    ...createConvexInstalledVerificationCases(),
   ];
 
   for (const matrixCase of cases) {

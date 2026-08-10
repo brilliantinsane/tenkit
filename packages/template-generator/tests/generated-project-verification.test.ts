@@ -29,6 +29,13 @@ const NESTJS_OPTIONS = {
   orm: 'none',
 } as const;
 
+const CONVEX_OPTIONS = {
+  backend: 'convex',
+  auth: 'none',
+  database: 'none',
+  orm: 'none',
+} as const;
+
 const NODE_SELECTION = {
   setupType: 'white-label-apps',
   stylingChoice: 'bare',
@@ -39,6 +46,11 @@ const NODE_SELECTION = {
 const NESTJS_NODE_SELECTION = {
   ...NODE_SELECTION,
   generatedAppOptions: NESTJS_OPTIONS,
+} as const;
+
+const CONVEX_SELECTION = {
+  ...NODE_SELECTION,
+  generatedAppOptions: CONVEX_OPTIONS,
 } as const;
 
 const { runGeneratedAppCommand } = vi.hoisted(() => ({
@@ -124,16 +136,56 @@ async function createWrittenGeneratedProject(
   return targetDir;
 }
 
-async function createWrittenNodeProject(
-  selection: typeof NODE_SELECTION | typeof NESTJS_NODE_SELECTION = NODE_SELECTION,
+async function createWrittenServerWorkspaceProject(
+  selection:
+    typeof NODE_SELECTION | typeof NESTJS_NODE_SELECTION | typeof CONVEX_SELECTION = NODE_SELECTION,
 ): Promise<string> {
-  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-node-verification-'));
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-server-workspace-verification-'));
   const targetDir = join(tempRoot, 'generated-project');
   tempRoots.push(tempRoot);
   const tree = generateProject(selection);
   await writeProject({ targetDir, tree, overwrite: 'never' });
   return targetDir;
 }
+
+test('the Convex profile runs local function integration without claiming a Node process', async () => {
+  const targetDir = await createWrittenServerWorkspaceProject(CONVEX_SELECTION);
+
+  const evidence = await verifyGeneratedProject({
+    targetDir,
+    selection: CONVEX_SELECTION,
+    environment: {
+      PATH: '/safe/bin',
+      EXPO_PUBLIC_CONVEX_URL: 'https://example.convex.cloud',
+    },
+    profile: 'convex',
+  });
+
+  expect(evidence.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'test')?.status).toBe('passed');
+  expect(evidence.phases.find(({ phase }) => phase === 'build')).toMatchObject({
+    status: 'not-applicable',
+    reason: 'Convex has no Node production build phase.',
+  });
+  expect(evidence.phases.find(({ phase }) => phase === 'start')).toMatchObject({
+    status: 'not-applicable',
+    reason: 'Convex hosting has no generated Node server process.',
+  });
+  expect(evidence.phases.find(({ phase }) => phase === 'runtime')?.status).toBe('passed');
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'test'],
+    expect.any(Object),
+  );
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'test:integration'],
+    expect.any(Object),
+  );
+  expect(startGeneratedAppProcess).not.toHaveBeenCalled();
+});
 
 test('one written generated project returns ordered structured phase evidence', async () => {
   const selection = {
@@ -305,7 +357,7 @@ test('a command timeout owns the failure and still records cleanup', async () =>
 });
 
 test('the Node server profile proves build, readiness, runtime, and graceful shutdown', async () => {
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -358,7 +410,7 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
 });
 
 test('the Node server profile proves the NestJS lifecycle and host-side SQL absence', async () => {
-  const targetDir = await createWrittenNodeProject(NESTJS_NODE_SELECTION);
+  const targetDir = await createWrittenServerWorkspaceProject(NESTJS_NODE_SELECTION);
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -401,7 +453,7 @@ test('readiness timeout stops runtime but always shuts down the process', async 
     },
     shutdown,
   });
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -425,7 +477,7 @@ test.each([
   { failedArgs: ['run', 'test'], phase: 'test' },
   { failedArgs: ['run', 'test:integration'], phase: 'runtime' },
 ] as const)('a Node $phase command failure owns its phase', async ({ failedArgs, phase }) => {
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
   runGeneratedAppCommand.mockImplementation(async (_cwd, command, args) =>
     args.join('\0') === failedArgs.join('\0')
       ? { args, command, durationMs: 5, exitCode: 1, status: 'failed' as const }
@@ -467,7 +519,7 @@ test('premature server exit owns start and still runs shutdown cleanup', async (
     },
     shutdown,
   });
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -504,7 +556,7 @@ test('forced shutdown fails lifecycle proof after runtime passes', async () => {
       status: 'failed',
     }),
   });
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -540,7 +592,7 @@ test('a leaked process tree fails shutdown and cleanup evidence', async () => {
       status: 'failed',
     }),
   });
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
 
   const evidence = await verifyGeneratedProject({
     targetDir,
@@ -567,7 +619,7 @@ test('a leaked process tree fails shutdown and cleanup evidence', async () => {
 });
 
 test('a shutdown boundary rejection fails shutdown and cleanup evidence', async () => {
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
   startGeneratedAppProcess.mockResolvedValueOnce({
     startEvidence: {
       args: ['run', 'server:start:prod'],
@@ -598,7 +650,7 @@ test('a shutdown boundary rejection fails shutdown and cleanup evidence', async 
 });
 
 test('an unexpected server start rejection carries the completed phase ledger', async () => {
-  const targetDir = await createWrittenNodeProject();
+  const targetDir = await createWrittenServerWorkspaceProject();
   startGeneratedAppProcess.mockRejectedValueOnce(new Error('unsupported process boundary'));
 
   const failure: unknown = await verifyGeneratedProject({

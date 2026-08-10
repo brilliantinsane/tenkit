@@ -204,6 +204,8 @@ function normalizeTemplateContext({
       appVariantNames,
       setupTypeDefinition,
     }),
+    hasServerWorkspace: generatedAppOptions.backend !== 'none',
+    isConvexBackend: generatedAppOptions.backend === 'convex',
     isExpressBackend: generatedAppOptions.backend === 'express',
     isNestjsBackend: generatedAppOptions.backend === 'nestjs',
     isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
@@ -259,7 +261,9 @@ function readProjectTemplateTree({
     ? readTemplateTree('options/backend/express/shared', context)
     : context.isNestjsBackend
       ? readTemplateTree('options/backend/nestjs/shared', context)
-      : [];
+      : context.isConvexBackend
+        ? readTemplateTree('options/backend/convex/shared', context)
+        : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({

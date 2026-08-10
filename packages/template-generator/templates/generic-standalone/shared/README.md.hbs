@@ -58,6 +58,29 @@ Expo-only `{{packageManagerRunCommand}} start` remains available. Verify the ser
 ```
 {{/if}}
 
+{{#if isConvexBackend}}
+## Convex Backend
+
+This project keeps Expo at the root and adds Convex-owned schema, functions, Starter Data, generated support, and tests in `apps/server`. Convex manages persistence, so no SQL Database, ORM, or Node production process is part of this project.
+
+Copy the committed examples, then connect only to a Convex development deployment you own:
+
+```bash
+cp .env.example .env.local
+cp apps/server/.env.example apps/server/.env.local
+{{packageManagerRunCommand}} convex:sync
+```
+
+The Convex CLI writes deployment metadata to the ignored `apps/server/.env.local`. Set `EXPO_PUBLIC_CONVEX_URL` in the root `.env.local` to that deployment's public HTTPS URL, then seed Convex-owned Starter Data and run Expo with Convex sync:
+
+```bash
+{{packageManagerRunCommand}} convex:seed
+{{packageManagerRunCommand}} dev
+```
+
+Use `{{packageManagerRunCommand}} convex:codegen` to refresh committed generated support, `{{packageManagerRunCommand}} convex:sync` for a one-time development sync, and `{{packageManagerRunCommand}} test` for local schema and function checks. Deploy Backend functions with Convex's documented deployment workflow.
+{{/if}}
+
 ## Select an App Variant
 
 App Variant native identity is selected with `APP_VARIANT_SLUG`:

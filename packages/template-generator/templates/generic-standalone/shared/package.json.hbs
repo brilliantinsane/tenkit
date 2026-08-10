@@ -2,7 +2,7 @@
   "name": "{{packageName}}",
   "version": "1.0.0",
   "private": true,
-  {{#if isNodeBackend}}
+  {{#if hasServerWorkspace}}
   {{#if isNpmPackageManager}}
   "workspaces": ["apps/server"],
   {{/if}}
@@ -13,22 +13,34 @@
   "main": "{{#if isUnistylesStyling}}index.ts{{else}}expo-router/entry{{/if}}",
   "scripts": {
     "start": "expo start",
-    {{#if isNodeBackend}}
+  {{#if isNodeBackend}}
     "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
     "build": "{{packageManagerServerRunCommand}} build",
     "server:dev": "{{packageManagerServerRunCommand}} dev",
     "server:start:prod": "{{packageManagerServerRunCommand}} start:prod",
     "test": "{{packageManagerServerRunCommand}} test",
     "test:integration": "{{packageManagerServerRunCommand}} test:integration",
-    {{/if}}
+  {{/if}}
+  {{#if isConvexBackend}}
+    "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
+    "convex:codegen": "{{packageManagerServerRunCommand}} codegen",
+    "convex:dev": "{{packageManagerServerRunCommand}} dev",
+    "convex:seed": "{{packageManagerServerRunCommand}} seed",
+    "convex:sync": "{{packageManagerServerRunCommand}} sync",
+    "test": "{{packageManagerServerRunCommand}} test",
+    "test:integration": "{{packageManagerServerRunCommand}} test",
+  {{/if}}
     "tenkit": "tsx scripts/tenkit-cli.ts",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit --pretty false{{#if isNodeBackend}} && {{packageManagerServerRunCommand}} typecheck{{/if}}",
+    "typecheck": "tsc --noEmit --pretty false{{#if hasServerWorkspace}} && {{packageManagerServerRunCommand}} typecheck{{/if}}",
     "expo:config": "expo config --type public"
   },
   "dependencies": {
+    {{#if isConvexBackend}}
+    "convex": "1.43.0",
+    {{/if}}
     {{#if isUnistylesStyling}}
     "@react-native/normalize-colors": "0.86.0",
     {{/if}}
@@ -69,7 +81,7 @@
     "@types/node": "^25.9.3",
     "@types/react": "~19.2.2",
     "commander": "^15.0.0",
-    {{#if isNodeBackend}}
+    {{#if hasServerWorkspace}}
     "concurrently": "^9.2.1",
     {{/if}}
     {{#if isUniwindStyling}}

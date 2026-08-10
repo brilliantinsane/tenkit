@@ -1,9 +1,13 @@
+{{#if isConvexBackend}}
+import { api } from '@server/convex/_generated/api';
+import { useQuery } from 'convex/react';
+{{/if}}
 {{#if isNodeBackend}}
 import { fetch } from 'expo/fetch';
 import { useEffect, useState } from 'react';
 {{/if}}
 
-{{#unless isNodeBackend}}
+{{#unless hasServerWorkspace}}
 import { appVariants } from '@/constants/app-variants';
 {{/unless}}
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
@@ -19,6 +23,21 @@ export type BusinessProfileState = {
   isLoading: boolean;
 };
 
+{{#if isConvexBackend}}
+export function useBusinessProfile(): BusinessProfileState {
+  const { appVariant } = useAppVariantConfig();
+  const profile = useQuery(api.businessProfiles.get, {
+    setupType: '{{setupType}}',
+    appVariantId: appVariant.id,
+  });
+
+  return {
+    profile: profile ?? null,
+    error: null,
+    isLoading: profile === undefined,
+  };
+}
+{{else}}
 {{#if isNodeBackend}}
 function resolveBackendUrl(): URL {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -129,4 +148,5 @@ export function useBusinessProfile(): BusinessProfileState {
     isLoading: false,
   };
 }
+{{/if}}
 {{/if}}

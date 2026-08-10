@@ -1,0 +1,76 @@
+import { ConvexError, v } from 'convex/values';
+
+import { query } from './_generated/server';
+import { resolveBusinessProfileTarget } from './businessProfileAccess';
+import { setupTypeValidator } from './setupType';
+
+export const get = query({
+  args: {
+    setupType: setupTypeValidator,
+    appVariantId: v.number(),
+    runtimeTenantId: v.optional(v.number()),
+  },
+  handler: async (ctx, request) => {
+    if (
+      !Number.isSafeInteger(request.appVariantId) ||
+      request.appVariantId <= 0 ||
+      (request.runtimeTenantId !== undefined &&
+        (!Number.isSafeInteger(request.runtimeTenantId) || request.runtimeTenantId <= 0))
+    ) {
+      throw new ConvexError('INVALID_CONTEXT');
+    }
+
+    const appVariant = await ctx.db
+      .query('appVariants')
+      .withIndex('by_setup_type_and_app_variant', (index) =>
+        index.eq('setupType', request.setupType).eq('appVariantId', request.appVariantId),
+      )
+      .unique();
+
+    if (!appVariant) {
+      throw new ConvexError('UNKNOWN_APP_VARIANT');
+    }
+
+    const target = resolveBusinessProfileTarget(request, appVariant);
+    if (target.kind === 'denied') {
+      throw new ConvexError(target.code);
+    }
+
+    if (target.kind === 'app-variant') {
+      if (!appVariant.profileName || !appVariant.profileDescription) {
+        throw new ConvexError('PROFILE_NOT_FOUND');
+      }
+      return { name: appVariant.profileName, description: appVariant.profileDescription };
+    }
+
+    if (target.requiresAccessGrant) {
+      const access = await ctx.db
+        .query('runtimeTenantAccess')
+        .withIndex('by_setup_type_app_variant_and_runtime_tenant', (index) =>
+          index
+            .eq('setupType', request.setupType)
+            .eq('appVariantId', request.appVariantId)
+            .eq('runtimeTenantId', target.runtimeTenantId),
+        )
+        .unique();
+      if (!access) {
+        throw new ConvexError('RUNTIME_TENANT_NOT_ALLOWED');
+      }
+    }
+
+    const runtimeTenant = await ctx.db
+      .query('runtimeTenants')
+      .withIndex('by_setup_type_and_runtime_tenant', (index) =>
+        index.eq('setupType', request.setupType).eq('runtimeTenantId', target.runtimeTenantId),
+      )
+      .unique();
+    if (!runtimeTenant) {
+      throw new ConvexError('PROFILE_NOT_FOUND');
+    }
+
+    return {
+      name: runtimeTenant.profileName,
+      description: runtimeTenant.profileDescription,
+    };
+  },
+});

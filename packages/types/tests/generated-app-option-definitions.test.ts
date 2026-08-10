@@ -32,7 +32,7 @@ test('identifies only the generated Node Backends', () => {
   assert.equal(isGeneratedNodeBackend('convex'), false);
 });
 
-test('owns one supported-combinations list containing the zero-service and Database-free Node slices', () => {
+test('owns one supported-combinations list containing the zero-service, Database-free Node, and Convex slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
       backend: 'none',
@@ -48,6 +48,12 @@ test('owns one supported-combinations list containing the zero-service and Datab
     },
     {
       backend: 'nestjs',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'convex',
       auth: 'none',
       database: 'none',
       orm: 'none',
@@ -100,6 +106,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'convex',
+      auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
   ]);
 });
 
@@ -130,7 +142,7 @@ test('returns structured invalid-value and unsupported-combination facts', () =>
 test('derives dependency-aware partial choices from the same supported list', () => {
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
-    backend: { status: 'selectable', values: ['none', 'express', 'nestjs'] },
+    backend: { status: 'selectable', values: ['none', 'express', 'nestjs', 'convex'] },
     auth: { status: 'resolved', values: ['none'], value: 'none' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
@@ -159,6 +171,14 @@ test('derives dependency-aware partial choices from the same supported list', ()
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'convex' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['convex'], value: 'convex' },
+    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
 });
 
 test('accepts exactly the combinations present in the one supported list', () => {
@@ -181,5 +201,6 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'none:none:none:none',
     'express:none:none:none',
     'nestjs:none:none:none',
+    'convex:none:none:none',
   ]);
 });

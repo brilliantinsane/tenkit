@@ -1,0 +1,30 @@
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
+
+import { setupTypeValidator } from './setupType';
+
+export default defineSchema({
+  appVariants: defineTable({
+    setupType: setupTypeValidator,
+    appVariantId: v.number(),
+    role: v.optional(v.union(v.literal('generic'), v.literal('standalone'))),
+    standaloneRuntimeTenantId: v.optional(v.number()),
+    profileName: v.optional(v.string()),
+    profileDescription: v.optional(v.string()),
+  }).index('by_setup_type_and_app_variant', ['setupType', 'appVariantId']),
+  runtimeTenants: defineTable({
+    setupType: setupTypeValidator,
+    runtimeTenantId: v.number(),
+    profileName: v.string(),
+    profileDescription: v.string(),
+  }).index('by_setup_type_and_runtime_tenant', ['setupType', 'runtimeTenantId']),
+  runtimeTenantAccess: defineTable({
+    setupType: setupTypeValidator,
+    appVariantId: v.number(),
+    runtimeTenantId: v.number(),
+  }).index('by_setup_type_app_variant_and_runtime_tenant', [
+    'setupType',
+    'appVariantId',
+    'runtimeTenantId',
+  ]),
+});

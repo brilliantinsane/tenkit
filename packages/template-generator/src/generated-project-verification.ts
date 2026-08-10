@@ -172,7 +172,7 @@ function expectedWrittenTree(selection: GeneratedProjectVerificationSelection): 
   });
 }
 
-function expectedNodeServerLifecycleScripts(
+function expectedServerWorkspaceScripts(
   packageManager: GeneratedProjectPackageManager,
 ): Readonly<
   Record<'build' | 'server:start:prod' | 'test' | 'test:integration' | 'typecheck', string>
@@ -238,10 +238,13 @@ async function inspectWrittenGeneratedProject(
   ) {
     throw new Error('The Node server verification profile requires Express or NestJS.');
   }
+  if (profile === 'convex' && resolvedSelection.generatedAppOptions.backend !== 'convex') {
+    throw new Error('The Convex verification profile requires the Convex Backend.');
+  }
 
   const expectedTypecheck =
-    profile === 'node-server'
-      ? `tsc --noEmit --pretty false && ${expectedNodeServerLifecycleScripts(selection.packageManager).typecheck}`
+    resolvedSelection.generatedAppOptions.backend !== 'none'
+      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager).typecheck}`
       : 'tsc --noEmit --pretty false';
   if (manifest.scripts.typecheck !== expectedTypecheck) {
     throw new Error('The generated project package manifest has no canonical typecheck command.');
@@ -250,7 +253,7 @@ async function inspectWrittenGeneratedProject(
     throw new Error('The generated project package manifest has no canonical Expo config command.');
   }
   if (profile === 'node-server') {
-    const expectedScripts = expectedNodeServerLifecycleScripts(selection.packageManager);
+    const expectedScripts = expectedServerWorkspaceScripts(selection.packageManager);
     if (
       manifest.scripts.build !== expectedScripts.build ||
       manifest.scripts['server:start:prod'] !== expectedScripts['server:start:prod'] ||
@@ -376,7 +379,7 @@ export async function verifyGeneratedProject({
     { command: selection.packageManager, args: ['run', 'typecheck'] },
   ]);
 
-  if (profile === 'node-server') {
+  if (profile === 'node-server' || profile === 'convex') {
     await recordCommandPhase('test', [
       { command: selection.packageManager, args: ['run', 'test'] },
     ]);
@@ -443,7 +446,10 @@ export async function verifyGeneratedProject({
         ? createSkippedVerificationPhase('build')
         : createVerificationPhaseEvidence('build', 'not-applicable', {
             durationMs: 0,
-            reason: 'The deterministic Expo profile has no workspace build phase.',
+            reason:
+              profile === 'convex'
+                ? 'Convex has no Node production build phase.'
+                : 'The deterministic Expo profile has no workspace build phase.',
           }),
     );
   }
@@ -455,7 +461,10 @@ export async function verifyGeneratedProject({
           ? createSkippedVerificationPhase('start')
           : createVerificationPhaseEvidence('start', 'not-applicable', {
               durationMs: 0,
-              reason: 'The deterministic Expo profile has no server process.',
+              reason:
+                profile === 'convex'
+                  ? 'Convex hosting has no generated Node server process.'
+                  : 'The deterministic Expo profile has no server process.',
             }),
       );
     } else if (stopped) {
@@ -510,7 +519,7 @@ export async function verifyGeneratedProject({
       }
     }
 
-    if (profile === 'node-server') {
+    if (profile === 'node-server' || profile === 'convex') {
       await recordCommandPhase('runtime', [
         { command: selection.packageManager, args: ['run', 'test:integration'] },
       ]);

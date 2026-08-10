@@ -25,7 +25,7 @@ export const GENERATED_PROJECT_VERIFICATION_PHASES = [
 
 export type GeneratedProjectVerificationPhase =
   (typeof GENERATED_PROJECT_VERIFICATION_PHASES)[number];
-export type GeneratedProjectVerificationProfile = 'deterministic' | 'node-server';
+export type GeneratedProjectVerificationProfile = 'deterministic' | 'node-server' | 'convex';
 export type GeneratedProjectVerificationStatus = 'passed' | 'failed' | 'skipped' | 'not-applicable';
 
 export type GeneratedProjectVerificationPhaseEvidence = {
