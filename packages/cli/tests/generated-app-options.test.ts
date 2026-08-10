@@ -189,6 +189,53 @@ test('interactive creation exposes Clerk only after selecting Express', async ()
   });
 });
 
+test('interactive creation exposes Clerk after selecting NestJS', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'nestjs';
+      }
+      if (options.message === 'Auth') {
+        return 'clerk';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-nestjs-clerk',
+      setup: 'white-label',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'nestjs',
+    auth: 'clerk',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Auth',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'clerk', label: 'Clerk' },
+    ],
+  });
+});
+
 test('explicit Convex flags resolve managed persistence and write Convex-owned output', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);
@@ -297,6 +344,52 @@ test('explicit Express and Clerk flags resolve the stack and write Clerk-owned o
   );
   expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/packages/auth'))).toBe(false);
   expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/packages/db'))).toBe(false);
+});
+
+test('explicit NestJS and Clerk flags resolve the stack and write composed output', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'nestjs-clerk-app',
+      backend: 'nestjs',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'nestjs',
+    auth: 'clerk',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Backend: nestjs');
+  expect(environment.lines).toContain('- Auth: clerk');
+  expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+  expect(environment.lines).toContain(
+    '- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local',
+  );
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-clerk-app/src/app/(auth)/sign-in.tsx'))).toBe(
+    true,
+  );
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'nestjs-clerk-app/apps/server/src/configure-application.ts'),
+    ),
+  ).toBe(true);
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-clerk-app/packages/auth'))).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-clerk-app/packages/db'))).toBe(false);
 });
 
 test('explicit Express flags resolve the stack and write Express-owned output', async () => {

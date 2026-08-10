@@ -9,7 +9,7 @@ function serverUrl(path: string): URL {
   return new URL(path, `http://127.0.0.1:${port}`);
 }
 
-test('compiled NestJS serves health and public Business Data', async () => {
+test('compiled NestJS serves health and {{#if isClerkAuth}}rejects anonymous Business Data{{else}}public Business Data{{/if}}', async () => {
   const healthResponse = await fetch(serverUrl('/health'));
   expect(healthResponse.status).toBe(200);
   await expect(healthResponse.json()).resolves.toMatchObject({ status: 'ok' });
@@ -25,6 +25,12 @@ test('compiled NestJS serves health and public Business Data', async () => {
 {{/ifSetupType}}
 
   const profileResponse = await fetch(businessProfileUrl);
+  {{#if isClerkAuth}}
+  expect(profileResponse.status).toBe(401);
+  await expect(profileResponse.json()).resolves.toEqual({
+    error: 'Authentication is required',
+  });
+  {{else}}
   expect(profileResponse.status).toBe(200);
   await expect(profileResponse.json()).resolves.toEqual({
     profile: {
@@ -42,6 +48,7 @@ test('compiled NestJS serves health and public Business Data', async () => {
 {{/ifSetupType}}
     },
   });
+  {{/if}}
 
   expect((await fetch(serverUrl('/api/auth/session'))).status).toBe(404);
 });

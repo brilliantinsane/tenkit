@@ -57,6 +57,12 @@ const NESTJS_NONE_GENERATED_APP_OPTIONS = {
   database: 'none',
   orm: 'none',
 } as const satisfies GeneratedAppOptions;
+const NESTJS_CLERK_GENERATED_APP_OPTIONS = {
+  backend: 'nestjs',
+  auth: 'clerk',
+  database: 'none',
+  orm: 'none',
+} as const satisfies GeneratedAppOptions;
 const CONVEX_NONE_GENERATED_APP_OPTIONS = {
   backend: 'convex',
   auth: 'none',
@@ -367,6 +373,21 @@ export function createNestjsInstalledVerificationCases(): readonly GenerationMat
       install: true,
       git: true,
       generatedAppOptions: NESTJS_NONE_GENERATED_APP_OPTIONS,
+    }),
+  );
+}
+
+export function createNestjsClerkInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+    createMatrixCase({
+      phase: 'installed',
+      setupType,
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+      generatedAppOptions: NESTJS_CLERK_GENERATED_APP_OPTIONS,
     }),
   );
 }
@@ -823,6 +844,7 @@ export async function runGenerationMatrix({
     ...createExpressInstalledVerificationCases(),
     ...createExpressClerkInstalledVerificationCases(),
     ...createNestjsInstalledVerificationCases(),
+    ...createNestjsClerkInstalledVerificationCases(),
     ...createConvexInstalledVerificationCases(),
   ];
 

@@ -2,20 +2,36 @@ import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll{{#if isClerkAuth}}, beforeEach{{/if}}, describe, expect, test } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+{{#if isClerkAuth}}
+import { ClerkAuthenticationService } from '../src/business-profile/business-profile.controller.js';
+{{/if}}
 import { configureApplication } from '../src/configure-application.js';
 import type { ServerEnvironment } from '../src/server-environment.js';
 
 describe('NestJS Backend', () => {
   let app: INestApplication;
+  {{#if isClerkAuth}}
+  let isAuthenticated = true;
+  {{/if}}
 
   beforeAll(async () => {
-    const moduleReference = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const testingModule = Test.createTestingModule({ imports: [AppModule] });
+    {{#if isClerkAuth}}
+    testingModule.overrideProvider(ClerkAuthenticationService).useValue({
+      isAuthenticated: () => isAuthenticated,
+    });
+    {{/if}}
+    const moduleReference = await testingModule.compile();
     app = moduleReference.createNestApplication();
     const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
-    configureApplication(app, environment.getOrThrow('CLIENT_ORIGIN', { infer: true }));
+    configureApplication(
+      app,
+      environment.getOrThrow('CLIENT_ORIGIN', { infer: true }),
+      {{#if isClerkAuth}}(_request, _response, next) => next(),{{/if}}
+    );
     await app.init();
   });
 
@@ -23,13 +39,31 @@ describe('NestJS Backend', () => {
     await app.close();
   });
 
+  {{#if isClerkAuth}}
+  beforeEach(() => {
+    isAuthenticated = true;
+  });
+  {{/if}}
+
   test('exposes public health without an Auth route', async () => {
     const health = await request(app.getHttpServer()).get('/health').expect(200);
     expect(health.body).toMatchObject({ status: 'ok' });
     await request(app.getHttpServer()).get('/api/auth/session').expect(404);
+    {{#if isClerkAuth}}
+    isAuthenticated = false;
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        {{#if isSingleAppRuntimeTenants}}runtimeTenantId: 100,{{/if}}
+        {{#ifSetupType 'generic-with-standalone-app-variants'}}runtimeTenantId: 100,{{/ifSetupType}}
+      })
+      .expect(401, { error: 'Authentication is required' });
+    {{/if}}
   });
 
-  test('validates context and returns Setup Type-scoped Business Data', async () => {
+  test('{{#if isClerkAuth}}authenticated requests {{/if}}validate context and return Setup Type-scoped Business Data', async () => {
     await request(app.getHttpServer()).get('/api/business-profile').expect(400);
     await request(app.getHttpServer())
       .get('/api/business-profile')
@@ -114,4 +148,26 @@ describe('NestJS Backend', () => {
       });
 {{/ifSetupType}}
   });
+
+  {{#if isClerkAuth}}
+  test('sign-out Auth state invalidates protected Business Data access', async () => {
+    const requestQuery = {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      {{#if isSingleAppRuntimeTenants}}runtimeTenantId: 100,{{/if}}
+      {{#ifSetupType 'generic-with-standalone-app-variants'}}runtimeTenantId: 100,{{/ifSetupType}}
+    };
+
+    isAuthenticated = true;
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query(requestQuery)
+      .expect(200);
+    isAuthenticated = false;
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query(requestQuery)
+      .expect(401, { error: 'Authentication is required' });
+  });
+  {{/if}}
 });

@@ -1,4 +1,16 @@
-import { Controller, Get, HttpException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  {{#if isClerkAuth}}Injectable,
+  Query,
+  Req,
+  UnauthorizedException,{{else}}Query,{{/if}}
+} from '@nestjs/common';
+{{#if isClerkAuth}}
+import { getAuth } from '@clerk/express';
+import type { Request } from 'express';
+{{/if}}
 
 import { BusinessProfileQueryDto } from './business-profile-query.dto.js';
 import {
@@ -6,12 +18,33 @@ import {
   BusinessProfileService,
 } from './business-profile.service.js';
 
+{{#if isClerkAuth}}
+@Injectable()
+export class ClerkAuthenticationService {
+  isAuthenticated(request: Request): boolean {
+    return getAuth(request).isAuthenticated;
+  }
+}
+
+{{/if}}
 @Controller('api/business-profile')
 export class BusinessProfileController {
-  constructor(private readonly businessProfiles: BusinessProfileService) {}
+  constructor(
+    private readonly businessProfiles: BusinessProfileService,
+    {{#if isClerkAuth}}private readonly authentication: ClerkAuthenticationService,{{/if}}
+  ) {}
 
   @Get()
-  read(@Query() query: BusinessProfileQueryDto) {
+  read(
+    {{#if isClerkAuth}}@Req() request: Request,
+    {{/if}}@Query() query: BusinessProfileQueryDto,
+  ) {
+    {{#if isClerkAuth}}
+    if (!this.authentication.isAuthenticated(request)) {
+      throw new UnauthorizedException({ error: 'Authentication is required' });
+    }
+
+    {{/if}}
     try {
       return { profile: this.businessProfiles.resolve(query) };
     } catch (error) {

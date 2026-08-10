@@ -64,6 +64,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'nestjs',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+    },
   ]);
 });
 
@@ -120,6 +126,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     },
     {
       backend: 'express',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'nestjs',
       auth: 'clerk',
       database: 'none',
       orm: 'none',
@@ -187,7 +199,15 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs' }), {
     status: 'available',
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
-    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    auth: { status: 'selectable', values: ['none', 'clerk'] },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs', auth: 'clerk' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
+    auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
@@ -222,6 +242,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:none:none:none',
     'express:clerk:none:none',
     'nestjs:none:none:none',
+    'nestjs:clerk:none:none',
     'convex:none:none:none',
   ]);
 });

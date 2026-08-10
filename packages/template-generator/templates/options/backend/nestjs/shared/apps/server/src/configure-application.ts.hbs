@@ -1,7 +1,28 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
+{{#if isClerkAuth}}
+import { clerkMiddleware } from '@clerk/express';
+import type { RequestHandler } from 'express';
 
-export function configureApplication(app: INestApplication, clientOrigin: string): void {
-  app.enableCors({ origin: clientOrigin });
+declare global {
+  interface ClerkAppearanceRegistry {
+    theme?: unknown;
+  }
+}
+{{/if}}
+
+export function configureApplication(
+  app: INestApplication,
+  clientOrigin: string,
+  {{#if isClerkAuth}}authenticationMiddleware: RequestHandler = clerkMiddleware(),{{/if}}
+): void {
+  {{#if isClerkAuth}}
+  app.use(authenticationMiddleware);
+  {{/if}}
+  app.enableCors({
+    origin: clientOrigin,
+    methods: ['GET'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       forbidNonWhitelisted: true,

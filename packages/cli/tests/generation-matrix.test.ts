@@ -13,6 +13,7 @@ import {
   createExpressClerkInstalledVerificationCases,
   createExpressInstalledVerificationCases,
   createInstalledVerificationCases,
+  createNestjsClerkInstalledVerificationCases,
   createNestjsInstalledVerificationCases,
   finalizeGenerationMatrix,
   GENERATION_MATRIX_ROOT,
@@ -154,6 +155,34 @@ describe('generation matrix coverage', () => {
         ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
           generatedAppOptions.backend === 'nestjs' &&
           generatedAppOptions.auth === 'none' &&
+          generatedAppOptions.database === 'none' &&
+          generatedAppOptions.orm === 'none' &&
+          stylingChoice === 'bare' &&
+          packageManager === 'pnpm' &&
+          install &&
+          git,
+      ),
+    );
+    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
+  });
+
+  test('adds one installed Bare pnpm NestJS and Clerk case for every Setup Type', () => {
+    const cases = createNestjsClerkInstalledVerificationCases();
+
+    assert.equal(cases.length, 3);
+    assert.deepEqual(
+      new Set(cases.map(({ setupType }) => setupType)),
+      new Set([
+        'white-label-apps',
+        'single-app-runtime-tenants',
+        'generic-with-standalone-app-variants',
+      ]),
+    );
+    assert.ok(
+      cases.every(
+        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
+          generatedAppOptions.backend === 'nestjs' &&
+          generatedAppOptions.auth === 'clerk' &&
           generatedAppOptions.database === 'none' &&
           generatedAppOptions.orm === 'none' &&
           stylingChoice === 'bare' &&
