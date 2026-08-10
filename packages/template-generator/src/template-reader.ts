@@ -18,6 +18,7 @@ export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
   hasServerWorkspace: boolean;
   isConvexBackend: boolean;
+  isClerkAuth: boolean;
   isExpressBackend: boolean;
   isNestjsBackend: boolean;
   isNodeBackend: boolean;

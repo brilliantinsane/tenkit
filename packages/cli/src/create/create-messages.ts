@@ -41,6 +41,10 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
   if (isGeneratedNodeBackend(result.generatedAppOptions.backend)) {
     output.log('- cp .env.example .env.local');
     output.log('- cp apps/server/.env.example apps/server/.env.local');
+    if (result.generatedAppOptions.auth === 'clerk') {
+      output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+      output.log('- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local');
+    }
     output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');
     output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
   } else if (result.generatedAppOptions.backend === 'convex') {

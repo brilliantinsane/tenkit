@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 const serverEnvironmentSchema = z.object({
+  {{#if isClerkAuth}}
+  CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
+  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
+  {{/if}}
   CLIENT_ORIGIN: z.string().url().refine((origin) => {
     const protocol = new URL(origin).protocol;
     return protocol === 'http:' || protocol === 'https:';
@@ -16,7 +20,9 @@ export function readServerEnvironment(
   const parsedEnvironment = serverEnvironmentSchema.safeParse(environment);
 
   if (!parsedEnvironment.success) {
-    throw new Error('Express requires valid PORT and CLIENT_ORIGIN environment values.');
+    throw new Error(
+      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}.',
+    );
   }
 
   return parsedEnvironment.data;

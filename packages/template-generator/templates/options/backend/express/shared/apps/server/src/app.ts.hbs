@@ -1,6 +1,17 @@
 import cors from 'cors';
-import express, { type Express } from 'express';
+import express, { type Express{{#if isClerkAuth}}, type Request, type RequestHandler{{/if}} } from 'express';
 import { z } from 'zod';
+{{#if isClerkAuth}}
+import { clerkMiddleware, getAuth } from '@clerk/express';
+{{/if}}
+
+{{#if isClerkAuth}}
+declare global {
+  interface ClerkAppearanceRegistry {
+    theme?: unknown;
+  }
+}
+{{/if}}
 
 import {
   BusinessProfileRequestError,
@@ -20,17 +31,49 @@ const businessProfileRequestSchema = z
   })
   .strict();
 
-export function createApp(clientOrigin: string): Express {
+{{#if isClerkAuth}}
+export type RequestAuthentication = {
+  middleware: RequestHandler;
+  isAuthenticated(request: Request): boolean;
+};
+
+function createClerkRequestAuthentication(): RequestAuthentication {
+  return {
+    middleware: clerkMiddleware(),
+    isAuthenticated: (request) => getAuth(request).isAuthenticated,
+  };
+}
+{{/if}}
+
+export function createApp(
+  clientOrigin: string,
+  {{#if isClerkAuth}}authentication: RequestAuthentication = createClerkRequestAuthentication(),{{/if}}
+): Express {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(cors({ origin: clientOrigin }));
+  {{#if isClerkAuth}}
+  app.use(authentication.middleware);
+  {{/if}}
+  app.use(
+    cors({
+      origin: clientOrigin,
+      methods: ['GET'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+    }),
+  );
 
   app.get('/health', (_request, response) => {
     response.json({ status: 'ok' });
   });
 
   app.get('/api/business-profile', (request, response) => {
+    {{#if isClerkAuth}}
+    if (!authentication.isAuthenticated(request)) {
+      response.status(401).json({ error: 'Authentication is required' });
+      return;
+    }
+    {{/if}}
     const parsedRequest = businessProfileRequestSchema.safeParse(request.query);
     if (!parsedRequest.success) {
       response.status(400).json({ error: 'Invalid Business Data Example context' });

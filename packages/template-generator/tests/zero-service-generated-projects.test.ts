@@ -70,7 +70,7 @@ test('rejects invalid Generated App Options before reading Template source', () 
   expect(() =>
     generateProject({
       setupType: 'white-label-apps',
-      generatedAppOptions: { backend: 'express', auth: 'clerk' },
+      generatedAppOptions: { backend: 'express', auth: 'better-auth' },
     }),
   ).toThrow(/Unsupported Generated App Option combination/);
   expect(templateReader.readTemplateTree).not.toHaveBeenCalled();

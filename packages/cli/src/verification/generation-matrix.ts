@@ -45,6 +45,12 @@ const EXPRESS_NONE_GENERATED_APP_OPTIONS = {
   database: 'none',
   orm: 'none',
 } as const satisfies GeneratedAppOptions;
+const EXPRESS_CLERK_GENERATED_APP_OPTIONS = {
+  backend: 'express',
+  auth: 'clerk',
+  database: 'none',
+  orm: 'none',
+} as const satisfies GeneratedAppOptions;
 const NESTJS_NONE_GENERATED_APP_OPTIONS = {
   backend: 'nestjs',
   auth: 'none',
@@ -331,6 +337,21 @@ export function createExpressInstalledVerificationCases(): readonly GenerationMa
       install: true,
       git: true,
       generatedAppOptions: EXPRESS_NONE_GENERATED_APP_OPTIONS,
+    }),
+  );
+}
+
+export function createExpressClerkInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+    createMatrixCase({
+      phase: 'installed',
+      setupType,
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+      generatedAppOptions: EXPRESS_CLERK_GENERATED_APP_OPTIONS,
     }),
   );
 }
@@ -800,6 +821,7 @@ export async function runGenerationMatrix({
     ...createExhaustiveGenerationCases(),
     ...createInstalledVerificationCases(),
     ...createExpressInstalledVerificationCases(),
+    ...createExpressClerkInstalledVerificationCases(),
     ...createNestjsInstalledVerificationCases(),
     ...createConvexInstalledVerificationCases(),
   ];

@@ -85,6 +85,22 @@ test('Template source paths use ADR 0009 owners', () => {
       .filter((path) => !path.startsWith('apps/server/')),
     [],
   );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/clerk/shared/'))
+      .map((path) => path.replace('options/auth/clerk/shared/', ''))
+      .filter((path) => !path.startsWith('src/app/(auth)/') && !path.startsWith('src/auth/')),
+    [],
+  );
+  for (const stylingChoice of stylingTemplatePaths) {
+    assert.deepEqual(
+      paths
+        .filter((path) => path.startsWith(`options/auth/clerk/${stylingChoice}/`))
+        .map((path) => path.replace(`options/auth/clerk/${stylingChoice}/`, ''))
+        .filter((path) => !path.startsWith('src/auth/')),
+      [],
+    );
+  }
 
   const appShellPaths = paths.filter(
     (path) =>
@@ -92,9 +108,10 @@ test('Template source paths use ADR 0009 owners', () => {
   );
 
   for (const path of appShellPaths) {
-    assert.match(
-      path,
-      /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//,
+    assert.ok(
+      /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//.test(
+        path,
+      ) || path.startsWith('options/auth/clerk/shared/src/app/(auth)/'),
     );
   }
 });

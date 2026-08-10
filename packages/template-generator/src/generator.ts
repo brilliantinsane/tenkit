@@ -205,6 +205,7 @@ function normalizeTemplateContext({
       setupTypeDefinition,
     }),
     hasServerWorkspace: generatedAppOptions.backend !== 'none',
+    isClerkAuth: generatedAppOptions.auth === 'clerk',
     isConvexBackend: generatedAppOptions.backend === 'convex',
     isExpressBackend: generatedAppOptions.backend === 'express',
     isNestjsBackend: generatedAppOptions.backend === 'nestjs',
@@ -257,6 +258,12 @@ function readProjectTemplateTree({
     context.packageManager === 'pnpm'
       ? readTemplateTree('options/package-manager/pnpm/shared', context)
       : [];
+  const authSharedTree = context.isClerkAuth
+    ? readTemplateTree('options/auth/clerk/shared', context)
+    : [];
+  const authStylingTree = context.isClerkAuth
+    ? readTemplateTree(`options/auth/clerk/${context.stylingChoice}`, context)
+    : [];
   const backendTree = context.isExpressBackend
     ? readTemplateTree('options/backend/express/shared', context)
     : context.isNestjsBackend
@@ -277,6 +284,8 @@ function readProjectTemplateTree({
     setupTypeSharedTree,
     setupTypeStylingTree,
     packageManagerTree,
+    authSharedTree,
+    authStylingTree,
     backendTree,
     appVariantAssets,
   );

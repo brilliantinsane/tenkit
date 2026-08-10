@@ -1,0 +1,68 @@
+export type ClerkBusinessProfile = {
+  name: string;
+  description: string;
+};
+
+type ClerkBusinessProfileResponse = {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+};
+
+export type ClerkBusinessProfileRequest = (
+  requestUrl: URL,
+  options: { headers: { Authorization: string }; signal: AbortSignal },
+) => Promise<ClerkBusinessProfileResponse>;
+
+const requestWithExpoFetch: ClerkBusinessProfileRequest = async (requestUrl, options) => {
+  const { fetch } = await import('expo/fetch');
+  return fetch(requestUrl, options);
+};
+
+function parseBusinessProfile(responseBody: unknown): ClerkBusinessProfile {
+  if (
+    typeof responseBody !== 'object' ||
+    responseBody === null ||
+    !('profile' in responseBody) ||
+    typeof responseBody.profile !== 'object' ||
+    responseBody.profile === null ||
+    !('name' in responseBody.profile) ||
+    typeof responseBody.profile.name !== 'string' ||
+    !('description' in responseBody.profile) ||
+    typeof responseBody.profile.description !== 'string'
+  ) {
+    throw new Error('The Node Backend returned invalid Business Data Example data.');
+  }
+
+  return {
+    name: responseBody.profile.name,
+    description: responseBody.profile.description,
+  };
+}
+
+export async function requestClerkBusinessProfile({
+  requestUrl,
+  signal,
+  getToken,
+  request = requestWithExpoFetch,
+}: {
+  requestUrl: URL;
+  signal: AbortSignal;
+  getToken: () => Promise<string | null>;
+  request?: ClerkBusinessProfileRequest;
+}): Promise<ClerkBusinessProfile> {
+  const token = await getToken();
+  if (!token) {
+    throw new Error('The Clerk session token is unavailable.');
+  }
+
+  const response = await request(requestUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Business Data Example request failed with HTTP ${response.status}.`);
+  }
+
+  return parseBusinessProfile(await response.json());
+}

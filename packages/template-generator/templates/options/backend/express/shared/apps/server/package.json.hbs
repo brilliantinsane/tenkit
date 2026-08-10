@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    {{#if isClerkAuth}}
+    "@clerk/express": "2.1.50",
+    {{/if}}
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -24,7 +27,7 @@
     "@types/supertest": "^6.0.3",
     "supertest": "^7.2.2",
     "tsx": "^4.22.4",
-    "typescript": "~6.0.3",
+    "typescript": "{{#if isClerkAuth}}~5.9.3{{else}}~6.0.3{{/if}}",
     "vitest": "^4.1.9"
   }
 }

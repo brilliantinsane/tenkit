@@ -2,16 +2,42 @@ import request from 'supertest';
 import { describe, expect, test } from 'vitest';
 
 import { createApp } from '../src/app.js';
+{{#if isClerkAuth}}
+import type { RequestAuthentication } from '../src/app.js';
 
-const app = createApp('http://localhost:8081');
+type TestAuthentication = RequestAuthentication & {
+  setAuthenticated(isAuthenticated: boolean): void;
+};
+
+function createTestAuthentication(initiallyAuthenticated: boolean): TestAuthentication {
+  let isAuthenticated = initiallyAuthenticated;
+  return {
+    middleware: (_request, _response, next) => next(),
+    isAuthenticated: () => isAuthenticated,
+    setAuthenticated: (nextIsAuthenticated) => {
+      isAuthenticated = nextIsAuthenticated;
+    },
+  };
+}
+{{/if}}
+
+const app = createApp(
+  'http://localhost:8081',
+  {{#if isClerkAuth}}createTestAuthentication(true),{{/if}}
+);
 
 describe('Express Backend', () => {
   test('exposes public health without an Auth route', async () => {
     await request(app).get('/health').expect(200, { status: 'ok' });
     await request(app).get('/api/auth/session').expect(404);
+    {{#if isClerkAuth}}
+    await request(createApp('http://localhost:8081', createTestAuthentication(false)))
+      .get('/api/business-profile')
+      .expect(401, { error: 'Authentication is required' });
+    {{/if}}
   });
 
-  test('validates context and returns Setup Type-scoped Business Data', async () => {
+  test('{{#if isClerkAuth}}authenticated {{/if}}requests validate context and return Setup Type-scoped Business Data', async () => {
     await request(app).get('/api/business-profile').expect(400);
 
 {{#ifSetupType 'white-label-apps'}}
@@ -22,6 +48,15 @@ describe('Express Backend', () => {
         profile: {
           name: {{{appVariants.[0].displayNameStringLiteral}}},
           description: 'The first white-label Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[1].appVariantId}} })
+      .expect(200, {
+        profile: {
+          name: {{{appVariants.[1].displayNameStringLiteral}}},
+          description: 'The second white-label Business Data Example.',
         },
       });
     await request(app)
@@ -52,6 +87,22 @@ describe('Express Backend', () => {
       .query({
         setupType: '{{setupType}}',
         appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 101,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 102,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
         runtimeTenantId: 999,
       })
       .expect(403);
@@ -75,6 +126,22 @@ describe('Express Backend', () => {
       .query({
         setupType: '{{setupType}}',
         appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 101,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 102,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
         runtimeTenantId: 103,
       })
       .expect(403);
@@ -91,6 +158,47 @@ describe('Express Backend', () => {
           description: 'The standalone West Studio Business Data Example.',
         },
       });
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[1].appVariantId}},
+        runtimeTenantId: 100,
+      })
+      .expect(403);
 {{/ifSetupType}}
+
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 'invalid' })
+      .expect(400);
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 999_999 })
+      .expect(404);
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: 'wrong-setup-type', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(400);
   });
+
+  {{#if isClerkAuth}}
+  test('sign-out Auth state invalidates protected Business Data access', async () => {
+    const authentication = createTestAuthentication(true);
+    const lifecycleApp = createApp('http://localhost:8081', authentication);
+    const requestQuery = {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      {{#if isSingleAppRuntimeTenants}}runtimeTenantId: 100,{{/if}}
+      {{#ifSetupType 'generic-with-standalone-app-variants'}}runtimeTenantId: 100,{{/ifSetupType}}
+    };
+
+    await request(lifecycleApp).get('/api/business-profile').query(requestQuery).expect(200);
+    authentication.setAuthenticated(false);
+    await request(lifecycleApp)
+      .get('/api/business-profile')
+      .query(requestQuery)
+      .expect(401, { error: 'Authentication is required' });
+  });
+  {{/if}}
 });

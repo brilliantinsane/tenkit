@@ -32,7 +32,7 @@ test('identifies only the generated Node Backends', () => {
   assert.equal(isGeneratedNodeBackend('convex'), false);
 });
 
-test('owns one supported-combinations list containing the zero-service, Database-free Node, and Convex slices', () => {
+test('owns one supported-combinations list containing the released service slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
       backend: 'none',
@@ -55,6 +55,12 @@ test('owns one supported-combinations list containing the zero-service, Database
     {
       backend: 'convex',
       auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'express',
+      auth: 'clerk',
       database: 'none',
       orm: 'none',
     },
@@ -112,6 +118,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+    },
   ]);
 });
 
@@ -143,7 +155,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
     backend: { status: 'selectable', values: ['none', 'express', 'nestjs', 'convex'] },
-    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    auth: { status: 'selectable', values: ['none', 'clerk'] },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
@@ -159,7 +171,15 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express' }), {
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
-    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    auth: { status: 'selectable', values: ['none', 'clerk'] },
+    database: { status: 'resolved', values: ['none'], value: 'none' },
+    orm: { status: 'resolved', values: ['none'], value: 'none' },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express', auth: 'clerk' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['express'], value: 'express' },
+    auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
@@ -200,6 +220,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
   assert.deepEqual(accepted, [
     'none:none:none:none',
     'express:none:none:none',
+    'express:clerk:none:none',
     'nestjs:none:none:none',
     'convex:none:none:none',
   ]);

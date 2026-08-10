@@ -2,8 +2,8 @@
   "compilerOptions": {
     "declaration": true,
     "esModuleInterop": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "{{#if isClerkAuth}}ESNext{{else}}NodeNext{{/if}}",
+    "moduleResolution": "{{#if isClerkAuth}}Bundler{{else}}NodeNext{{/if}}",
     "outDir": "dist",
     "rootDir": ".",
     "strict": true,

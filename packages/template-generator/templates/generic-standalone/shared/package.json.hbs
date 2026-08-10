@@ -18,7 +18,10 @@
     "build": "{{packageManagerServerRunCommand}} build",
     "server:dev": "{{packageManagerServerRunCommand}} dev",
     "server:start:prod": "{{packageManagerServerRunCommand}} start:prod",
-    "test": "{{packageManagerServerRunCommand}} test",
+    "test": "{{#if isClerkAuth}}{{packageManagerRunCommand}} test:mobile && {{/if}}{{packageManagerServerRunCommand}} test",
+    {{#if isClerkAuth}}
+    "test:mobile": "vitest run src/auth/clerk-business-profile-client.test.ts src/auth/clerk-post-auth-navigation.test.ts src/auth/clerk-session-boundary.test.ts",
+    {{/if}}
     "test:integration": "{{packageManagerServerRunCommand}} test:integration",
   {{/if}}
   {{#if isConvexBackend}}
@@ -38,6 +41,9 @@
     "expo:config": "expo config --type public"
   },
   "dependencies": {
+    {{#if isClerkAuth}}
+    "@clerk/expo": "4.2.1",
+    {{/if}}
     {{#if isConvexBackend}}
     "convex": "1.43.0",
     {{/if}}
@@ -55,6 +61,9 @@
     "expo-dev-client": "~57.0.7",
     "expo-linking": "~57.0.3",
     "expo-router": "~57.0.7",
+    {{#if isClerkAuth}}
+    "expo-secure-store": "~57.0.1",
+    {{/if}}
     "expo-splash-screen": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.1",
@@ -89,5 +98,8 @@
     {{/if}}
     "tsx": "^4.22.4",
     "typescript": "~6.0.3"
+    {{#if isClerkAuth}},
+    "vitest": "^4.1.9"
+    {{/if}}
   }
 }

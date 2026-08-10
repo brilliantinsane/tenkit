@@ -3,6 +3,7 @@ import { join, relative } from 'pathe';
 import {
   isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
+  type GeneratedAuth,
   type RawGeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
 import {
@@ -174,6 +175,7 @@ function expectedWrittenTree(selection: GeneratedProjectVerificationSelection): 
 
 function expectedServerWorkspaceScripts(
   packageManager: GeneratedProjectPackageManager,
+  auth: GeneratedAuth,
 ): Readonly<
   Record<'build' | 'server:start:prod' | 'test' | 'test:integration' | 'typecheck', string>
 > {
@@ -183,11 +185,15 @@ function expectedServerWorkspaceScripts(
       : packageManager === 'npm'
         ? 'npm --prefix apps/server run'
         : 'bun --cwd apps/server run';
+  const rootRunCommand = `${packageManager} run`;
 
   return {
     build: `${serverRunCommand} build`,
     'server:start:prod': `${serverRunCommand} start:prod`,
-    test: `${serverRunCommand} test`,
+    test:
+      auth === 'clerk'
+        ? `${rootRunCommand} test:mobile && ${serverRunCommand} test`
+        : `${serverRunCommand} test`,
     'test:integration': `${serverRunCommand} test:integration`,
     typecheck: `${serverRunCommand} typecheck`,
   };
@@ -244,7 +250,7 @@ async function inspectWrittenGeneratedProject(
 
   const expectedTypecheck =
     resolvedSelection.generatedAppOptions.backend !== 'none'
-      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager).typecheck}`
+      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager, resolvedSelection.generatedAppOptions.auth).typecheck}`
       : 'tsc --noEmit --pretty false';
   if (manifest.scripts.typecheck !== expectedTypecheck) {
     throw new Error('The generated project package manifest has no canonical typecheck command.');
@@ -253,7 +259,10 @@ async function inspectWrittenGeneratedProject(
     throw new Error('The generated project package manifest has no canonical Expo config command.');
   }
   if (profile === 'node-server') {
-    const expectedScripts = expectedServerWorkspaceScripts(selection.packageManager);
+    const expectedScripts = expectedServerWorkspaceScripts(
+      selection.packageManager,
+      resolvedSelection.generatedAppOptions.auth,
+    );
     if (
       manifest.scripts.build !== expectedScripts.build ||
       manifest.scripts['server:start:prod'] !== expectedScripts['server:start:prod'] ||

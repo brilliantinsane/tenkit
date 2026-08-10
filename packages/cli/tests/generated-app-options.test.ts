@@ -142,6 +142,53 @@ test('interactive creation can select Express while non-interactive creation kee
   expect(prompts.confirm).toHaveBeenCalledOnce();
 });
 
+test('interactive creation exposes Clerk only after selecting Express', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'express';
+      }
+      if (options.message === 'Auth') {
+        return 'clerk';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-clerk',
+      setup: 'white-label',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'clerk',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Auth',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'clerk', label: 'Clerk' },
+    ],
+  });
+});
+
 test('explicit Convex flags resolve managed persistence and write Convex-owned output', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);
@@ -195,15 +242,61 @@ test('rejects invalid values and unsupported combinations before generation or w
   ).rejects.toThrow(/Unsupported Backend "hono".*none, express, nestjs, convex/);
   await expect(
     runCreateFlow(
-      { name: 'unsupported-combination', backend: 'express', auth: 'clerk', yes: true },
+      { name: 'unsupported-combination', backend: 'express', auth: 'better-auth', yes: true },
       environment,
     ),
-  ).rejects.toThrow(/Unsupported Generated App Option combination: Backend express, Auth clerk/);
+  ).rejects.toThrow(
+    /Unsupported Generated App Option combination: Backend express, Auth better-auth/,
+  );
 
   expect(generate).not.toHaveBeenCalled();
   expect(write).not.toHaveBeenCalled();
   expect(await fs.pathExists(join(tempRoot, 'invalid-value'))).toBe(false);
   expect(await fs.pathExists(join(tempRoot, 'unsupported-combination'))).toBe(false);
+});
+
+test('explicit Express and Clerk flags resolve the stack and write Clerk-owned output', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-clerk-app',
+      backend: 'express',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'clerk',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Backend: express');
+  expect(environment.lines).toContain('- Auth: clerk');
+  expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+  expect(environment.lines).toContain(
+    '- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local',
+  );
+  expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/src/app/(auth)/sign-in.tsx'))).toBe(
+    true,
+  );
+  expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/src/auth/clerk-provider.tsx'))).toBe(
+    true,
+  );
+  expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/packages/auth'))).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'express-clerk-app/packages/db'))).toBe(false);
 });
 
 test('explicit Express flags resolve the stack and write Express-owned output', async () => {
@@ -316,7 +409,7 @@ test('Commander exposes all public Generated App Option flags and validates thei
         '--backend',
         'express',
         '--auth',
-        'clerk',
+        'better-auth',
         '--yes',
         '--dry-run',
       ],

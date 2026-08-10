@@ -5,4 +5,12 @@ packages:
 {{/if}}
 
 allowBuilds:
+{{#if isClerkAuth}}
+  browser-tabs-lock: true
+  bufferutil: false
+  core-js: false
+{{/if}}
   esbuild: true
+{{#if isClerkAuth}}
+  utf-8-validate: false
+{{/if}}

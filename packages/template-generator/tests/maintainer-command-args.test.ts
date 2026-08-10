@@ -188,13 +188,13 @@ test('maintainer commands reject unsupported Generated App Option combinations',
       '--backend',
       'express',
       '--auth',
-      'clerk',
+      'better-auth',
     ],
     /Unsupported Generated App Option combination/,
   );
   await expectScriptFailure(
     verifyScript,
-    ['--setup-type', 'white-label', '--backend', 'express', '--auth', 'clerk'],
+    ['--setup-type', 'white-label', '--backend', 'express', '--auth', 'better-auth'],
     /Unsupported Generated App Option combination/,
   );
 });

@@ -1,0 +1,112 @@
+import { Link } from 'expo-router';
+import { Pressable, Text, TextInput, View } from 'react-native';
+
+import { type AuthFormMode, useClerkAuthForm } from './use-clerk-auth-form';
+
+export function AuthForm({ mode }: { mode: AuthFormMode }) {
+  const form = useClerkAuthForm(mode);
+
+  if (form.verificationStep) {
+    return (
+      <View className="flex-1 justify-center gap-4 bg-background px-6">
+        <Text className="text-4xl font-bold text-foreground">Check your Email</Text>
+        <Text className="text-base text-muted">
+          Enter the verification code Clerk sent to {form.email}.
+        </Text>
+        <TextInput
+          accessibilityLabel="Verification code"
+          autoComplete="one-time-code"
+          className="min-h-12 rounded-2xl border border-muted bg-surface px-4 text-foreground"
+          keyboardType="number-pad"
+          onChangeText={form.setVerificationCode}
+          placeholder="Verification code"
+          value={form.verificationCode}
+        />
+        {form.errorMessage ? <Text className="text-base text-muted">{form.errorMessage}</Text> : null}
+        <Pressable
+          accessibilityRole="button"
+          className="min-h-12 items-center justify-center rounded-2xl bg-accent px-4"
+          disabled={form.isSubmitting}
+          onPress={() => void form.submitVerificationCode()}
+        >
+          <Text className="font-semibold text-background">
+            {form.isSubmitting ? 'Verifying...' : 'Verify'}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 justify-center gap-4 bg-background px-6">
+      <Text className="text-4xl font-bold text-foreground">
+        {form.isSignUp ? 'Create account' : 'Sign in'}
+      </Text>
+      <Text className="text-base text-muted">
+        {form.isSignUp
+          ? 'Clerk will verify your Email before opening the app.'
+          : 'Continue to your Business Data Example.'}
+      </Text>
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Name"
+          autoCapitalize="words"
+          autoComplete="name"
+          className="min-h-12 rounded-2xl border border-muted bg-surface px-4 text-foreground"
+          onChangeText={form.setName}
+          placeholder="Name"
+          value={form.name}
+        />
+      ) : null}
+      <TextInput
+        accessibilityLabel="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        className="min-h-12 rounded-2xl border border-muted bg-surface px-4 text-foreground"
+        keyboardType="email-address"
+        onChangeText={form.setEmail}
+        placeholder="Email"
+        value={form.email}
+      />
+      <TextInput
+        accessibilityLabel="Password"
+        autoCapitalize="none"
+        autoComplete={form.isSignUp ? 'new-password' : 'current-password'}
+        className="min-h-12 rounded-2xl border border-muted bg-surface px-4 text-foreground"
+        onChangeText={form.setPassword}
+        placeholder="Password"
+        secureTextEntry
+        value={form.password}
+      />
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Confirm Password"
+          autoCapitalize="none"
+          autoComplete="new-password"
+          className="min-h-12 rounded-2xl border border-muted bg-surface px-4 text-foreground"
+          onChangeText={form.setConfirmPassword}
+          placeholder="Confirm Password"
+          secureTextEntry
+          value={form.confirmPassword}
+        />
+      ) : null}
+      {form.errorMessage ? <Text className="text-base text-muted">{form.errorMessage}</Text> : null}
+      <Pressable
+        accessibilityRole="button"
+        className="min-h-12 items-center justify-center rounded-2xl bg-accent px-4"
+        disabled={form.isSubmitting}
+        onPress={() => void form.submitCredentials()}
+      >
+        <Text className="font-semibold text-background">
+          {form.isSubmitting ? 'Working...' : form.isSignUp ? 'Create account' : 'Sign in'}
+        </Text>
+      </Pressable>
+      {form.isSignUp ? <View nativeID="clerk-captcha" /> : null}
+      <Link href={form.isSignUp ? '/sign-in' : '/sign-up'}>
+        <Text className="font-semibold text-accent">
+          {form.isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register'}
+        </Text>
+      </Link>
+    </View>
+  );
+}

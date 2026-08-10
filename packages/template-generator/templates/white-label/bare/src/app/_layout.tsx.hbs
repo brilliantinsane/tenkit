@@ -1,5 +1,10 @@
 import { ThemeProvider } from 'expo-router/react-navigation';
 import { StatusBar } from 'expo-status-bar';
+{{#if isClerkAuth}}
+import { useAuth } from '@clerk/expo';
+import { Stack } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+{{/if}}
 
 {{#if isConvexBackend}}
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
@@ -30,17 +35,49 @@ const convexClient = new ConvexReactClient(resolveConvexDeploymentUrl(), {
 
 
 import AppTabs from '@/components/app-tabs';
+{{#if isClerkAuth}}
+import { ClerkAppProvider } from '@/auth/clerk-provider';
+import { resolveClerkSessionRouteState } from '@/auth/clerk-session-boundary';
+{{/if}}
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 import { getNavigationTheme } from '@/theme/colors';
 import { ColorsProvider, useTheme } from '@/theme/ThemeContext';
 
 function RootLayoutInner() {
   const { brand, dark } = useTheme();
+  {{#if isClerkAuth}}
+  const { isLoaded, isSignedIn } = useAuth();
+  const sessionRouteState = resolveClerkSessionRouteState(isLoaded, isSignedIn);
+
+  if (sessionRouteState === 'loading') {
+    return (
+      <View style=\{{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={brand.accent} />
+      </View>
+    );
+  }
+  {{/if}}
 
   return (
     <>
       <ThemeProvider value={getNavigationTheme(dark, brand.primary)}>
+        {{#if isClerkAuth}}
+        {sessionRouteState === 'app' ? (
+          <AppTabs />
+        ) : (
+          <Stack screenOptions=\{{ headerShown: false }}>
+            <Stack.Protected guard={isSignedIn !== true}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+            <Stack.Protected guard={isSignedIn === true}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="explore" />
+            </Stack.Protected>
+          </Stack>
+        )}
+        {{else}}
         <AppTabs />
+        {{/if}}
       </ThemeProvider>
       <StatusBar style={dark ? 'light' : 'dark'} />
     </>
@@ -51,6 +88,9 @@ export default function RootLayout() {
   const { theme } = useAppVariantConfig();
 
   return (
+    {{#if isClerkAuth}}
+    <ClerkAppProvider>
+    {{/if}}
     <ColorsProvider
       brandOverride=\{{
         primary: theme.accent,
@@ -65,5 +105,8 @@ export default function RootLayout() {
       </ConvexProvider>
       {{/if}}
     </ColorsProvider>
+    {{#if isClerkAuth}}
+    </ClerkAppProvider>
+    {{/if}}
   );
 }

@@ -1,0 +1,47 @@
+import { expect, test, vi } from 'vitest';
+
+import {
+  navigateAfterClerkFinalization,
+  readClerkResultError,
+  resolveClerkPostAuthDestination,
+} from './clerk-post-auth-navigation';
+
+test('accepts only the known relative app route', () => {
+  expect(resolveClerkPostAuthDestination('/')).toEqual({ kind: 'app' });
+  expect(() => resolveClerkPostAuthDestination('/settings')).toThrow(
+    'Clerk returned an unsafe post-auth destination.',
+  );
+});
+
+test('accepts Clerk HTTPS refresh destinations and rejects unsafe schemes', () => {
+  expect(resolveClerkPostAuthDestination('https://clerk.example.test/session/refresh')).toEqual({
+    kind: 'external',
+    url: 'https://clerk.example.test/session/refresh',
+  });
+  expect(() => resolveClerkPostAuthDestination('javascript:alert(1)')).toThrow(
+    'Clerk returned an unsafe post-auth destination.',
+  );
+});
+
+test('uses Clerk decorateUrl before opening an external refresh destination', async () => {
+  const openExternalUrl = vi.fn(async () => undefined);
+  const replaceWithAppRoute = vi.fn();
+
+  await navigateAfterClerkFinalization(
+    {
+      decorateUrl: (destination) =>
+        destination === '/' ? 'https://clerk.example.test/session/refresh' : destination,
+    },
+    { openExternalUrl, replaceWithAppRoute },
+  );
+
+  expect(openExternalUrl).toHaveBeenCalledWith('https://clerk.example.test/session/refresh');
+  expect(replaceWithAppRoute).not.toHaveBeenCalled();
+});
+
+test('surfaces Clerk finalize errors', () => {
+  expect(readClerkResultError({ error: { longMessage: 'Session activation failed.' } })).toBe(
+    'Session activation failed.',
+  );
+  expect(readClerkResultError({ error: null })).toBeNull();
+});

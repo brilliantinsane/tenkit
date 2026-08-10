@@ -3,8 +3,14 @@ import { api } from '@server/convex/_generated/api';
 import { useQuery } from 'convex/react';
 {{/if}}
 {{#if isNodeBackend}}
+{{#unless isClerkAuth}}
 import { fetch } from 'expo/fetch';
+{{/unless}}
 import { useEffect, useState } from 'react';
+{{#if isClerkAuth}}
+import { useAuth } from '@clerk/expo';
+import { requestClerkBusinessProfile } from '@/auth/clerk-business-profile-client';
+{{/if}}
 {{/if}}
 
 {{#unless hasServerWorkspace}}
@@ -58,6 +64,7 @@ function resolveBackendUrl(): URL {
   return backendUrl;
 }
 
+{{#unless isClerkAuth}}
 function parseBusinessProfile(responseBody: unknown): BusinessProfile {
   if (
     typeof responseBody !== 'object' ||
@@ -78,9 +85,13 @@ function parseBusinessProfile(responseBody: unknown): BusinessProfile {
     description: responseBody.profile.description,
   };
 }
+{{/unless}}
 
 export function useBusinessProfile(): BusinessProfileState {
   const { appVariant } = useAppVariantConfig();
+  {{#if isClerkAuth}}
+  const { getToken } = useAuth();
+  {{/if}}
   const [state, setState] = useState<BusinessProfileState>({
     profile: null,
     error: null,
@@ -97,12 +108,22 @@ export function useBusinessProfile(): BusinessProfileState {
         const requestUrl = new URL('/api/business-profile', resolveBackendUrl());
         requestUrl.searchParams.set('setupType', '{{setupType}}');
         requestUrl.searchParams.set('appVariantId', String(appVariant.id));
-        const response = await fetch(requestUrl, { signal: controller.signal });
+        {{#if isClerkAuth}}
+        const profile = await requestClerkBusinessProfile({
+          requestUrl,
+          signal: controller.signal,
+          getToken,
+        });
+        {{else}}
+        const response = await fetch(requestUrl, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error(`Business Data Example request failed with HTTP ${response.status}.`);
         }
         const responseBody: unknown = await response.json();
         const profile = parseBusinessProfile(responseBody);
+        {{/if}}
         if (isActive) {
           setState({ profile, error: null, isLoading: false });
         }
@@ -124,7 +145,7 @@ export function useBusinessProfile(): BusinessProfileState {
       isActive = false;
       controller.abort();
     };
-  }, [appVariant.id]);
+  }, [appVariant.id{{#if isClerkAuth}}, getToken{{/if}}]);
 
   return state;
 }
