@@ -1,4 +1,7 @@
 import { config } from 'dotenv';
+{{#if hasDatabaseWorkspace}}
+import { createBusinessDataRepository } from '@tenkit/db';
+{{/if}}
 
 import { createApp } from './app.js';
 import { readServerEnvironment } from './environment.js';
@@ -6,25 +9,54 @@ import { readServerEnvironment } from './environment.js';
 config({ path: '.env.local', quiet: true });
 
 const environment = readServerEnvironment();
-const server = createApp(environment.CLIENT_ORIGIN).listen(environment.PORT, () => {
+{{#if hasDatabaseWorkspace}}
+const businessDataRepository = createBusinessDataRepository(environment.DATABASE_URL);
+{{/if}}
+const server = createApp(
+  environment.CLIENT_ORIGIN,
+  {{#if hasDatabaseWorkspace}}businessDataRepository,{{/if}}
+).listen(environment.PORT, () => {
   console.log(`Tenkit Express server listening on port ${environment.PORT}.`);
 });
 
 let shutdownStarted = false;
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
   if (shutdownStarted) {
     return;
   }
 
   shutdownStarted = true;
-  server.close((error) => {
-    if (error) {
-      console.error('Tenkit Express server could not close cleanly.');
-      process.exitCode = 1;
-    }
+  const serverClosed = new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
   });
+
+  let shutdownFailed = false;
+
+  try {
+    await serverClosed;
+  } catch {
+    shutdownFailed = true;
+  }
+  {{#if hasDatabaseWorkspace}}
+  try {
+    await businessDataRepository.close();
+  } catch {
+    shutdownFailed = true;
+  }
+  {{/if}}
+
+  if (shutdownFailed) {
+    console.error('Tenkit Express server could not close cleanly.');
+    process.exitCode = 1;
+  }
 }
 
-process.once('SIGINT', shutdown);
-process.once('SIGTERM', shutdown);
+process.once('SIGINT', () => void shutdown());
+process.once('SIGTERM', () => void shutdown());

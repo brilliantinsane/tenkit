@@ -12,6 +12,7 @@ import {
   createExhaustiveGenerationCases,
   createExpressClerkInstalledVerificationCases,
   createExpressInstalledVerificationCases,
+  createExpressPostgresqlPrismaInstalledVerificationCases,
   createInstalledVerificationCases,
   createNestjsClerkInstalledVerificationCases,
   createNestjsInstalledVerificationCases,
@@ -129,6 +130,34 @@ describe('generation matrix coverage', () => {
           generatedAppOptions.auth === 'clerk' &&
           generatedAppOptions.database === 'none' &&
           generatedAppOptions.orm === 'none' &&
+          stylingChoice === 'bare' &&
+          packageManager === 'pnpm' &&
+          install &&
+          git,
+      ),
+    );
+    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
+  });
+
+  test('adds one installed Bare pnpm Express PostgreSQL Prisma case for every Setup Type', () => {
+    const cases = createExpressPostgresqlPrismaInstalledVerificationCases();
+
+    assert.equal(cases.length, 3);
+    assert.deepEqual(
+      new Set(cases.map(({ setupType }) => setupType)),
+      new Set([
+        'white-label-apps',
+        'single-app-runtime-tenants',
+        'generic-with-standalone-app-variants',
+      ]),
+    );
+    assert.ok(
+      cases.every(
+        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
+          generatedAppOptions.backend === 'express' &&
+          generatedAppOptions.auth === 'none' &&
+          generatedAppOptions.database === 'postgresql' &&
+          generatedAppOptions.orm === 'prisma' &&
           stylingChoice === 'bare' &&
           packageManager === 'pnpm' &&
           install &&
@@ -276,6 +305,28 @@ describe('generated project inspection', () => {
         },
       ],
     );
+  });
+
+  test('generates the Prisma client before an installed PostgreSQL project typecheck', () => {
+    const commands = planInstalledProjectVerificationCommands({
+      packageManager: 'pnpm',
+      targetDir: '/tmp/postgresql-prisma',
+      appVariantNames: ['Acme App'],
+      generatedAppOptions: {
+        backend: 'express',
+        auth: 'none',
+        database: 'postgresql',
+        orm: 'prisma',
+      },
+    });
+
+    assert.deepEqual(commands[0], {
+      command: 'pnpm',
+      args: ['run', 'db:generate'],
+      cwd: '/tmp/postgresql-prisma',
+      operation: 'generated app Prisma client generation',
+    });
+    assert.equal(commands[1]?.operation, 'generated app typecheck');
   });
 
   test('compares every expected byte and rejects unexpected files', async () => {

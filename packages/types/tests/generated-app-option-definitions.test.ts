@@ -70,6 +70,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -136,6 +142,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'none',
       orm: 'none',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -168,8 +180,8 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selectable', values: ['none', 'express', 'nestjs', 'convex'] },
     auth: { status: 'selectable', values: ['none', 'clerk'] },
-    database: { status: 'resolved', values: ['none'], value: 'none' },
-    orm: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    orm: { status: 'selectable', values: ['none', 'prisma'] },
   });
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'none' }), {
@@ -184,9 +196,24 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
     auth: { status: 'selectable', values: ['none', 'clerk'] },
-    database: { status: 'resolved', values: ['none'], value: 'none' },
-    orm: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    orm: { status: 'selectable', values: ['none', 'prisma'] },
   });
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['express'], value: 'express' },
+      auth: { status: 'selected', values: ['none'], value: 'none' },
+      database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    },
+  );
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express', auth: 'clerk' }), {
     status: 'available',
@@ -240,6 +267,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
   assert.deepEqual(accepted, [
     'none:none:none:none',
     'express:none:none:none',
+    'express:none:postgresql:prisma',
     'express:clerk:none:none',
     'nestjs:none:none:none',
     'nestjs:clerk:none:none',

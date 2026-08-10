@@ -1,6 +1,9 @@
 import cors from 'cors';
 import express, { type Express{{#if isClerkAuth}}, type Request, type RequestHandler{{/if}} } from 'express';
 import { z } from 'zod';
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
 {{#if isClerkAuth}}
 import { clerkMiddleware, getAuth } from '@clerk/express';
 {{/if}}
@@ -47,6 +50,7 @@ function createClerkRequestAuthentication(): RequestAuthentication {
 
 export function createApp(
   clientOrigin: string,
+  {{#if hasDatabaseWorkspace}}businessDataRepository: BusinessDataRepository,{{/if}}
   {{#if isClerkAuth}}authentication: RequestAuthentication = createClerkRequestAuthentication(),{{/if}}
 ): Express {
   const app = express();
@@ -67,7 +71,7 @@ export function createApp(
     response.json({ status: 'ok' });
   });
 
-  app.get('/api/business-profile', (request, response) => {
+  app.get('/api/business-profile', async (request, response) => {
     {{#if isClerkAuth}}
     if (!authentication.isAuthenticated(request)) {
       response.status(401).json({ error: 'Authentication is required' });
@@ -81,7 +85,12 @@ export function createApp(
     }
 
     try {
-      response.json({ profile: resolveBusinessProfile(parsedRequest.data) });
+      response.json({
+        profile: await resolveBusinessProfile(
+          {{#if hasDatabaseWorkspace}}businessDataRepository,{{/if}}
+          parsedRequest.data,
+        ),
+      });
     } catch (error) {
       if (error instanceof BusinessProfileRequestError) {
         response.status(error.status).json({ error: error.message });

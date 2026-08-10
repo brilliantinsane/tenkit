@@ -9,6 +9,16 @@ const serverEnvironmentSchema = z.object({
     const protocol = new URL(origin).protocol;
     return protocol === 'http:' || protocol === 'https:';
   }, 'CLIENT_ORIGIN must use http or https'),
+  {{#if hasDatabaseWorkspace}}
+  DATABASE_URL: z.string().refine((databaseUrl) => {
+    try {
+      const protocol = new URL(databaseUrl).protocol;
+      return protocol === 'postgresql:' || protocol === 'postgres:';
+    } catch {
+      return false;
+    }
+  }, 'DATABASE_URL must be a PostgreSQL URL'),
+  {{/if}}
   PORT: z.coerce.number().int().min(1).max(65_535),
 });
 
@@ -21,7 +31,7 @@ export function readServerEnvironment(
 
   if (!parsedEnvironment.success) {
     throw new Error(
-      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}.',
+      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a PostgreSQL DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}.',
     );
   }
 

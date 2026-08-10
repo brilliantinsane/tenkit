@@ -4,10 +4,10 @@
   "private": true,
   {{#if hasServerWorkspace}}
   {{#if isNpmPackageManager}}
-  "workspaces": ["apps/server"],
+  "workspaces": ["apps/server"{{#if hasDatabaseWorkspace}}, "packages/db"{{/if}}],
   {{/if}}
   {{#if isBunPackageManager}}
-  "workspaces": ["apps/server"],
+  "workspaces": ["apps/server"{{#if hasDatabaseWorkspace}}, "packages/db"{{/if}}],
   {{/if}}
   {{/if}}
   "main": "{{#if isUnistylesStyling}}index.ts{{else}}expo-router/entry{{/if}}",
@@ -15,14 +15,20 @@
     "start": "expo start",
   {{#if isNodeBackend}}
     "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
-    "build": "{{packageManagerServerRunCommand}} build",
+    "build": "{{#if hasDatabaseWorkspace}}{{packageManagerDatabaseRunCommand}} build && {{/if}}{{packageManagerServerRunCommand}} build",
     "server:dev": "{{packageManagerServerRunCommand}} dev",
     "server:start:prod": "{{packageManagerServerRunCommand}} start:prod",
-    "test": "{{#if isClerkAuth}}{{packageManagerRunCommand}} test:mobile && {{/if}}{{packageManagerServerRunCommand}} test",
+    "test": "{{#if isClerkAuth}}{{packageManagerRunCommand}} test:mobile && {{/if}}{{#if hasDatabaseWorkspace}}{{packageManagerDatabaseRunCommand}} test && {{/if}}{{packageManagerServerRunCommand}} test",
     {{#if isClerkAuth}}
     "test:mobile": "vitest run src/auth/clerk-business-profile-client.test.ts src/auth/clerk-post-auth-navigation.test.ts src/auth/clerk-session-boundary.test.ts",
     {{/if}}
     "test:integration": "{{packageManagerServerRunCommand}} test:integration",
+    {{#if hasDatabaseWorkspace}}
+    "db:generate": "{{packageManagerDatabaseRunCommand}} generate",
+    "db:migrate": "{{packageManagerDatabaseRunCommand}} migrate",
+    "db:seed": "{{packageManagerDatabaseRunCommand}} seed",
+    "db:setup": "{{packageManagerDatabaseRunCommand}} setup",
+    {{/if}}
   {{/if}}
   {{#if isConvexBackend}}
     "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
@@ -37,7 +43,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit --pretty false{{#if hasServerWorkspace}} && {{packageManagerServerRunCommand}} typecheck{{/if}}",
+    "typecheck": "tsc --noEmit --pretty false{{#if hasDatabaseWorkspace}} && {{packageManagerDatabaseRunCommand}} typecheck{{/if}}{{#if hasServerWorkspace}} && {{packageManagerServerRunCommand}} typecheck{{/if}}",
     "expo:config": "expo config --type public"
   },
   "dependencies": {

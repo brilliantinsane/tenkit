@@ -45,10 +45,20 @@ cp .env.example .env.local
 cp apps/server/.env.example apps/server/.env.local
 ```
 
-`EXPO_PUBLIC_API_URL` is embedded in the mobile bundle and must be an absolute Backend URL reachable by the target device. Replace the example address with your development machine's LAN address for physical devices, use `http://10.0.2.2:3000` for the Android emulator, or use `http://127.0.0.1:3000` for the iOS simulator. Production builds require the deployed HTTPS Backend URL. `PORT` and `CLIENT_ORIGIN` belong only to the {{nodeBackendDisplayName}} server. Keep real local environment files uncommitted.
+`EXPO_PUBLIC_API_URL` is embedded in the mobile bundle and must be an absolute Backend URL reachable by the target device. Replace the example address with your development machine's LAN address for physical devices, use `http://10.0.2.2:3000` for the Android emulator, or use `http://127.0.0.1:3000` for the iOS simulator. Production builds require the deployed HTTPS Backend URL. `PORT`, `CLIENT_ORIGIN`{{#if hasDatabaseWorkspace}}, and `DATABASE_URL`{{/if}} belong only to the {{nodeBackendDisplayName}} server. Keep real local environment files uncommitted.
 
 {{#if isClerkAuth}}
 Clerk owns Email and Password identity, required Email verification, sessions, and token signing. Enable Clerk's Native API, required Email with verification code, Password sign-up, and Device Trust in a Clerk application you own. Put its Publishable Key in the root `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and server `CLERK_PUBLISHABLE_KEY` values. Put its Secret Key only in the server `CLERK_SECRET_KEY` value. The generated Expo routes use Clerk's SecureStore token cache, restore sessions, forward bearer tokens, and return to Auth routes after sign-out. Never commit real keys or `.env.local` files.
+{{/if}}
+
+{{#if hasDatabaseWorkspace}}
+PostgreSQL and Prisma live in `packages/db`. Create an empty PostgreSQL database, set its connection URL only in `apps/server/.env.local`, then apply the committed migration, seed Setup Type-specific Starter Data, generate Prisma Client, and build the Database package:
+
+```bash
+{{packageManagerRunCommand}} db:setup
+```
+
+Run this setup before the first Backend start and during deployment before starting compiled output. The Database contains only Tenkit App Variant, Runtime Tenant, and Runtime Tenant Access tables plus Prisma migration metadata. See `packages/db/POSTGRESQL.md` for provider guidance.
 {{/if}}
 
 Run Expo and {{nodeBackendDisplayName}} together:

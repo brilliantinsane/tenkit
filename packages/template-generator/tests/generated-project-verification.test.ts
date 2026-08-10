@@ -22,6 +22,13 @@ const EXPRESS_OPTIONS = {
   orm: 'none',
 } as const;
 
+const EXPRESS_POSTGRESQL_PRISMA_OPTIONS = {
+  backend: 'express',
+  auth: 'none',
+  database: 'postgresql',
+  orm: 'prisma',
+} as const;
+
 const NESTJS_OPTIONS = {
   backend: 'nestjs',
   auth: 'none',
@@ -46,6 +53,11 @@ const NODE_SELECTION = {
 const NESTJS_NODE_SELECTION = {
   ...NODE_SELECTION,
   generatedAppOptions: NESTJS_OPTIONS,
+} as const;
+
+const POSTGRESQL_NODE_SELECTION = {
+  ...NODE_SELECTION,
+  generatedAppOptions: EXPRESS_POSTGRESQL_PRISMA_OPTIONS,
 } as const;
 
 const CONVEX_SELECTION = {
@@ -138,7 +150,10 @@ async function createWrittenGeneratedProject(
 
 async function createWrittenServerWorkspaceProject(
   selection:
-    typeof NODE_SELECTION | typeof NESTJS_NODE_SELECTION | typeof CONVEX_SELECTION = NODE_SELECTION,
+    | typeof NODE_SELECTION
+    | typeof NESTJS_NODE_SELECTION
+    | typeof POSTGRESQL_NODE_SELECTION
+    | typeof CONVEX_SELECTION = NODE_SELECTION,
 ): Promise<string> {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-server-workspace-verification-'));
   const targetDir = join(tempRoot, 'generated-project');
@@ -407,6 +422,55 @@ test('the Node server profile proves build, readiness, runtime, and graceful shu
     ['run', 'test:integration'],
     expect.any(Object),
   );
+});
+
+test('the PostgreSQL Prisma profile generates, migrates, seeds, builds, runs, and closes Database resources', async () => {
+  const targetDir = await createWrittenServerWorkspaceProject(POSTGRESQL_NODE_SELECTION);
+  const environment = {
+    PATH: '/safe/bin',
+    PORT: '43130',
+    CLIENT_ORIGIN: 'http://localhost:8081',
+    DATABASE_URL: 'postgresql://postgres:password@localhost:5432/tenkit',
+  };
+
+  const evidence = await verifyGeneratedProject({
+    targetDir,
+    selection: POSTGRESQL_NODE_SELECTION,
+    environment,
+    profile: 'node-server',
+  });
+
+  expect(evidence.status).toBe('passed');
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'db:generate'],
+    expect.objectContaining({ env: environment }),
+  );
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'db:setup'],
+    expect.objectContaining({ env: environment }),
+  );
+  expect(runGeneratedAppCommand).not.toHaveBeenCalledWith(
+    targetDir,
+    process.execPath,
+    expect.arrayContaining(['--eval']),
+    expect.any(Object),
+  );
+  expect(startGeneratedAppProcess).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'server:start:prod'],
+    expect.objectContaining({
+      env: environment,
+      readinessUrl: 'http://127.0.0.1:43130/health',
+    }),
+  );
+  expect(evidence.phases.find(({ phase }) => phase === 'shutdown')).toMatchObject({
+    status: 'passed',
+  });
 });
 
 test('the Node server profile proves the NestJS lifecycle and host-side SQL absence', async () => {

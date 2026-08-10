@@ -3,8 +3,15 @@ packages:
 {{#if hasServerWorkspace}}
   - 'apps/server'
 {{/if}}
+{{#if hasDatabaseWorkspace}}
+  - 'packages/db'
+{{/if}}
 
 allowBuilds:
+{{#if isPrismaOrm}}
+  '@prisma/engines': true
+  prisma: true
+{{/if}}
 {{#if isClerkAuth}}
   browser-tabs-lock: true
   bufferutil: false

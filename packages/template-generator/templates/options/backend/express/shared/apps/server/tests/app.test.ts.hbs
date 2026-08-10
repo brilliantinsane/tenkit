@@ -1,5 +1,8 @@
 import request from 'supertest';
 import { describe, expect, test } from 'vitest';
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
 
 import { createApp } from '../src/app.js';
 {{#if isClerkAuth}}
@@ -21,8 +24,100 @@ function createTestAuthentication(initiallyAuthenticated: boolean): TestAuthenti
 }
 {{/if}}
 
+{{#if hasDatabaseWorkspace}}
+function createTestBusinessDataRepository(): BusinessDataRepository {
+  return {
+    async findAppVariant(appVariantId) {
+{{#ifSetupType 'white-label-apps'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[0].displayNameStringLiteral}}},
+          profileDescription: 'The first white-label Business Data Example.',
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[1].displayNameStringLiteral}}},
+          profileDescription: 'The second white-label Business Data Example.',
+        };
+      }
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'single-app',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'generic',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'standalone',
+          standaloneRuntimeTenantId: 103,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/ifSetupType}}
+      return null;
+    },
+    async hasRuntimeTenantAccess(appVariantId, runtimeTenantId) {
+      return (
+        appVariantId === {{appVariants.[0].appVariantId}} &&
+        [100, 101, 102].includes(runtimeTenantId)
+      );
+    },
+    async findRuntimeTenant(runtimeTenantId) {
+      const runtimeTenants = new Map<number, { name: string; description: string }>([
+{{#if isSingleAppRuntimeTenants}}
+        [100, { name: 'North Branch', description: 'The northern branch Business Data Example.' }],
+        [101, { name: 'South Branch', description: 'The southern branch Business Data Example.' }],
+        [102, { name: 'East Branch', description: 'The eastern branch Business Data Example.' }],
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+        [100, { name: 'North Studio', description: 'The North Studio Business Data Example.' }],
+        [101, { name: 'South Studio', description: 'The South Studio Business Data Example.' }],
+        [102, { name: 'East Studio', description: 'The East Studio Business Data Example.' }],
+        [103, { name: 'West Studio', description: 'The standalone West Studio Business Data Example.' }],
+{{/ifSetupType}}
+      ]);
+      const runtimeTenant = runtimeTenants.get(runtimeTenantId);
+      return runtimeTenant
+        ? {
+            runtimeTenantId,
+            profileName: runtimeTenant.name,
+            profileDescription: runtimeTenant.description,
+          }
+        : null;
+    },
+    async close() {},
+  };
+}
+{{/if}}
+
 const app = createApp(
   'http://localhost:8081',
+  {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(),{{/if}}
   {{#if isClerkAuth}}createTestAuthentication(true),{{/if}}
 );
 
@@ -31,7 +126,7 @@ describe('Express Backend', () => {
     await request(app).get('/health').expect(200, { status: 'ok' });
     await request(app).get('/api/auth/session').expect(404);
     {{#if isClerkAuth}}
-    await request(createApp('http://localhost:8081', createTestAuthentication(false)))
+    await request(createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}createTestAuthentication(false)))
       .get('/api/business-profile')
       .expect(401, { error: 'Authentication is required' });
     {{/if}}
@@ -185,7 +280,7 @@ describe('Express Backend', () => {
   {{#if isClerkAuth}}
   test('sign-out Auth state invalidates protected Business Data access', async () => {
     const authentication = createTestAuthentication(true);
-    const lifecycleApp = createApp('http://localhost:8081', authentication);
+    const lifecycleApp = createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}authentication);
     const requestQuery = {
       setupType: '{{setupType}}',
       appVariantId: {{appVariants.[0].appVariantId}},

@@ -1,0 +1,13 @@
+import { expect, test } from 'vitest';
+
+import { validatePostgresqlDatabaseUrl } from '../src/repository.js';
+
+test('accepts PostgreSQL URLs and rejects other Database protocols', () => {
+  expect(
+    validatePostgresqlDatabaseUrl('postgresql://postgres:password@localhost:5432/tenkit'),
+  ).toBe('postgresql://postgres:password@localhost:5432/tenkit');
+  expect(() => validatePostgresqlDatabaseUrl('mysql://localhost/tenkit')).toThrow(
+    /postgresql or postgres protocol/,
+  );
+  expect(() => validatePostgresqlDatabaseUrl('not a URL')).toThrow(/valid PostgreSQL URL/);
+});

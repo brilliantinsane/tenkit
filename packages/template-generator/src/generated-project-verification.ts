@@ -4,6 +4,7 @@ import {
   isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type GeneratedAuth,
+  type GeneratedDatabase,
   type RawGeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
 import {
@@ -176,6 +177,7 @@ function expectedWrittenTree(selection: GeneratedProjectVerificationSelection): 
 function expectedServerWorkspaceScripts(
   packageManager: GeneratedProjectPackageManager,
   auth: GeneratedAuth,
+  database: GeneratedDatabase,
 ): Readonly<
   Record<'build' | 'server:start:prod' | 'test' | 'test:integration' | 'typecheck', string>
 > {
@@ -186,16 +188,23 @@ function expectedServerWorkspaceScripts(
         ? 'npm --prefix apps/server run'
         : 'bun --cwd apps/server run';
   const rootRunCommand = `${packageManager} run`;
+  const databaseRunCommand =
+    packageManager === 'pnpm'
+      ? 'pnpm --dir packages/db run'
+      : packageManager === 'npm'
+        ? 'npm --prefix packages/db run'
+        : 'bun --cwd packages/db run';
+  const hasDatabaseWorkspace = database !== 'none';
 
   return {
-    build: `${serverRunCommand} build`,
+    build: `${hasDatabaseWorkspace ? `${databaseRunCommand} build && ` : ''}${serverRunCommand} build`,
     'server:start:prod': `${serverRunCommand} start:prod`,
     test:
       auth === 'clerk'
-        ? `${rootRunCommand} test:mobile && ${serverRunCommand} test`
-        : `${serverRunCommand} test`,
+        ? `${rootRunCommand} test:mobile && ${hasDatabaseWorkspace ? `${databaseRunCommand} test && ` : ''}${serverRunCommand} test`
+        : `${hasDatabaseWorkspace ? `${databaseRunCommand} test && ` : ''}${serverRunCommand} test`,
     'test:integration': `${serverRunCommand} test:integration`,
-    typecheck: `${serverRunCommand} typecheck`,
+    typecheck: `${hasDatabaseWorkspace ? `${databaseRunCommand} typecheck && ` : ''}${serverRunCommand} typecheck`,
   };
 }
 
@@ -250,7 +259,7 @@ async function inspectWrittenGeneratedProject(
 
   const expectedTypecheck =
     resolvedSelection.generatedAppOptions.backend !== 'none'
-      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager, resolvedSelection.generatedAppOptions.auth).typecheck}`
+      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager, resolvedSelection.generatedAppOptions.auth, resolvedSelection.generatedAppOptions.database).typecheck}`
       : 'tsc --noEmit --pretty false';
   if (manifest.scripts.typecheck !== expectedTypecheck) {
     throw new Error('The generated project package manifest has no canonical typecheck command.');
@@ -262,6 +271,7 @@ async function inspectWrittenGeneratedProject(
     const expectedScripts = expectedServerWorkspaceScripts(
       selection.packageManager,
       resolvedSelection.generatedAppOptions.auth,
+      resolvedSelection.generatedAppOptions.database,
     );
     if (
       manifest.scripts.build !== expectedScripts.build ||
@@ -385,6 +395,9 @@ export async function verifyGeneratedProject({
 
   await recordCommandPhase('install', [{ command: selection.packageManager, args: ['install'] }]);
   await recordCommandPhase('typecheck', [
+    ...(resolvedSelection.generatedAppOptions.database === 'none'
+      ? []
+      : [{ command: selection.packageManager, args: ['run', 'db:generate'] }]),
     { command: selection.packageManager, args: ['run', 'typecheck'] },
   ]);
 
@@ -439,6 +452,9 @@ export async function verifyGeneratedProject({
 
   if (profile === 'node-server') {
     await recordCommandPhase('build', [
+      ...(resolvedSelection.generatedAppOptions.database === 'none'
+        ? []
+        : [{ command: selection.packageManager, args: ['run', 'db:setup'] }]),
       { command: selection.packageManager, args: ['run', 'build'] },
       ...(resolvedSelection.generatedAppOptions.database === 'none'
         ? [

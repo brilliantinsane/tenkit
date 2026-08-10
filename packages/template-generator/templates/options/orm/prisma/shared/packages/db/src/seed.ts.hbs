@@ -1,0 +1,32 @@
+import { config } from 'dotenv';
+
+import {
+  appVariantStarterData,
+  runtimeTenantAccessStarterData,
+  runtimeTenantStarterData,
+} from './starter-data.js';
+import { createPostgresqlPrismaClient } from './repository.js';
+
+config({ path: '../../apps/server/.env.local', quiet: true });
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to seed PostgreSQL Starter Data.');
+}
+
+const database = createPostgresqlPrismaClient(databaseUrl);
+
+try {
+  await database.$transaction(async (transaction) => {
+    await transaction.appVariantRuntimeTenantAccess.deleteMany();
+    await transaction.runtimeTenant.deleteMany();
+    await transaction.appVariant.deleteMany();
+    await transaction.appVariant.createMany({ data: [...appVariantStarterData] });
+    await transaction.runtimeTenant.createMany({ data: [...runtimeTenantStarterData] });
+    await transaction.appVariantRuntimeTenantAccess.createMany({
+      data: [...runtimeTenantAccessStarterData],
+    });
+  });
+} finally {
+  await database.$disconnect();
+}

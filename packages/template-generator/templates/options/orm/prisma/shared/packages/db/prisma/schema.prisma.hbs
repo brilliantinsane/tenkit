@@ -1,0 +1,40 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AppVariant {
+  appVariantId              Int    @id
+  role                      String?
+  standaloneRuntimeTenantId Int?
+  profileName               String?
+  profileDescription        String?
+  runtimeTenantAccesses     AppVariantRuntimeTenantAccess[]
+
+  @@map("app_variant")
+}
+
+model RuntimeTenant {
+  runtimeTenantId    Int    @id
+  profileName        String
+  profileDescription String
+  appVariantAccesses AppVariantRuntimeTenantAccess[]
+
+  @@map("runtime_tenant")
+}
+
+model AppVariantRuntimeTenantAccess {
+  appVariantId    Int
+  runtimeTenantId Int
+  isDefault       Boolean       @default(false)
+  appVariant      AppVariant    @relation(fields: [appVariantId], references: [appVariantId], onDelete: Cascade)
+  runtimeTenant   RuntimeTenant @relation(fields: [runtimeTenantId], references: [runtimeTenantId], onDelete: Cascade)
+
+  @@id([appVariantId, runtimeTenantId])
+  @@map("app_variant_runtime_tenant_access")
+}

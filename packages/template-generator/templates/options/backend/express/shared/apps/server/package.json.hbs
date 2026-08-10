@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    {{#if hasDatabaseWorkspace}}
+    "@tenkit/db": "workspace:*",
+    {{/if}}
     {{#if isClerkAuth}}
     "@clerk/express": "2.1.50",
     {{/if}}

@@ -1,3 +1,7 @@
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+
+{{/if}}
 export type BusinessProfile = {
   name: string;
   description: string;
@@ -9,6 +13,9 @@ export type BusinessProfileRequest = {
   runtimeTenantId?: number;
 };
 
+const selectedSetupType = '{{setupType}}';
+
+{{#unless hasDatabaseWorkspace}}
 type AppVariantBusinessData = {
   appVariantId: number;
   role: 'white-label' | 'single-app' | 'generic' | 'standalone';
@@ -19,8 +26,6 @@ type AppVariantBusinessData = {
 type RuntimeTenantBusinessData = BusinessProfile & {
   runtimeTenantId: number;
 };
-
-const selectedSetupType = '{{setupType}}';
 
 const appVariants: AppVariantBusinessData[] = [
 {{#ifSetupType 'white-label-apps'}}
@@ -110,6 +115,7 @@ const runtimeTenantAccess = new Map<number, readonly number[]>([
   [{{appVariants.[0].appVariantId}}, [100, 101, 102]],
 {{/ifSetupType}}
 ]);
+{{/unless}}
 
 export class BusinessProfileRequestError extends Error {
   constructor(
@@ -121,39 +127,46 @@ export class BusinessProfileRequestError extends Error {
   }
 }
 
-export function resolveBusinessProfile({
+export {{#if hasDatabaseWorkspace}}async {{/if}}function resolveBusinessProfile(
+{{#if hasDatabaseWorkspace}}
+  businessDataRepository: BusinessDataRepository,
+{{/if}}
+{
   setupType,
   appVariantId,
   runtimeTenantId,
-}: BusinessProfileRequest): BusinessProfile {
+}: BusinessProfileRequest,
+): {{#if hasDatabaseWorkspace}}Promise<BusinessProfile>{{else}}BusinessProfile{{/if}} {
   if (setupType !== selectedSetupType) {
     throw new BusinessProfileRequestError('Setup Type does not match this generated project', 400);
   }
 
-  const appVariant = appVariants.find((candidate) => candidate.appVariantId === appVariantId);
+  const appVariant = {{#if hasDatabaseWorkspace}}await businessDataRepository.findAppVariant(appVariantId){{else}}appVariants.find((candidate) => candidate.appVariantId === appVariantId){{/if}};
   if (!appVariant) {
     throw new BusinessProfileRequestError('App Variant does not exist', 404);
   }
 
-  if (appVariant.role === 'white-label') {
-    if (runtimeTenantId !== undefined) {
-      throw new BusinessProfileRequestError(
-        'White Label Apps do not accept Runtime Tenant context',
-        403,
-      );
-    }
-
-    if (!appVariant.profile) {
-      throw new Error('White Label App Variant is missing Business Data.');
-    }
-
-    return appVariant.profile;
+{{#ifSetupType 'white-label-apps'}}
+  if (runtimeTenantId !== undefined) {
+    throw new BusinessProfileRequestError(
+      'White Label Apps do not accept Runtime Tenant context',
+      403,
+    );
   }
 
+  if ({{#if hasDatabaseWorkspace}}!appVariant.profileName || !appVariant.profileDescription{{else}}!appVariant.profile{{/if}}) {
+    throw new Error('White Label App Variant is missing Business Data.');
+  }
+
+  return {{#if hasDatabaseWorkspace}}{
+    name: appVariant.profileName,
+    description: appVariant.profileDescription,
+  }{{else}}appVariant.profile{{/if}};
+{{else}}
   const selectedRuntimeTenantId =
     appVariant.role === 'standalone' ? appVariant.standaloneRuntimeTenantId : runtimeTenantId;
 
-  if (selectedRuntimeTenantId === undefined) {
+  if (selectedRuntimeTenantId === undefined || selectedRuntimeTenantId === null) {
     throw new BusinessProfileRequestError('Runtime Tenant context is required', 400);
   }
 
@@ -169,7 +182,7 @@ export function resolveBusinessProfile({
 
   if (
     appVariant.role !== 'standalone' &&
-    !runtimeTenantAccess.get(appVariant.appVariantId)?.includes(selectedRuntimeTenantId)
+    !{{#if hasDatabaseWorkspace}}(await businessDataRepository.hasRuntimeTenantAccess(appVariant.appVariantId, selectedRuntimeTenantId)){{else}}runtimeTenantAccess.get(appVariant.appVariantId)?.includes(selectedRuntimeTenantId){{/if}}
   ) {
     throw new BusinessProfileRequestError(
       'Runtime Tenant is not allowed by this App Variant',
@@ -177,15 +190,16 @@ export function resolveBusinessProfile({
     );
   }
 
-  const runtimeTenant = runtimeTenants.find(
+  const runtimeTenant = {{#if hasDatabaseWorkspace}}await businessDataRepository.findRuntimeTenant(selectedRuntimeTenantId){{else}}runtimeTenants.find(
     (candidate) => candidate.runtimeTenantId === selectedRuntimeTenantId,
-  );
+  ){{/if}};
   if (!runtimeTenant) {
     throw new BusinessProfileRequestError('Runtime Tenant does not exist', 404);
   }
 
   return {
-    name: runtimeTenant.name,
-    description: runtimeTenant.description,
+    name: runtimeTenant.{{#if hasDatabaseWorkspace}}profileName{{else}}name{{/if}},
+    description: runtimeTenant.{{#if hasDatabaseWorkspace}}profileDescription{{else}}description{{/if}},
   };
+{{/ifSetupType}}
 }

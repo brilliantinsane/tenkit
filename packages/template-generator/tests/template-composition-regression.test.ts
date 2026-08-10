@@ -59,6 +59,7 @@ test('Template source paths use ADR 0009 owners', () => {
       'options/backend/convex/shared/apps/server/package.json.hbs',
       'options/backend/express/shared/apps/server/package.json.hbs',
       'options/backend/nestjs/shared/apps/server/package.json.hbs',
+      'options/orm/prisma/shared/packages/db/package.json.hbs',
       'runtime-tenants/shared/package.json.hbs',
       'white-label/shared/package.json.hbs',
     ],

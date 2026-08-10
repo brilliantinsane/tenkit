@@ -1,0 +1,35 @@
+{
+  "name": "@tenkit/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "seed": "tsx src/seed.ts",
+    "setup": "prisma generate && prisma migrate deploy && tsx src/seed.ts && tsc -p tsconfig.json",
+    "test": "vitest run tests/repository.test.ts",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.5.0",
+    "@prisma/client": "7.5.0",
+    "dotenv": "^17.4.2",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/pg": "8.16.0",
+    "prisma": "7.5.0",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

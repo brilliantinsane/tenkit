@@ -1,4 +1,7 @@
 import { expect, test } from 'vitest';
+{{#if hasDatabaseWorkspace}}
+import { inspectPostgresqlTableNames } from '@tenkit/db';
+{{/if}}
 
 function serverUrl(path: string): URL {
   const port = process.env.PORT;
@@ -49,4 +52,17 @@ test('compiled Express serves public health and {{#if isClerkAuth}}rejects anony
   {{/if}}
 
   expect((await fetch(serverUrl('/api/auth/session'))).status).toBe(404);
+{{#if hasDatabaseWorkspace}}
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('Express PostgreSQL integration requires DATABASE_URL.');
+  }
+  await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
+    '_prisma_migrations',
+    'app_variant',
+    'app_variant_runtime_tenant_access',
+    'runtime_tenant',
+  ]);
+{{/if}}
 });

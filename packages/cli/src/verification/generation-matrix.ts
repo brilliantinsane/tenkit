@@ -51,6 +51,12 @@ const EXPRESS_CLERK_GENERATED_APP_OPTIONS = {
   database: 'none',
   orm: 'none',
 } as const satisfies GeneratedAppOptions;
+const EXPRESS_POSTGRESQL_PRISMA_GENERATED_APP_OPTIONS = {
+  backend: 'express',
+  auth: 'none',
+  database: 'postgresql',
+  orm: 'prisma',
+} as const satisfies GeneratedAppOptions;
 const NESTJS_NONE_GENERATED_APP_OPTIONS = {
   backend: 'nestjs',
   auth: 'none',
@@ -137,6 +143,7 @@ type RunGenerationMatrixOptions = {
 
 type ExternalVerificationOperation =
   | 'Git commit check'
+  | 'generated app Prisma client generation'
   | 'generated app typecheck'
   | 'generated app Expo config'
   | 'generated app Expo config for non-default App Variant'
@@ -358,6 +365,21 @@ export function createExpressClerkInstalledVerificationCases(): readonly Generat
       install: true,
       git: true,
       generatedAppOptions: EXPRESS_CLERK_GENERATED_APP_OPTIONS,
+    }),
+  );
+}
+
+export function createExpressPostgresqlPrismaInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+    createMatrixCase({
+      phase: 'installed',
+      setupType,
+      stylingChoice: 'bare',
+      packageManager: 'pnpm',
+      valueProfile: 'default',
+      install: true,
+      git: true,
+      generatedAppOptions: EXPRESS_POSTGRESQL_PRISMA_GENERATED_APP_OPTIONS,
     }),
   );
 }
@@ -660,16 +682,28 @@ export function planInstalledProjectVerificationCommands({
   packageManager,
   targetDir,
   appVariantNames,
+  generatedAppOptions = DEFAULT_GENERATED_APP_OPTIONS,
 }: {
   packageManager: PublicCliPackageManager;
   targetDir: string;
   appVariantNames: readonly string[];
+  generatedAppOptions?: GeneratedAppOptions;
 }): readonly ExternalVerificationCommand[] {
   const remainingAppVariantSlugs = deriveAppVariantIdentities(appVariantNames)
     .slice(1)
     .map(({ slug }) => slug);
 
   return [
+    ...(generatedAppOptions.orm === 'prisma'
+      ? [
+          {
+            command: packageManager,
+            args: ['run', 'db:generate'],
+            cwd: targetDir,
+            operation: 'generated app Prisma client generation' as const,
+          },
+        ]
+      : []),
     {
       command: packageManager,
       args: ['run', 'typecheck'],
@@ -701,6 +735,7 @@ async function verifyInstalledProject(
     packageManager: matrixCase.packageManager,
     targetDir,
     appVariantNames,
+    generatedAppOptions: matrixCase.generatedAppOptions,
   });
 
   for (const command of commands) {
@@ -843,6 +878,7 @@ export async function runGenerationMatrix({
     ...createInstalledVerificationCases(),
     ...createExpressInstalledVerificationCases(),
     ...createExpressClerkInstalledVerificationCases(),
+    ...createExpressPostgresqlPrismaInstalledVerificationCases(),
     ...createNestjsInstalledVerificationCases(),
     ...createNestjsClerkInstalledVerificationCases(),
     ...createConvexInstalledVerificationCases(),

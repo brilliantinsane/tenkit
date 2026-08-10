@@ -1,0 +1,80 @@
+export const appVariantStarterData = [
+{{#ifSetupType 'white-label-apps'}}
+  {
+    appVariantId: {{appVariants.[0].appVariantId}},
+    profileName: {{{appVariants.[0].displayNameStringLiteral}}},
+    profileDescription: 'The first white-label Business Data Example.',
+  },
+  {
+    appVariantId: {{appVariants.[1].appVariantId}},
+    profileName: {{{appVariants.[1].displayNameStringLiteral}}},
+    profileDescription: 'The second white-label Business Data Example.',
+  },
+{{/ifSetupType}}
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, role: 'single-app' },
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, role: 'generic' },
+  {
+    appVariantId: {{appVariants.[1].appVariantId}},
+    role: 'standalone',
+    standaloneRuntimeTenantId: 103,
+  },
+{{/ifSetupType}}
+] as const;
+
+export const runtimeTenantStarterData = [
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  {
+    runtimeTenantId: 100,
+    profileName: 'North Branch',
+    profileDescription: 'The northern branch Business Data Example.',
+  },
+  {
+    runtimeTenantId: 101,
+    profileName: 'South Branch',
+    profileDescription: 'The southern branch Business Data Example.',
+  },
+  {
+    runtimeTenantId: 102,
+    profileName: 'East Branch',
+    profileDescription: 'The eastern branch Business Data Example.',
+  },
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  {
+    runtimeTenantId: 100,
+    profileName: 'North Studio',
+    profileDescription: 'The North Studio Business Data Example.',
+  },
+  {
+    runtimeTenantId: 101,
+    profileName: 'South Studio',
+    profileDescription: 'The South Studio Business Data Example.',
+  },
+  {
+    runtimeTenantId: 102,
+    profileName: 'East Studio',
+    profileDescription: 'The East Studio Business Data Example.',
+  },
+  {
+    runtimeTenantId: 103,
+    profileName: 'West Studio',
+    profileDescription: 'The standalone West Studio Business Data Example.',
+  },
+{{/ifSetupType}}
+] as const;
+
+export const runtimeTenantAccessStarterData = [
+{{#if isSingleAppRuntimeTenants}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 100, isDefault: true },
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 101, isDefault: false },
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 102, isDefault: false },
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 100, isDefault: true },
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 101, isDefault: false },
+  { appVariantId: {{appVariants.[0].appVariantId}}, runtimeTenantId: 102, isDefault: false },
+{{/ifSetupType}}
+] as const;

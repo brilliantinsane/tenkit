@@ -16,12 +16,15 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
+  hasDatabaseWorkspace: boolean;
   hasServerWorkspace: boolean;
   isConvexBackend: boolean;
   isClerkAuth: boolean;
   isExpressBackend: boolean;
   isNestjsBackend: boolean;
   isNodeBackend: boolean;
+  isPostgresqlDatabase: boolean;
+  isPrismaOrm: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -31,6 +34,7 @@ export type TemplateContext = {
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
+  packageManagerDatabaseRunCommand: string;
   packageManagerRunCommand: string;
   packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;

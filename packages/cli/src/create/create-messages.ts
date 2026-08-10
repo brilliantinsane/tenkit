@@ -45,6 +45,10 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
       output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
       output.log('- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local');
     }
+    if (result.generatedAppOptions.database === 'postgresql') {
+      output.log('- Set DATABASE_URL in apps/server/.env.local to your PostgreSQL database');
+      output.log(`- ${formatRunCommand(result.packageManager, 'db:setup')}`);
+    }
     output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');
     output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
   } else if (result.generatedAppOptions.backend === 'convex') {

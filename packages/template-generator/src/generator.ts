@@ -204,12 +204,15 @@ function normalizeTemplateContext({
       appVariantNames,
       setupTypeDefinition,
     }),
+    hasDatabaseWorkspace: generatedAppOptions.database !== 'none',
     hasServerWorkspace: generatedAppOptions.backend !== 'none',
     isClerkAuth: generatedAppOptions.auth === 'clerk',
     isConvexBackend: generatedAppOptions.backend === 'convex',
     isExpressBackend: generatedAppOptions.backend === 'express',
     isNestjsBackend: generatedAppOptions.backend === 'nestjs',
     isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
+    isPostgresqlDatabase: generatedAppOptions.database === 'postgresql',
+    isPrismaOrm: generatedAppOptions.orm === 'prisma',
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -221,6 +224,12 @@ function normalizeTemplateContext({
     packageName: normalizePackageName(rawPackageName, setupTypeDefinition.defaultPackageName),
     packageManager,
     packageManagerInstallCommand: `${packageManager} install`,
+    packageManagerDatabaseRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir packages/db run'
+        : packageManager === 'npm'
+          ? 'npm --prefix packages/db run'
+          : 'bun --cwd packages/db run',
     packageManagerRunCommand: `${packageManager} run`,
     packageManagerServerRunCommand:
       packageManager === 'pnpm'
@@ -271,6 +280,10 @@ function readProjectTemplateTree({
       : context.isConvexBackend
         ? readTemplateTree('options/backend/convex/shared', context)
         : [];
+  const databaseTree = context.isPostgresqlDatabase
+    ? readTemplateTree('options/db/postgresql/shared', context)
+    : [];
+  const ormTree = context.isPrismaOrm ? readTemplateTree('options/orm/prisma/shared', context) : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({
@@ -287,6 +300,8 @@ function readProjectTemplateTree({
     authSharedTree,
     authStylingTree,
     backendTree,
+    databaseTree,
+    ormTree,
     appVariantAssets,
   );
 }

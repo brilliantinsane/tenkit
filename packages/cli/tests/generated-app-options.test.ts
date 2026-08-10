@@ -189,6 +189,57 @@ test('interactive creation exposes Clerk only after selecting Express', async ()
   });
 });
 
+test('interactive creation resolves Express with PostgreSQL and Prisma without Auth', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'express';
+      }
+      if (options.message === 'Auth') {
+        return 'none';
+      }
+      if (options.message === 'Database') {
+        return 'postgresql';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-postgresql-prisma',
+      setup: 'runtime-tenants',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'none',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Database',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'postgresql', label: 'PostgreSQL' },
+    ],
+  });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+});
+
 test('interactive creation exposes Clerk after selecting NestJS', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
@@ -433,6 +484,48 @@ test('explicit Express flags resolve the stack and write Express-owned output', 
   expect(await fs.pathExists(join(tempRoot, 'express-app/apps/server/package.json'))).toBe(true);
   expect(await fs.pathExists(join(tempRoot, 'express-app/packages/auth'))).toBe(false);
   expect(await fs.pathExists(join(tempRoot, 'express-app/packages/db'))).toBe(false);
+});
+
+test('explicit Express, PostgreSQL, and Prisma flags resolve and write the SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-postgresql-prisma-app',
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'prisma',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'none',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Database: postgresql');
+  expect(environment.lines).toContain('- ORM: prisma');
+  expect(environment.lines).toContain(
+    '- Set DATABASE_URL in apps/server/.env.local to your PostgreSQL database',
+  );
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(await fs.pathExists(join(tempRoot, 'express-postgresql-prisma-app/packages/db'))).toBe(
+    true,
+  );
+  expect(await fs.pathExists(join(tempRoot, 'express-postgresql-prisma-app/packages/auth'))).toBe(
+    false,
+  );
 });
 
 test('explicit NestJS flags resolve the stack and write NestJS-owned output', async () => {
