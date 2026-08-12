@@ -82,6 +82,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -160,6 +166,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -231,9 +243,24 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
     auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
-    database: { status: 'resolved', values: ['none'], value: 'none' },
-    orm: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    orm: { status: 'selectable', values: ['none', 'prisma'] },
   });
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'express',
+      auth: 'clerk',
+      database: 'postgresql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['express'], value: 'express' },
+      auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
+      database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    },
+  );
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'express', auth: 'better-auth' }), {
     status: 'available',
@@ -290,6 +317,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:none:postgresql:prisma',
     'express:better-auth:postgresql:prisma',
     'express:clerk:none:none',
+    'express:clerk:postgresql:prisma',
     'nestjs:none:none:none',
     'nestjs:clerk:none:none',
     'convex:none:none:none',

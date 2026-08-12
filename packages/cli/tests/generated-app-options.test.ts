@@ -291,6 +291,57 @@ test('interactive creation resolves Express with Better Auth, PostgreSQL, and Pr
   expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
 });
 
+test('interactive creation resolves Express with Clerk, PostgreSQL, and Prisma', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'express';
+      }
+      if (options.message === 'Auth') {
+        return 'clerk';
+      }
+      if (options.message === 'Database') {
+        return 'postgresql';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-clerk-postgresql-prisma',
+      setup: 'white-label',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'clerk',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Database',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'postgresql', label: 'PostgreSQL' },
+    ],
+  });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+});
+
 test('interactive creation exposes Clerk after selecting NestJS', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
@@ -622,6 +673,55 @@ test('explicit Express, Better Auth, PostgreSQL, and Prisma flags write the prot
       join(tempRoot, 'express-better-auth-postgresql-prisma-app/packages/db/package.json'),
     ),
   ).toBe(true);
+});
+
+test('explicit Express, Clerk, PostgreSQL, and Prisma flags write the protected SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-clerk-postgresql-prisma-app',
+      backend: 'express',
+      auth: 'clerk',
+      database: 'postgresql',
+      orm: 'prisma',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'clerk',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Auth: clerk');
+  expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+  expect(environment.lines).toContain(
+    '- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local',
+  );
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-clerk-postgresql-prisma-app/src/auth/clerk-provider.tsx'),
+    ),
+  ).toBe(true);
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-clerk-postgresql-prisma-app/packages/db/package.json'),
+    ),
+  ).toBe(true);
+  expect(
+    await fs.pathExists(join(tempRoot, 'express-clerk-postgresql-prisma-app/packages/auth')),
+  ).toBe(false);
 });
 
 test('explicit NestJS flags resolve the stack and write NestJS-owned output', async () => {
