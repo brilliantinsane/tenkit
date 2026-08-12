@@ -36,7 +36,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none|clerk>] [--database <none|postgresql>] [--orm <none|prisma>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql>] [--orm <none|prisma>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -176,6 +176,12 @@ async function main() {
                 CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k',
                 CLERK_SECRET_KEY: 'sk_test_replace_me',
                 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k',
+              }
+            : {}),
+          ...(args.generatedAppOptions.auth === 'better-auth'
+            ? {
+                BETTER_AUTH_URL: `http://127.0.0.1:${port}`,
+                BETTER_AUTH_SECRET: 'tenkit-generated-verification-secret',
               }
             : {}),
         },

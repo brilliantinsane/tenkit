@@ -11,6 +11,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/expo';
 import { requestClerkBusinessProfile } from '@/auth/clerk-business-profile-client';
 {{/if}}
+{{#if isBetterAuth}}
+import { getBetterAuthCookie } from '@/auth/auth-client';
+{{/if}}
 {{/if}}
 
 {{#unless hasServerWorkspace}}
@@ -116,6 +119,10 @@ export function useBusinessProfile(): BusinessProfileState {
         });
         {{else}}
         const response = await fetch(requestUrl, {
+          {{#if isBetterAuth}}
+          credentials: 'omit',
+          headers: { Cookie: getBetterAuthCookie() },
+          {{/if}}
           signal: controller.signal,
         });
         if (!response.ok) {

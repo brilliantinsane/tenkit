@@ -60,6 +60,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       '@clerk/expo',
       'expo-secure-store',
       {{/if}}
+      {{#if isBetterAuth}}
+      'expo-secure-store',
+      {{/if}}
       'expo-system-ui',
       'expo-router',
       [

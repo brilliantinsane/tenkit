@@ -1,0 +1,25 @@
+import { Link } from 'expo-router';
+import { Pressable, Text, TextInput, View } from 'react-native';
+
+import { type AuthFormMode, useBetterAuthForm } from './use-better-auth-form';
+
+export function AuthForm({ mode }: { mode: AuthFormMode }) {
+  const form = useBetterAuthForm(mode);
+  return (
+    <View className="flex-1 justify-center gap-4 bg-background p-6">
+      <Text className="text-3xl font-bold text-foreground">{form.isSignUp ? 'Create account' : 'Sign in'}</Text>
+      <Text className="text-muted-foreground">{form.isSignUp ? 'Start an immediate Better Auth session.' : 'Continue to your Business Data Example.'}</Text>
+      {form.isSignUp ? <TextInput className="min-h-12 rounded-xl border border-border px-4 text-foreground" onChangeText={form.setName} placeholder="Name" value={form.name} /> : null}
+      <TextInput className="min-h-12 rounded-xl border border-border px-4 text-foreground" autoCapitalize="none" keyboardType="email-address" onChangeText={form.setEmail} placeholder="Email" value={form.email} />
+      <TextInput className="min-h-12 rounded-xl border border-border px-4 text-foreground" autoCapitalize="none" onChangeText={form.setPassword} placeholder="Password" secureTextEntry value={form.password} />
+      {form.isSignUp ? <TextInput className="min-h-12 rounded-xl border border-border px-4 text-foreground" onChangeText={form.setConfirmPassword} placeholder="Confirm Password" secureTextEntry value={form.confirmPassword} /> : null}
+      {form.errorMessage ? <Text className="text-foreground">{form.errorMessage}</Text> : null}
+      <Pressable className="min-h-12 items-center justify-center rounded-xl bg-accent" disabled={form.isSubmitting} onPress={() => void form.submitCredentials()}>
+        <Text className="font-semibold text-white">{form.isSubmitting ? 'Working...' : form.isSignUp ? 'Create account' : 'Sign in'}</Text>
+      </Pressable>
+      <Link href={form.isSignUp ? '/sign-in' : '/sign-up'} className="text-accent">
+        {form.isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register'}
+      </Link>
+    </View>
+  );
+}

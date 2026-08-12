@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { useBusinessProfile } from '@/business-data/use-business-profile';
-{{#if isClerkAuth}}
+{{#if hasAuth}}
 import { SignOutButton } from '@/auth/sign-out-button';
 {{/if}}
 import { ThemedText } from '@/components/themed-text';
@@ -29,7 +29,7 @@ export default function HomeScreen() {
         </ThemedText>
         {profile ? <ThemedText>{profile.description}</ThemedText> : null}
         {error ? <ThemedText>{error}</ThemedText> : null}
-        <ThemedText type="code">Auth: {{#if isClerkAuth}}clerk{{else}}none{{/if}}</ThemedText>
+        <ThemedText type="code">Auth: {{#if isClerkAuth}}clerk{{else}}{{#if isBetterAuth}}better-auth{{else}}none{{/if}}{{/if}}</ThemedText>
         <ThemedText type="code" selectable>
           App Variant: {appVariant.slug}
         </ThemedText>
@@ -40,7 +40,7 @@ export default function HomeScreen() {
           Active Runtime Tenant ID: {activeRuntimeTenantId}
         </ThemedText>
       </View>
-      {{#if isClerkAuth}}<SignOutButton />{{/if}}
+      {{#if hasAuth}}<SignOutButton />{{/if}}
       <ThemedText style={styles.note} themeColor="secondaryText">
         { {{{appVariants.[0].displayNameStringLiteral}}} } can select North, South, and East Studio. { {{{appVariants.[1].displayNameStringLiteral}}} } opens West Studio directly.
       </ThemedText>

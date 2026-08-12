@@ -1,8 +1,12 @@
 import cors from 'cors';
-import express, { type Express{{#if isClerkAuth}}, type Request, type RequestHandler{{/if}} } from 'express';
+import express, { type Express{{#if hasAuth}}, type Request, type RequestHandler{{/if}} } from 'express';
 import { z } from 'zod';
 {{#if hasDatabaseWorkspace}}
 import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
+{{#if isBetterAuth}}
+import type { TenkitAuth } from '@tenkit/auth';
+import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 {{/if}}
 {{#if isClerkAuth}}
 import { clerkMiddleware, getAuth } from '@clerk/express';
@@ -34,16 +38,29 @@ const businessProfileRequestSchema = z
   })
   .strict();
 
-{{#if isClerkAuth}}
+{{#if hasAuth}}
 export type RequestAuthentication = {
   middleware: RequestHandler;
-  isAuthenticated(request: Request): boolean;
+  hasSession(request: Request): Promise<boolean>;
 };
+{{/if}}
 
+{{#if isClerkAuth}}
 function createClerkRequestAuthentication(): RequestAuthentication {
   return {
     middleware: clerkMiddleware(),
-    isAuthenticated: (request) => getAuth(request).isAuthenticated,
+    hasSession: async (request) => getAuth(request).isAuthenticated,
+  };
+}
+{{/if}}
+{{#if isBetterAuth}}
+export function createBetterAuthRequestAuthentication(
+  auth: TenkitAuth,
+): RequestAuthentication {
+  return {
+    middleware: toNodeHandler(auth),
+    hasSession: async (request) =>
+      (await auth.api.getSession({ headers: fromNodeHeaders(request.headers) })) !== null,
   };
 }
 {{/if}}
@@ -51,6 +68,7 @@ function createClerkRequestAuthentication(): RequestAuthentication {
 export function createApp(
   clientOrigin: string,
   {{#if hasDatabaseWorkspace}}businessDataRepository: BusinessDataRepository,{{/if}}
+  {{#if isBetterAuth}}authentication: RequestAuthentication,{{/if}}
   {{#if isClerkAuth}}authentication: RequestAuthentication = createClerkRequestAuthentication(),{{/if}}
 ): Express {
   const app = express();
@@ -62,8 +80,11 @@ export function createApp(
   app.use(
     cors({
       origin: clientOrigin,
-      methods: ['GET'],
-      allowedHeaders: ['Authorization', 'Content-Type'],
+      methods: [{{#if isBetterAuth}}'GET', 'POST'{{else}}'GET'{{/if}}],
+      allowedHeaders: [{{#if isBetterAuth}}'Content-Type', 'Cookie'{{else}}'Authorization', 'Content-Type'{{/if}}],
+      {{#if isBetterAuth}}
+      credentials: true,
+      {{/if}}
     }),
   );
 
@@ -71,9 +92,14 @@ export function createApp(
     response.json({ status: 'ok' });
   });
 
+  {{#if isBetterAuth}}
+  app.all('/api/auth/*splat', authentication.middleware);
+  app.use(express.json());
+  {{/if}}
+
   app.get('/api/business-profile', async (request, response) => {
-    {{#if isClerkAuth}}
-    if (!authentication.isAuthenticated(request)) {
+    {{#if hasAuth}}
+    if (!(await authentication.hasSession(request))) {
       response.status(401).json({ error: 'Authentication is required' });
       return;
     }

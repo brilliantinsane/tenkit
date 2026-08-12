@@ -43,6 +43,9 @@ import AppTabs from '@/components/app-tabs';
 import { ClerkAppProvider } from '@/auth/clerk-provider';
 import { resolveClerkSessionRouteState } from '@/auth/clerk-session-boundary';
 {{/if}}
+{{#if isBetterAuth}}
+import { BetterAuthBoundary } from '@/auth/better-auth-boundary';
+{{/if}}
 import { getAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 const { theme } = getAppVariantConfig();
@@ -103,7 +106,13 @@ function AuthenticatedRootLayout({ dark }: { dark: boolean }) {
           </Stack>
         )}
         {{else}}
+        {{#if isBetterAuth}}
+        <BetterAuthBoundary>
+        {{/if}}
         <AppTabs accent={theme.accent} />
+        {{#if isBetterAuth}}
+        </BetterAuthBoundary>
+        {{/if}}
         {{/if}}
       </ThemeProvider>
       <StatusBar style={dark ? 'light' : 'dark'} />

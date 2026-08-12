@@ -1,8 +1,10 @@
 export {
   createBusinessDataRepository,
+  createPostgresqlPrismaClient,
   inspectPostgresqlTableNames,
   validatePostgresqlDatabaseUrl,
   type AppVariantBusinessData,
   type BusinessDataRepository,
   type RuntimeTenantBusinessData,
 } from './repository.js';
+export { PrismaClient } from './generated/prisma/client.js';

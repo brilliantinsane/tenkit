@@ -39,6 +39,9 @@ import AppTabs from '@/components/app-tabs';
 import { ClerkAppProvider } from '@/auth/clerk-provider';
 import { resolveClerkSessionRouteState } from '@/auth/clerk-session-boundary';
 {{/if}}
+{{#if isBetterAuth}}
+import { BetterAuthBoundary } from '@/auth/better-auth-boundary';
+{{/if}}
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 import { getNavigationTheme } from '@/theme/colors';
 import { ColorsProvider, useTheme } from '@/theme/ThemeContext';
@@ -76,7 +79,13 @@ function RootLayoutInner() {
           </Stack>
         )}
         {{else}}
+        {{#if isBetterAuth}}
+        <BetterAuthBoundary>
+        {{/if}}
         <AppTabs />
+        {{#if isBetterAuth}}
+        </BetterAuthBoundary>
+        {{/if}}
         {{/if}}
       </ThemeProvider>
       <StatusBar style={dark ? 'light' : 'dark'} />

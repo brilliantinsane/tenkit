@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { generateProject, type VirtualFileTree } from '@tenkit/template-generator';
 import {
   DEFAULT_GENERATED_APP_OPTIONS,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
   type GeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
 import {
@@ -39,43 +40,6 @@ const MATRIX_GIT_ENV = {
   GIT_COMMITTER_NAME: 'Tenkit Matrix',
   GIT_COMMITTER_EMAIL: 'matrix@tenkit.dev',
 } as const;
-const EXPRESS_NONE_GENERATED_APP_OPTIONS = {
-  backend: 'express',
-  auth: 'none',
-  database: 'none',
-  orm: 'none',
-} as const satisfies GeneratedAppOptions;
-const EXPRESS_CLERK_GENERATED_APP_OPTIONS = {
-  backend: 'express',
-  auth: 'clerk',
-  database: 'none',
-  orm: 'none',
-} as const satisfies GeneratedAppOptions;
-const EXPRESS_POSTGRESQL_PRISMA_GENERATED_APP_OPTIONS = {
-  backend: 'express',
-  auth: 'none',
-  database: 'postgresql',
-  orm: 'prisma',
-} as const satisfies GeneratedAppOptions;
-const NESTJS_NONE_GENERATED_APP_OPTIONS = {
-  backend: 'nestjs',
-  auth: 'none',
-  database: 'none',
-  orm: 'none',
-} as const satisfies GeneratedAppOptions;
-const NESTJS_CLERK_GENERATED_APP_OPTIONS = {
-  backend: 'nestjs',
-  auth: 'clerk',
-  database: 'none',
-  orm: 'none',
-} as const satisfies GeneratedAppOptions;
-const CONVEX_NONE_GENERATED_APP_OPTIONS = {
-  backend: 'convex',
-  auth: 'none',
-  database: 'none',
-  orm: 'none',
-} as const satisfies GeneratedAppOptions;
-
 export const GENERATION_MATRIX_ROOT = '/tmp/tenkit-test';
 
 type ValueProfile = (typeof VALUE_PROFILES)[number];
@@ -339,93 +303,22 @@ export function createInstalledVerificationCases(): readonly GenerationMatrixCas
   ];
 }
 
-export function createExpressInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: EXPRESS_NONE_GENERATED_APP_OPTIONS,
-    }),
-  );
-}
-
-export function createExpressClerkInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: EXPRESS_CLERK_GENERATED_APP_OPTIONS,
-    }),
-  );
-}
-
-export function createExpressPostgresqlPrismaInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: EXPRESS_POSTGRESQL_PRISMA_GENERATED_APP_OPTIONS,
-    }),
-  );
-}
-
-export function createNestjsInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: NESTJS_NONE_GENERATED_APP_OPTIONS,
-    }),
-  );
-}
-
-export function createNestjsClerkInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: NESTJS_CLERK_GENERATED_APP_OPTIONS,
-    }),
-  );
-}
-
-export function createConvexInstalledVerificationCases(): readonly GenerationMatrixCase[] {
-  return SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
-    createMatrixCase({
-      phase: 'installed',
-      setupType,
-      stylingChoice: 'bare',
-      packageManager: 'pnpm',
-      valueProfile: 'default',
-      install: true,
-      git: true,
-      generatedAppOptions: CONVEX_NONE_GENERATED_APP_OPTIONS,
-    }),
+export function createSupportedStackInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.filter(
+    ({ backend }) => backend !== 'none',
+  ).flatMap((generatedAppOptions) =>
+    SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+      createMatrixCase({
+        phase: 'installed',
+        setupType,
+        stylingChoice: 'bare',
+        packageManager: 'pnpm',
+        valueProfile: 'default',
+        install: true,
+        git: true,
+        generatedAppOptions,
+      }),
+    ),
   );
 }
 
@@ -876,12 +769,7 @@ export async function runGenerationMatrix({
   const cases = [
     ...createExhaustiveGenerationCases(),
     ...createInstalledVerificationCases(),
-    ...createExpressInstalledVerificationCases(),
-    ...createExpressClerkInstalledVerificationCases(),
-    ...createExpressPostgresqlPrismaInstalledVerificationCases(),
-    ...createNestjsInstalledVerificationCases(),
-    ...createNestjsClerkInstalledVerificationCases(),
-    ...createConvexInstalledVerificationCases(),
+    ...createSupportedStackInstalledVerificationCases(),
   ];
 
   for (const matrixCase of cases) {

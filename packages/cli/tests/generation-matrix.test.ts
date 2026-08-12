@@ -5,17 +5,13 @@ import { tmpdir } from 'node:os';
 import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, assert, describe, expect, test } from 'vitest';
+import { SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS } from '@tenkit/types/generated-app-option-definitions';
 
 import {
   assertGeneratedProjectMatches,
-  createConvexInstalledVerificationCases,
   createExhaustiveGenerationCases,
-  createExpressClerkInstalledVerificationCases,
-  createExpressInstalledVerificationCases,
-  createExpressPostgresqlPrismaInstalledVerificationCases,
   createInstalledVerificationCases,
-  createNestjsClerkInstalledVerificationCases,
-  createNestjsInstalledVerificationCases,
+  createSupportedStackInstalledVerificationCases,
   finalizeGenerationMatrix,
   GENERATION_MATRIX_ROOT,
   planInstalledProjectVerificationCommands,
@@ -83,10 +79,13 @@ describe('generation matrix coverage', () => {
     assert.deepEqual(defaultRuntimeTenants?.appVariantAccents, ['#EB2556']);
   });
 
-  test('adds one installed Bare pnpm Express case for every Setup Type', () => {
-    const cases = createExpressInstalledVerificationCases();
+  test('derives installed Bare pnpm cases for every supported service stack and Setup Type', () => {
+    const cases = createSupportedStackInstalledVerificationCases();
+    const supportedServiceStacks = SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.filter(
+      ({ backend }) => backend !== 'none',
+    );
 
-    assert.equal(cases.length, 3);
+    assert.equal(cases.length, supportedServiceStacks.length * 3);
     assert.deepEqual(
       new Set(cases.map(({ setupType }) => setupType)),
       new Set([
@@ -97,156 +96,13 @@ describe('generation matrix coverage', () => {
     );
     assert.ok(
       cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'express' &&
-          generatedAppOptions.auth === 'none' &&
-          generatedAppOptions.database === 'none' &&
-          generatedAppOptions.orm === 'none' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
+        ({ stylingChoice, packageManager, install, git }) =>
+          stylingChoice === 'bare' && packageManager === 'pnpm' && install && git,
       ),
     );
-    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
-  });
-
-  test('adds one installed Bare pnpm Express and Clerk case for every Setup Type', () => {
-    const cases = createExpressClerkInstalledVerificationCases();
-
-    assert.equal(cases.length, 3);
     assert.deepEqual(
-      new Set(cases.map(({ setupType }) => setupType)),
-      new Set([
-        'white-label-apps',
-        'single-app-runtime-tenants',
-        'generic-with-standalone-app-variants',
-      ]),
-    );
-    assert.ok(
-      cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'express' &&
-          generatedAppOptions.auth === 'clerk' &&
-          generatedAppOptions.database === 'none' &&
-          generatedAppOptions.orm === 'none' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
-      ),
-    );
-    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
-  });
-
-  test('adds one installed Bare pnpm Express PostgreSQL Prisma case for every Setup Type', () => {
-    const cases = createExpressPostgresqlPrismaInstalledVerificationCases();
-
-    assert.equal(cases.length, 3);
-    assert.deepEqual(
-      new Set(cases.map(({ setupType }) => setupType)),
-      new Set([
-        'white-label-apps',
-        'single-app-runtime-tenants',
-        'generic-with-standalone-app-variants',
-      ]),
-    );
-    assert.ok(
-      cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'express' &&
-          generatedAppOptions.auth === 'none' &&
-          generatedAppOptions.database === 'postgresql' &&
-          generatedAppOptions.orm === 'prisma' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
-      ),
-    );
-    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
-  });
-
-  test('adds one installed Bare pnpm NestJS case for every Setup Type', () => {
-    const cases = createNestjsInstalledVerificationCases();
-
-    assert.equal(cases.length, 3);
-    assert.deepEqual(
-      new Set(cases.map(({ setupType }) => setupType)),
-      new Set([
-        'white-label-apps',
-        'single-app-runtime-tenants',
-        'generic-with-standalone-app-variants',
-      ]),
-    );
-    assert.ok(
-      cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'nestjs' &&
-          generatedAppOptions.auth === 'none' &&
-          generatedAppOptions.database === 'none' &&
-          generatedAppOptions.orm === 'none' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
-      ),
-    );
-    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
-  });
-
-  test('adds one installed Bare pnpm NestJS and Clerk case for every Setup Type', () => {
-    const cases = createNestjsClerkInstalledVerificationCases();
-
-    assert.equal(cases.length, 3);
-    assert.deepEqual(
-      new Set(cases.map(({ setupType }) => setupType)),
-      new Set([
-        'white-label-apps',
-        'single-app-runtime-tenants',
-        'generic-with-standalone-app-variants',
-      ]),
-    );
-    assert.ok(
-      cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'nestjs' &&
-          generatedAppOptions.auth === 'clerk' &&
-          generatedAppOptions.database === 'none' &&
-          generatedAppOptions.orm === 'none' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
-      ),
-    );
-    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
-  });
-
-  test('adds one installed Bare pnpm Convex case for every Setup Type', () => {
-    const cases = createConvexInstalledVerificationCases();
-
-    assert.equal(cases.length, 3);
-    assert.deepEqual(
-      new Set(cases.map(({ setupType }) => setupType)),
-      new Set([
-        'white-label-apps',
-        'single-app-runtime-tenants',
-        'generic-with-standalone-app-variants',
-      ]),
-    );
-    assert.ok(
-      cases.every(
-        ({ generatedAppOptions, stylingChoice, packageManager, install, git }) =>
-          generatedAppOptions.backend === 'convex' &&
-          generatedAppOptions.auth === 'none' &&
-          generatedAppOptions.database === 'none' &&
-          generatedAppOptions.orm === 'none' &&
-          stylingChoice === 'bare' &&
-          packageManager === 'pnpm' &&
-          install &&
-          git,
-      ),
+      new Set(cases.map(({ generatedAppOptions }) => JSON.stringify(generatedAppOptions))),
+      new Set(supportedServiceStacks.map((options) => JSON.stringify(options))),
     );
     assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
   });

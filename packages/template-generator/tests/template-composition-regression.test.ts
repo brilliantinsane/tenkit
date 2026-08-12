@@ -56,6 +56,7 @@ test('Template source paths use ADR 0009 owners', () => {
     paths.filter((path) => path.endsWith('package.json.hbs')),
     [
       'generic-standalone/shared/package.json.hbs',
+      'options/auth/better-auth/shared/packages/auth/package.json.hbs',
       'options/backend/convex/shared/apps/server/package.json.hbs',
       'options/backend/express/shared/apps/server/package.json.hbs',
       'options/backend/nestjs/shared/apps/server/package.json.hbs',
@@ -102,6 +103,27 @@ test('Template source paths use ADR 0009 owners', () => {
       [],
     );
   }
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/better-auth/shared/'))
+      .map((path) => path.replace('options/auth/better-auth/shared/', ''))
+      .filter(
+        (path) =>
+          !path.startsWith('packages/auth/') &&
+          !path.startsWith('src/app/(auth)/') &&
+          !path.startsWith('src/auth/'),
+      ),
+    [],
+  );
+  for (const stylingChoice of stylingTemplatePaths) {
+    assert.deepEqual(
+      paths
+        .filter((path) => path.startsWith(`options/auth/better-auth/${stylingChoice}/`))
+        .map((path) => path.replace(`options/auth/better-auth/${stylingChoice}/`, ''))
+        .filter((path) => !path.startsWith('src/auth/')),
+      [],
+    );
+  }
 
   const appShellPaths = paths.filter(
     (path) =>
@@ -112,7 +134,9 @@ test('Template source paths use ADR 0009 owners', () => {
     assert.ok(
       /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//.test(
         path,
-      ) || path.startsWith('options/auth/clerk/shared/src/app/(auth)/'),
+      ) ||
+        path.startsWith('options/auth/clerk/shared/src/app/(auth)/') ||
+        path.startsWith('options/auth/better-auth/shared/src/app/(auth)/'),
     );
   }
 });

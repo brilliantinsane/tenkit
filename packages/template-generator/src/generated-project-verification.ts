@@ -194,17 +194,24 @@ function expectedServerWorkspaceScripts(
       : packageManager === 'npm'
         ? 'npm --prefix packages/db run'
         : 'bun --cwd packages/db run';
+  const authRunCommand =
+    packageManager === 'pnpm'
+      ? 'pnpm --dir packages/auth run'
+      : packageManager === 'npm'
+        ? 'npm --prefix packages/auth run'
+        : 'bun --cwd packages/auth run';
   const hasDatabaseWorkspace = database !== 'none';
+  const hasAuthWorkspace = auth === 'better-auth';
 
   return {
-    build: `${hasDatabaseWorkspace ? `${databaseRunCommand} build && ` : ''}${serverRunCommand} build`,
+    build: `${hasDatabaseWorkspace ? `${databaseRunCommand} build && ` : ''}${hasAuthWorkspace ? `${authRunCommand} build && ` : ''}${serverRunCommand} build`,
     'server:start:prod': `${serverRunCommand} start:prod`,
     test:
-      auth === 'clerk'
-        ? `${rootRunCommand} test:mobile && ${hasDatabaseWorkspace ? `${databaseRunCommand} test && ` : ''}${serverRunCommand} test`
+      auth !== 'none'
+        ? `${rootRunCommand} test:mobile && ${hasDatabaseWorkspace ? `${databaseRunCommand} test && ` : ''}${hasAuthWorkspace ? `${authRunCommand} test && ` : ''}${serverRunCommand} test`
         : `${hasDatabaseWorkspace ? `${databaseRunCommand} test && ` : ''}${serverRunCommand} test`,
     'test:integration': `${serverRunCommand} test:integration`,
-    typecheck: `${hasDatabaseWorkspace ? `${databaseRunCommand} typecheck && ` : ''}${serverRunCommand} typecheck`,
+    typecheck: `${hasDatabaseWorkspace ? `${databaseRunCommand} typecheck && ` : ''}${hasAuthWorkspace ? `${authRunCommand} typecheck && ` : ''}${serverRunCommand} typecheck`,
   };
 }
 

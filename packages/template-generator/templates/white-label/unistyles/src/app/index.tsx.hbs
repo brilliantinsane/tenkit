@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { useBusinessProfile } from '@/business-data/use-business-profile';
-{{#if isClerkAuth}}
+{{#if hasAuth}}
 import { SignOutButton } from '@/auth/sign-out-button';
 {{/if}}
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
@@ -21,12 +21,12 @@ export default function HomeScreen() {
         </Text>
         {profile ? <Text style={styles.description}>{profile.description}</Text> : null}
         {error ? <Text style={styles.description}>{error}</Text> : null}
-        <Text style={styles.code}>Auth: {{#if isClerkAuth}}clerk{{else}}none{{/if}}</Text>
+        <Text style={styles.code}>Auth: {{#if isClerkAuth}}clerk{{else}}{{#if isBetterAuth}}better-auth{{else}}none{{/if}}{{/if}}</Text>
         <Text selectable style={styles.code}>
           App Variant: {appVariant.slug}
         </Text>
       </View>
-      {{#if isClerkAuth}}<SignOutButton />{{/if}}
+      {{#if hasAuth}}<SignOutButton />{{/if}}
       <Text style={styles.description}>
         A generated Expo SDK 57 app with White Label app configuration applied.
       </Text>

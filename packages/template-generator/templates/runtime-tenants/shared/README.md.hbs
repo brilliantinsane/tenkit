@@ -50,6 +50,9 @@ cp apps/server/.env.example apps/server/.env.local
 {{#if isClerkAuth}}
 Clerk owns Email and Password identity, required Email verification, sessions, and token signing. Enable Clerk's Native API, required Email with verification code, Password sign-up, and Device Trust in a Clerk application you own. Put its Publishable Key in the root `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and server `CLERK_PUBLISHABLE_KEY` values. Put its Secret Key only in the server `CLERK_SECRET_KEY` value. The generated Expo routes use Clerk's SecureStore token cache, restore sessions, forward bearer tokens, and return to Auth routes after sign-out. Never commit real keys or `.env.local` files.
 {{/if}}
+{{#if isBetterAuth}}
+Better Auth owns Email and Password identity and durable cookie sessions in PostgreSQL. Generate a random `BETTER_AUTH_SECRET` of at least 32 characters, keep it only in `apps/server/.env.local`, and set `BETTER_AUTH_URL` to the public Express origin. Registration creates an immediate durable session. The generated Expo client restores the SecureStore-backed session, forwards its cookie to protected Business Data requests, and returns to Auth routes after sign-out. Never commit the real secret or `.env.local` files.
+{{/if}}
 
 {{#if hasDatabaseWorkspace}}
 PostgreSQL and Prisma live in `packages/db`. Create an empty PostgreSQL database, set its connection URL only in `apps/server/.env.local`, then apply the committed migration, seed Setup Type-specific Starter Data, generate Prisma Client, and build the Database package:
@@ -58,7 +61,7 @@ PostgreSQL and Prisma live in `packages/db`. Create an empty PostgreSQL database
 {{packageManagerRunCommand}} db:setup
 ```
 
-Run this setup before the first Backend start and during deployment before starting compiled output. The Database contains only Tenkit App Variant, Runtime Tenant, and Runtime Tenant Access tables plus Prisma migration metadata. See `packages/db/POSTGRESQL.md` for provider guidance.
+Run this setup before the first Backend start and during deployment before starting compiled output. The Database contains Tenkit App Variant, Runtime Tenant, and Runtime Tenant Access tables{{#if isBetterAuth}}, plus Better Auth User, Session, Account, and Verification tables{{/if}} and Prisma migration metadata. See `packages/db/POSTGRESQL.md` for provider guidance.
 {{/if}}
 
 Run Expo and {{nodeBackendDisplayName}} together:

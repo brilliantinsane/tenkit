@@ -2,8 +2,11 @@ import { config } from 'dotenv';
 {{#if hasDatabaseWorkspace}}
 import { createBusinessDataRepository } from '@tenkit/db';
 {{/if}}
+{{#if isBetterAuth}}
+import { createTenkitAuth } from '@tenkit/auth';
+{{/if}}
 
-import { createApp } from './app.js';
+import { createApp{{#if isBetterAuth}}, createBetterAuthRequestAuthentication{{/if}} } from './app.js';
 import { readServerEnvironment } from './environment.js';
 
 config({ path: '.env.local', quiet: true });
@@ -12,9 +15,19 @@ const environment = readServerEnvironment();
 {{#if hasDatabaseWorkspace}}
 const businessDataRepository = createBusinessDataRepository(environment.DATABASE_URL);
 {{/if}}
+{{#if isBetterAuth}}
+const { auth, close: closeAuth } = createTenkitAuth({
+  databaseUrl: environment.DATABASE_URL,
+  baseUrl: environment.BETTER_AUTH_URL,
+  secret: environment.BETTER_AUTH_SECRET,
+  clientOrigin: environment.CLIENT_ORIGIN,
+  development: environment.NODE_ENV === 'development',
+});
+{{/if}}
 const server = createApp(
   environment.CLIENT_ORIGIN,
   {{#if hasDatabaseWorkspace}}businessDataRepository,{{/if}}
+  {{#if isBetterAuth}}createBetterAuthRequestAuthentication(auth),{{/if}}
 ).listen(environment.PORT, () => {
   console.log(`Tenkit Express server listening on port ${environment.PORT}.`);
 });
@@ -47,6 +60,13 @@ async function shutdown(): Promise<void> {
   {{#if hasDatabaseWorkspace}}
   try {
     await businessDataRepository.close();
+  } catch {
+    shutdownFailed = true;
+  }
+  {{/if}}
+  {{#if isBetterAuth}}
+  try {
+    await closeAuth();
   } catch {
     shutdownFailed = true;
   }

@@ -1,0 +1,48 @@
+import { expo } from '@better-auth/expo';
+import { createPostgresqlPrismaClient } from '@tenkit/db';
+import { betterAuth, type BetterAuthOptions } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+
+import { createTrustedOrigins } from './trusted-origins.js';
+
+export type CreateTenkitAuthInput = {
+  databaseUrl: string;
+  baseUrl: string;
+  secret: string;
+  clientOrigin: string;
+  development: boolean;
+};
+
+export type TenkitAuth = ReturnType<typeof betterAuth>;
+export type TenkitAuthRuntime = {
+  auth: TenkitAuth;
+  close(): Promise<void>;
+};
+
+export function createTenkitAuth({
+  databaseUrl,
+  baseUrl,
+  secret,
+  clientOrigin,
+  development,
+}: CreateTenkitAuthInput): TenkitAuthRuntime {
+  const database = createPostgresqlPrismaClient(databaseUrl);
+  const options: BetterAuthOptions = {
+    appName: {{projectNameStringLiteral}},
+    baseURL: baseUrl,
+    secret,
+    database: prismaAdapter(database, { provider: 'postgresql' }),
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: false,
+    },
+    trustedOrigins: createTrustedOrigins(clientOrigin, development),
+    plugins: [expo()],
+  };
+  const auth = betterAuth(options);
+
+  return {
+    auth,
+    close: () => database.$disconnect(),
+  };
+}

@@ -38,6 +38,9 @@ import AppTabs from '@/components/app-tabs';
 import { ClerkAppProvider } from '@/auth/clerk-provider';
 import { resolveClerkSessionRouteState } from '@/auth/clerk-session-boundary';
 {{/if}}
+{{#if isBetterAuth}}
+import { BetterAuthBoundary } from '@/auth/better-auth-boundary';
+{{/if}}
 
 export default function RootLayout() {
   {{#if isClerkAuth}}
@@ -79,9 +82,15 @@ function AuthenticatedRootLayout() {
           </Stack.Protected>
         </Stack>
       )}
-      {{else}}
+        {{else}}
+        {{#if isBetterAuth}}
+      <BetterAuthBoundary>
+        {{/if}}
       <AppTabs />
-      {{/if}}
+        {{#if isBetterAuth}}
+      </BetterAuthBoundary>
+        {{/if}}
+        {{/if}}
       <StatusBar style="auto" />
     </>
     {{#if isConvexBackend}}

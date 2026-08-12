@@ -17,7 +17,10 @@ import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
   hasDatabaseWorkspace: boolean;
+  hasAuth: boolean;
+  hasAuthWorkspace: boolean;
   hasServerWorkspace: boolean;
+  isBetterAuth: boolean;
   isConvexBackend: boolean;
   isClerkAuth: boolean;
   isExpressBackend: boolean;
@@ -35,6 +38,7 @@ export type TemplateContext = {
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
   packageManagerDatabaseRunCommand: string;
+  packageManagerAuthRunCommand: string;
   packageManagerRunCommand: string;
   packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;

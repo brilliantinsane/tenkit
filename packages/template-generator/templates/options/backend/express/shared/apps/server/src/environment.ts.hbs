@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 const serverEnvironmentSchema = z.object({
+  {{#if isBetterAuth}}
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.string().url(),
+  {{/if}}
   {{#if isClerkAuth}}
   CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
   CLERK_SECRET_KEY: z.string().startsWith('sk_'),
@@ -20,6 +24,9 @@ const serverEnvironmentSchema = z.object({
   }, 'DATABASE_URL must be a PostgreSQL URL'),
   {{/if}}
   PORT: z.coerce.number().int().min(1).max(65_535),
+  {{#if isBetterAuth}}
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  {{/if}}
 });
 
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
@@ -31,7 +38,7 @@ export function readServerEnvironment(
 
   if (!parsedEnvironment.success) {
     throw new Error(
-      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a PostgreSQL DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}.',
+      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a PostgreSQL DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}{{#if isBetterAuth}}, plus BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET{{/if}}.',
     );
   }
 

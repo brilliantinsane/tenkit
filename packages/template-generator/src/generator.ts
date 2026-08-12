@@ -204,8 +204,11 @@ function normalizeTemplateContext({
       appVariantNames,
       setupTypeDefinition,
     }),
+    hasAuth: generatedAppOptions.auth !== 'none',
+    hasAuthWorkspace: generatedAppOptions.auth === 'better-auth',
     hasDatabaseWorkspace: generatedAppOptions.database !== 'none',
     hasServerWorkspace: generatedAppOptions.backend !== 'none',
+    isBetterAuth: generatedAppOptions.auth === 'better-auth',
     isClerkAuth: generatedAppOptions.auth === 'clerk',
     isConvexBackend: generatedAppOptions.backend === 'convex',
     isExpressBackend: generatedAppOptions.backend === 'express',
@@ -230,6 +233,12 @@ function normalizeTemplateContext({
         : packageManager === 'npm'
           ? 'npm --prefix packages/db run'
           : 'bun --cwd packages/db run',
+    packageManagerAuthRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir packages/auth run'
+        : packageManager === 'npm'
+          ? 'npm --prefix packages/auth run'
+          : 'bun --cwd packages/auth run',
     packageManagerRunCommand: `${packageManager} run`,
     packageManagerServerRunCommand:
       packageManager === 'pnpm'
@@ -269,10 +278,14 @@ function readProjectTemplateTree({
       : [];
   const authSharedTree = context.isClerkAuth
     ? readTemplateTree('options/auth/clerk/shared', context)
-    : [];
+    : context.isBetterAuth
+      ? readTemplateTree('options/auth/better-auth/shared', context)
+      : [];
   const authStylingTree = context.isClerkAuth
     ? readTemplateTree(`options/auth/clerk/${context.stylingChoice}`, context)
-    : [];
+    : context.isBetterAuth
+      ? readTemplateTree(`options/auth/better-auth/${context.stylingChoice}`, context)
+      : [];
   const backendTree = context.isExpressBackend
     ? readTemplateTree('options/backend/express/shared', context)
     : context.isNestjsBackend

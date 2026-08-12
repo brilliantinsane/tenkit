@@ -1,0 +1,13 @@
+const APP_VARIANT_ORIGINS = [
+  {{#each appVariants}}
+  '{{scheme}}://',
+  {{/each}}
+] as const;
+
+export function createTrustedOrigins(clientOrigin: string, development: boolean): string[] {
+  return [
+    clientOrigin,
+    ...APP_VARIANT_ORIGINS,
+    ...(development ? ['exp://', 'exp://**'] : []),
+  ];
+}

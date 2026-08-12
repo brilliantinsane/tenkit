@@ -45,6 +45,11 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
       output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
       output.log('- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local');
     }
+    if (result.generatedAppOptions.auth === 'better-auth') {
+      output.log(
+        '- Set BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET in apps/server/.env.local',
+      );
+    }
     if (result.generatedAppOptions.database === 'postgresql') {
       output.log('- Set DATABASE_URL in apps/server/.env.local to your PostgreSQL database');
       output.log(`- ${formatRunCommand(result.packageManager, 'db:setup')}`);

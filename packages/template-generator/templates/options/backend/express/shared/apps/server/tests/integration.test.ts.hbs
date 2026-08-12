@@ -12,7 +12,7 @@ function serverUrl(path: string): URL {
   return new URL(path, `http://127.0.0.1:${port}`);
 }
 
-test('compiled Express serves public health and {{#if isClerkAuth}}rejects anonymous Business Data{{else}}public Business Data{{/if}}', async () => {
+test('compiled Express serves public health and {{#if hasAuth}}protects Business Data{{else}}public Business Data{{/if}}', async () => {
   const healthResponse = await fetch(serverUrl('/health'));
   expect(healthResponse.status).toBe(200);
   await expect(healthResponse.json()).resolves.toEqual({ status: 'ok' });
@@ -28,7 +28,7 @@ test('compiled Express serves public health and {{#if isClerkAuth}}rejects anony
 {{/ifSetupType}}
 
   const profileResponse = await fetch(businessProfileUrl);
-  {{#if isClerkAuth}}
+  {{#if hasAuth}}
   expect(profileResponse.status).toBe(401);
   await expect(profileResponse.json()).resolves.toEqual({ error: 'Authentication is required' });
   {{else}}
@@ -51,7 +51,86 @@ test('compiled Express serves public health and {{#if isClerkAuth}}rejects anony
   });
   {{/if}}
 
+  {{#if isBetterAuth}}
+  const email = `tenkit-${crypto.randomUUID()}@example.test`;
+  const signUpResponse = await fetch(serverUrl('/api/auth/sign-up/email'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:8081' },
+    body: JSON.stringify({ name: 'Tenkit Verification', email, password: 'tenkit-password-123' }),
+  });
+  expect(signUpResponse.status).toBe(200);
+  const sessionCookie = signUpResponse.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(';', 1)[0])
+    .join('; ');
+  expect(sessionCookie).toContain('better-auth.session_token=');
+
+  const authenticatedProfileResponse = await fetch(businessProfileUrl, {
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(authenticatedProfileResponse.status).toBe(200);
+  await expect(authenticatedProfileResponse.json()).resolves.toEqual({
+    profile: {
+{{#ifSetupType 'white-label-apps'}}
+      name: {{{appVariants.[0].displayNameStringLiteral}}},
+      description: 'The first white-label Business Data Example.',
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+      name: 'North Branch',
+      description: 'The northern branch Business Data Example.',
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+      name: 'North Studio',
+      description: 'The North Studio Business Data Example.',
+{{/ifSetupType}}
+    },
+  });
+
+  const signOutResponse = await fetch(serverUrl('/api/auth/sign-out'), {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(signOutResponse.status).toBe(200);
+  expect((await fetch(businessProfileUrl, { headers: { Cookie: sessionCookie } })).status).toBe(401);
+
+  const signInResponse = await fetch(serverUrl('/api/auth/sign-in/email'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:8081' },
+    body: JSON.stringify({ email, password: 'tenkit-password-123' }),
+  });
+  expect(signInResponse.status).toBe(200);
+  const restoredSessionCookie = signInResponse.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(';', 1)[0])
+    .join('; ');
+  expect(restoredSessionCookie).toContain('better-auth.session_token=');
+
+  const sessionResponse = await fetch(serverUrl('/api/auth/get-session'), {
+    headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(sessionResponse.status).toBe(200);
+  await expect(sessionResponse.json()).resolves.toMatchObject({ user: { email } });
+  expect(
+    (
+      await fetch(businessProfileUrl, {
+        headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+      })
+    ).status,
+  ).toBe(200);
+
+  const restoredSignOutResponse = await fetch(serverUrl('/api/auth/sign-out'), {
+    method: 'POST',
+    headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(restoredSignOutResponse.status).toBe(200);
+  expect(
+    (await fetch(businessProfileUrl, { headers: { Cookie: restoredSessionCookie } })).status,
+  ).toBe(401);
+  {{/if}}
+
+  {{#unless isBetterAuth}}
   expect((await fetch(serverUrl('/api/auth/session'))).status).toBe(404);
+  {{/unless}}
 {{#if hasDatabaseWorkspace}}
 
   const databaseUrl = process.env.DATABASE_URL;
@@ -60,9 +139,17 @@ test('compiled Express serves public health and {{#if isClerkAuth}}rejects anony
   }
   await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
     '_prisma_migrations',
+    {{#if isBetterAuth}}
+    'account',
+    {{/if}}
     'app_variant',
     'app_variant_runtime_tenant_access',
     'runtime_tenant',
+    {{#if isBetterAuth}}
+    'session',
+    'user',
+    'verification',
+    {{/if}}
   ]);
 {{/if}}
 });

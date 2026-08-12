@@ -5,7 +5,7 @@ import type { BusinessDataRepository } from '@tenkit/db';
 {{/if}}
 
 import { createApp } from '../src/app.js';
-{{#if isClerkAuth}}
+{{#if hasAuth}}
 import type { RequestAuthentication } from '../src/app.js';
 
 type TestAuthentication = RequestAuthentication & {
@@ -16,7 +16,7 @@ function createTestAuthentication(initiallyAuthenticated: boolean): TestAuthenti
   let isAuthenticated = initiallyAuthenticated;
   return {
     middleware: (_request, _response, next) => next(),
-    isAuthenticated: () => isAuthenticated,
+    hasSession: async () => isAuthenticated,
     setAuthenticated: (nextIsAuthenticated) => {
       isAuthenticated = nextIsAuthenticated;
     },
@@ -118,21 +118,23 @@ function createTestBusinessDataRepository(): BusinessDataRepository {
 const app = createApp(
   'http://localhost:8081',
   {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(),{{/if}}
-  {{#if isClerkAuth}}createTestAuthentication(true),{{/if}}
+  {{#if hasAuth}}createTestAuthentication(true),{{/if}}
 );
 
 describe('Express Backend', () => {
-  test('exposes public health without an Auth route', async () => {
+  test('exposes public health{{#unless isBetterAuth}} without an Auth route{{/unless}}', async () => {
     await request(app).get('/health').expect(200, { status: 'ok' });
+    {{#unless isBetterAuth}}
     await request(app).get('/api/auth/session').expect(404);
-    {{#if isClerkAuth}}
+    {{/unless}}
+    {{#if hasAuth}}
     await request(createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}createTestAuthentication(false)))
       .get('/api/business-profile')
       .expect(401, { error: 'Authentication is required' });
     {{/if}}
   });
 
-  test('{{#if isClerkAuth}}authenticated {{/if}}requests validate context and return Setup Type-scoped Business Data', async () => {
+  test('{{#if hasAuth}}authenticated {{/if}}requests validate context and return Setup Type-scoped Business Data', async () => {
     await request(app).get('/api/business-profile').expect(400);
 
 {{#ifSetupType 'white-label-apps'}}
@@ -277,7 +279,7 @@ describe('Express Backend', () => {
       .expect(400);
   });
 
-  {{#if isClerkAuth}}
+  {{#if hasAuth}}
   test('sign-out Auth state invalidates protected Business Data access', async () => {
     const authentication = createTestAuthentication(true);
     const lifecycleApp = createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}authentication);

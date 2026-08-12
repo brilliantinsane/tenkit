@@ -184,6 +184,7 @@ test('interactive creation exposes Clerk only after selecting Express', async ()
     initialValue: 'none',
     options: [
       { value: 'none', label: 'None' },
+      { value: 'better-auth', label: 'Better Auth' },
       { value: 'clerk', label: 'Clerk' },
     ],
   });
@@ -237,6 +238,56 @@ test('interactive creation resolves Express with PostgreSQL and Prisma without A
       { value: 'postgresql', label: 'PostgreSQL' },
     ],
   });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+});
+
+test('interactive creation resolves Express with Better Auth, PostgreSQL, and Prisma', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'express';
+      }
+      if (options.message === 'Auth') {
+        return 'better-auth';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-better-auth-postgresql-prisma',
+      setup: 'generic-standalone',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Auth',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'better-auth', label: 'Better Auth' },
+      { value: 'clerk', label: 'Clerk' },
+    ],
+  });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Database' }));
   expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
 });
 
@@ -526,6 +577,51 @@ test('explicit Express, PostgreSQL, and Prisma flags resolve and write the SQL s
   expect(await fs.pathExists(join(tempRoot, 'express-postgresql-prisma-app/packages/auth'))).toBe(
     false,
   );
+});
+
+test('explicit Express, Better Auth, PostgreSQL, and Prisma flags write the protected SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-better-auth-postgresql-prisma-app',
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'prisma',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Auth: better-auth');
+  expect(environment.lines).toContain(
+    '- Set BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET in apps/server/.env.local',
+  );
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-better-auth-postgresql-prisma-app/packages/auth/package.json'),
+    ),
+  ).toBe(true);
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-better-auth-postgresql-prisma-app/packages/db/package.json'),
+    ),
+  ).toBe(true);
 });
 
 test('explicit NestJS flags resolve the stack and write NestJS-owned output', async () => {
