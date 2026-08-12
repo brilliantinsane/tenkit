@@ -384,6 +384,7 @@ test('interactive creation exposes Clerk after selecting NestJS', async () => {
     initialValue: 'none',
     options: [
       { value: 'none', label: 'None' },
+      { value: 'better-auth', label: 'Better Auth' },
       { value: 'clerk', label: 'Clerk' },
     ],
   });
@@ -437,6 +438,56 @@ test('interactive creation resolves NestJS with PostgreSQL and Prisma without Au
       { value: 'postgresql', label: 'PostgreSQL' },
     ],
   });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+});
+
+test('interactive creation resolves NestJS with Better Auth to PostgreSQL and Prisma', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') {
+        return 'nestjs';
+      }
+      if (options.message === 'Auth') {
+        return 'better-auth';
+      }
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-nestjs-better-auth-postgresql-prisma',
+      setup: 'runtime-tenants',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'nestjs',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Auth',
+    initialValue: 'none',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'better-auth', label: 'Better Auth' },
+      { value: 'clerk', label: 'Clerk' },
+    ],
+  });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Database' }));
   expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
 });
 
@@ -853,6 +904,59 @@ test('explicit NestJS, PostgreSQL, and Prisma flags write the Auth-free SQL stac
   expect(await fs.pathExists(join(tempRoot, 'nestjs-postgresql-prisma-app/packages/auth'))).toBe(
     false,
   );
+});
+
+test('explicit NestJS, Better Auth, PostgreSQL, and Prisma flags write the protected SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'nestjs-better-auth-postgresql-prisma-app',
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'prisma',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'nestjs',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'prisma',
+  });
+  expect(environment.lines).toContain('- Backend: nestjs');
+  expect(environment.lines).toContain('- Auth: better-auth');
+  expect(environment.lines).toContain('- Database: postgresql');
+  expect(environment.lines).toContain('- ORM: prisma');
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(
+    await fs.readJson(
+      join(tempRoot, 'nestjs-better-auth-postgresql-prisma-app/apps/server/package.json'),
+    ),
+  ).toMatchObject({
+    dependencies: {
+      '@tenkit/auth': 'workspace:*',
+      '@tenkit/db': 'workspace:*',
+      '@thallesp/nestjs-better-auth': '2.7.0',
+    },
+  });
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'nestjs-better-auth-postgresql-prisma-app/packages/auth/package.json'),
+    ),
+  ).toBe(true);
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'nestjs-better-auth-postgresql-prisma-app/packages/db/package.json'),
+    ),
+  ).toBe(true);
 });
 
 test('Commander exposes all public Generated App Option flags and validates their combination', async () => {

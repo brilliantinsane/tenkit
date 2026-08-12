@@ -1,12 +1,57 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { {{#if isBetterAuth}}Inject, Injectable, {{/if}}Module{{#if isBetterAuth}}, type OnApplicationShutdown{{/if}} } from '@nestjs/common';
+{{#if isBetterAuth}}
+import { createTenkitAuth, type TenkitAuth, type TenkitAuthRuntime } from '@tenkit/auth';
+import { AuthModule } from '@thallesp/nestjs-better-auth';
+{{/if}}
+import { ConfigModule{{#if isBetterAuth}}, ConfigService{{/if}} } from '@nestjs/config';
 
 import { BusinessProfileModule } from './business-profile/business-profile.module.js';
 import { HealthModule } from './health/health.module.js';
 import {
   serverEnvironmentFile,
+  {{#if isBetterAuth}}type ServerEnvironment,{{/if}}
   validateServerEnvironment,
 } from './server-environment.js';
+
+{{#if isBetterAuth}}
+const TENKIT_AUTH = Symbol('TENKIT_AUTH');
+const TENKIT_AUTH_RUNTIME = Symbol('TENKIT_AUTH_RUNTIME');
+
+@Injectable()
+class AuthShutdown implements OnApplicationShutdown {
+  constructor(@Inject(TENKIT_AUTH_RUNTIME) private readonly authRuntime: TenkitAuthRuntime) {}
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.authRuntime.close();
+  }
+}
+
+@Module({
+  providers: [
+    {
+      provide: TENKIT_AUTH_RUNTIME,
+      inject: [ConfigService],
+      useFactory(environment: ConfigService<ServerEnvironment, true>): TenkitAuthRuntime {
+        return createTenkitAuth({
+          databaseUrl: environment.getOrThrow('DATABASE_URL', { infer: true }),
+          baseUrl: environment.getOrThrow('BETTER_AUTH_URL', { infer: true }),
+          secret: environment.getOrThrow('BETTER_AUTH_SECRET', { infer: true }),
+          clientOrigin: environment.getOrThrow('CLIENT_ORIGIN', { infer: true }),
+          development: environment.getOrThrow('NODE_ENV', { infer: true }) === 'development',
+        });
+      },
+    },
+    {
+      provide: TENKIT_AUTH,
+      inject: [TENKIT_AUTH_RUNTIME],
+      useFactory: (authRuntime: TenkitAuthRuntime): TenkitAuth => authRuntime.auth,
+    },
+    AuthShutdown,
+  ],
+  exports: [TENKIT_AUTH],
+})
+class NestBetterAuthRuntimeModule {}
+{{/if}}
 
 @Module({
   imports: [
@@ -15,6 +60,14 @@ import {
       isGlobal: true,
       validate: validateServerEnvironment,
     }),
+    {{#if isBetterAuth}}
+    NestBetterAuthRuntimeModule,
+    AuthModule.forRootAsync({
+      imports: [NestBetterAuthRuntimeModule],
+      inject: [TENKIT_AUTH],
+      useFactory: (auth: TenkitAuth) => ({ auth }),
+    }),
+    {{/if}}
     HealthModule,
     BusinessProfileModule,
   ],

@@ -18,6 +18,11 @@
     {{#if isClerkAuth}}
     "@clerk/express": "2.1.50",
     {{/if}}
+    {{#if isBetterAuth}}
+    "@tenkit/auth": "workspace:*",
+    "@thallesp/nestjs-better-auth": "2.7.0",
+    "better-auth": "1.6.25",
+    {{/if}}
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",

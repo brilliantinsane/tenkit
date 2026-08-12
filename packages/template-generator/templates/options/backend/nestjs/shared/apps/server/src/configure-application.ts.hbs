@@ -20,8 +20,11 @@ export function configureApplication(
   {{/if}}
   app.enableCors({
     origin: clientOrigin,
-    methods: ['GET'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    methods: [{{#if isBetterAuth}}'GET', 'POST'{{else}}'GET'{{/if}}],
+    allowedHeaders: [{{#if isBetterAuth}}'Content-Type', 'Cookie'{{else}}'Authorization', 'Content-Type'{{/if}}],
+    {{#if isBetterAuth}}
+    credentials: true,
+    {{/if}}
   });
   app.useGlobalPipes(
     new ValidationPipe({

@@ -94,6 +94,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -181,6 +187,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     {
       backend: 'nestjs',
       auth: 'none',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
       database: 'postgresql',
       orm: 'prisma',
     },
@@ -285,9 +297,17 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs' }), {
     status: 'available',
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
-    auth: { status: 'selectable', values: ['none', 'clerk'] },
+    auth: { status: 'selectable', values: ['none', 'clerk', 'better-auth'] },
     database: { status: 'selectable', values: ['none', 'postgresql'] },
     orm: { status: 'selectable', values: ['none', 'prisma'] },
+  });
+
+  assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs', auth: 'better-auth' }), {
+    status: 'available',
+    backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
+    auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
+    database: { status: 'resolved', values: ['postgresql'], value: 'postgresql' },
+    orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
   });
 
   assert.deepEqual(
@@ -347,6 +367,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:clerk:postgresql:prisma',
     'nestjs:none:none:none',
     'nestjs:none:postgresql:prisma',
+    'nestjs:better-auth:postgresql:prisma',
     'nestjs:clerk:none:none',
     'convex:none:none:none',
   ]);

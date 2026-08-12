@@ -128,7 +128,7 @@ describe('NestJS Backend', () => {
     });
     {{/if}}
     const moduleReference = await testingModule.compile();
-    app = moduleReference.createNestApplication();
+    app = moduleReference.createNestApplication({{#if isBetterAuth}}{ bodyParser: false }{{/if}});
     const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
     {{#if isClerkAuth}}
     configureApplication(
@@ -152,10 +152,17 @@ describe('NestJS Backend', () => {
   });
   {{/if}}
 
-  test('exposes public health without an Auth route', async () => {
+  test('exposes public health{{#unless isBetterAuth}} without a Better Auth route{{/unless}}', async () => {
     const health = await request(app.getHttpServer()).get('/health').expect(200);
     expect(health.body).toMatchObject({ status: 'ok' });
+    {{#if isBetterAuth}}
+    await request(app.getHttpServer())
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(401);
+    {{else}}
     await request(app.getHttpServer()).get('/api/auth/session').expect(404);
+    {{/if}}
     {{#if isClerkAuth}}
     isAuthenticated = false;
     await request(app.getHttpServer())
@@ -170,6 +177,7 @@ describe('NestJS Backend', () => {
     {{/if}}
   });
 
+  {{#unless isBetterAuth}}
   test('{{#if isClerkAuth}}authenticated requests {{/if}}validate context and return Setup Type-scoped Business Data', async () => {
     await request(app.getHttpServer()).get('/api/business-profile').expect(400);
     await request(app.getHttpServer())
@@ -255,6 +263,7 @@ describe('NestJS Backend', () => {
       });
 {{/ifSetupType}}
   });
+  {{/unless}}
 
   {{#if isClerkAuth}}
   test('sign-out Auth state invalidates protected Business Data access', async () => {

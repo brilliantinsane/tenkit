@@ -1,11 +1,17 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+{{#if isBetterAuth}}
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+{{/if}}
 
 @Controller('health')
 export class HealthController {
   constructor(private readonly health: HealthCheckService) {}
 
   @Get()
+  {{#if isBetterAuth}}
+  @AllowAnonymous()
+  {{/if}}
   @HealthCheck()
   check() {
     return this.health.check([async () => ({ server: { status: 'up' as const } })]);

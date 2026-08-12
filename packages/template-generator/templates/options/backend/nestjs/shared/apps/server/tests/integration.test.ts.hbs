@@ -12,7 +12,7 @@ function serverUrl(path: string): URL {
   return new URL(path, `http://127.0.0.1:${port}`);
 }
 
-test('compiled NestJS serves health and {{#if isClerkAuth}}rejects anonymous Business Data{{else}}public Business Data{{/if}}', async () => {
+test('compiled NestJS serves health and {{#if hasAuth}}protects Business Data{{else}}public Business Data{{/if}}', async () => {
   const healthResponse = await fetch(serverUrl('/health'));
   expect(healthResponse.status).toBe(200);
   await expect(healthResponse.json()).resolves.toMatchObject({ status: 'ok' });
@@ -28,11 +28,18 @@ test('compiled NestJS serves health and {{#if isClerkAuth}}rejects anonymous Bus
 {{/ifSetupType}}
 
   const profileResponse = await fetch(businessProfileUrl);
-  {{#if isClerkAuth}}
+  {{#if hasAuth}}
   expect(profileResponse.status).toBe(401);
+  {{#if isBetterAuth}}
+  await expect(profileResponse.json()).resolves.toEqual({
+    message: 'Unauthorized',
+    statusCode: 401,
+  });
+  {{else}}
   await expect(profileResponse.json()).resolves.toEqual({
     error: 'Authentication is required',
   });
+  {{/if}}
   {{else}}
   expect(profileResponse.status).toBe(200);
   await expect(profileResponse.json()).resolves.toEqual({
@@ -53,7 +60,100 @@ test('compiled NestJS serves health and {{#if isClerkAuth}}rejects anonymous Bus
   });
   {{/if}}
 
+  {{#if isBetterAuth}}
+  const email = `tenkit-${crypto.randomUUID()}@example.test`;
+  const signUpResponse = await fetch(serverUrl('/api/auth/sign-up/email'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:8081' },
+    body: JSON.stringify({ name: 'Tenkit Verification', email, password: 'tenkit-password-123' }),
+  });
+  expect(signUpResponse.status).toBe(200);
+  const sessionCookie = signUpResponse.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(';', 1)[0])
+    .join('; ');
+  expect(sessionCookie).toContain('better-auth.session_token=');
+
+  const authenticatedProfileResponse = await fetch(businessProfileUrl, {
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(authenticatedProfileResponse.status).toBe(200);
+
+  const invalidProfileUrl = new URL(businessProfileUrl);
+  invalidProfileUrl.searchParams.set('appVariantId', 'not-an-integer');
+  expect(
+    (
+      await fetch(invalidProfileUrl, {
+        headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+      })
+    ).status,
+  ).toBe(400);
+
+  {{#ifSetupType 'white-label-apps'}}
+  const forbiddenProfileUrl = new URL(businessProfileUrl);
+  forbiddenProfileUrl.searchParams.set('runtimeTenantId', '100');
+  const forbiddenProfileResponse = await fetch(forbiddenProfileUrl, {
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(forbiddenProfileResponse.status).toBe(403);
+  await expect(forbiddenProfileResponse.json()).resolves.toEqual({
+    error: 'White Label Apps do not accept Runtime Tenant context',
+  });
+  {{else}}
+  const forbiddenProfileUrl = new URL(businessProfileUrl);
+  forbiddenProfileUrl.searchParams.set('runtimeTenantId', '{{#if isSingleAppRuntimeTenants}}999{{else}}103{{/if}}');
+  const forbiddenProfileResponse = await fetch(forbiddenProfileUrl, {
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(forbiddenProfileResponse.status).toBe(403);
+  await expect(forbiddenProfileResponse.json()).resolves.toEqual({
+    error: 'Runtime Tenant is not allowed by this App Variant',
+  });
+  {{/ifSetupType}}
+
+  const signOutResponse = await fetch(serverUrl('/api/auth/sign-out'), {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(signOutResponse.status).toBe(200);
+  expect((await fetch(businessProfileUrl, { headers: { Cookie: sessionCookie } })).status).toBe(401);
+
+  const signInResponse = await fetch(serverUrl('/api/auth/sign-in/email'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:8081' },
+    body: JSON.stringify({ email, password: 'tenkit-password-123' }),
+  });
+  expect(signInResponse.status).toBe(200);
+  const restoredSessionCookie = signInResponse.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(';', 1)[0])
+    .join('; ');
+  expect(restoredSessionCookie).toContain('better-auth.session_token=');
+
+  const sessionResponse = await fetch(serverUrl('/api/auth/get-session'), {
+    headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(sessionResponse.status).toBe(200);
+  await expect(sessionResponse.json()).resolves.toMatchObject({ user: { email } });
+  expect(
+    (
+      await fetch(businessProfileUrl, {
+        headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+      })
+    ).status,
+  ).toBe(200);
+
+  const restoredSignOutResponse = await fetch(serverUrl('/api/auth/sign-out'), {
+    method: 'POST',
+    headers: { Cookie: restoredSessionCookie, Origin: 'http://localhost:8081' },
+  });
+  expect(restoredSignOutResponse.status).toBe(200);
+  expect(
+    (await fetch(businessProfileUrl, { headers: { Cookie: restoredSessionCookie } })).status,
+  ).toBe(401);
+  {{else}}
   expect((await fetch(serverUrl('/api/auth/session'))).status).toBe(404);
+  {{/if}}
 {{#if hasDatabaseWorkspace}}
 
   const databaseUrl = process.env.DATABASE_URL;
@@ -62,9 +162,17 @@ test('compiled NestJS serves health and {{#if isClerkAuth}}rejects anonymous Bus
   }
   await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
     '_prisma_migrations',
+    {{#if isBetterAuth}}
+    'account',
+    {{/if}}
     'app_variant',
     'app_variant_runtime_tenant_access',
     'runtime_tenant',
+    {{#if isBetterAuth}}
+    'session',
+    'user',
+    'verification',
+    {{/if}}
   ]);
 {{/if}}
 });

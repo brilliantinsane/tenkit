@@ -8,7 +8,7 @@ import { configureApplication } from './configure-application.js';
 import type { ServerEnvironment } from './server-environment.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule{{#if isBetterAuth}}, { bodyParser: false }{{/if}});
   const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
 
   configureApplication(app, environment.getOrThrow('CLIENT_ORIGIN', { infer: true }));
