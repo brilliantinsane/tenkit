@@ -153,6 +153,32 @@ test('proof accepts NestJS and reports the combined Expo and Backend command', a
   assert.match(stdout, /pnpm run dev/);
 });
 
+test('proof accepts NestJS with PostgreSQL and Prisma without Auth', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--backend',
+    'nestjs',
+    '--auth',
+    'none',
+    '--database',
+    'postgresql',
+    '--orm',
+    'prisma',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'apps/server/nest-cli.json')), true);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/db/prisma/schema.prisma')), true);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/auth')), false);
+});
+
 test('verify accepts --styling before validating the Setup Type', async () => {
   await expectScriptFailure(
     verifyScript,

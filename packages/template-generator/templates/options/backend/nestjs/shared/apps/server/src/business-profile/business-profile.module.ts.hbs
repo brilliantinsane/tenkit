@@ -1,13 +1,48 @@
 import { Module } from '@nestjs/common';
+{{#if hasDatabaseWorkspace}}
+import { ConfigService } from '@nestjs/config';
 
+import type { ServerEnvironment } from '../server-environment.js';
+{{/if}}
+
+{{#if isClerkAuth}}
 import {
-  {{#if isClerkAuth}}ClerkAuthenticationService,
-  {{/if}}BusinessProfileController,
+  BusinessProfileController,
+  ClerkAuthenticationService,
 } from './business-profile.controller.js';
+{{else}}
+import { BusinessProfileController } from './business-profile.controller.js';
+{{/if}}
+{{#if hasDatabaseWorkspace}}
+import {
+  BUSINESS_DATA_REPOSITORY,
+  BusinessProfileService,
+} from './business-profile.service.js';
+{{else}}
 import { BusinessProfileService } from './business-profile.service.js';
+{{/if}}
 
 @Module({
   controllers: [BusinessProfileController],
-  providers: [BusinessProfileService{{#if isClerkAuth}}, ClerkAuthenticationService{{/if}}],
+  providers: [
+    {{#if hasDatabaseWorkspace}}
+    {
+      provide: BUSINESS_DATA_REPOSITORY,
+      inject: [ConfigService],
+      async useFactory(environment: ConfigService<ServerEnvironment, true>) {
+        const { createBusinessDataRepository } = await import('@tenkit/db');
+        const repository = createBusinessDataRepository(
+          environment.getOrThrow('DATABASE_URL', { infer: true }),
+        );
+
+        return {
+          ...repository,
+          onApplicationShutdown: () => repository.close(),
+        };
+      },
+    },
+    {{/if}}
+    BusinessProfileService{{#if isClerkAuth}}, ClerkAuthenticationService{{/if}},
+  ],
 })
 export class BusinessProfileModule {}

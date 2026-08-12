@@ -97,6 +97,12 @@ export const SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS = Object.freeze([
     database: 'postgresql',
     orm: 'prisma',
   } as const satisfies GeneratedAppOptions),
+  Object.freeze({
+    backend: 'nestjs',
+    auth: 'none',
+    database: 'postgresql',
+    orm: 'prisma',
+  } as const satisfies GeneratedAppOptions),
 ] as const satisfies readonly GeneratedAppOptions[]);
 
 export type GeneratedAppOptionGroup = keyof GeneratedAppOptions;

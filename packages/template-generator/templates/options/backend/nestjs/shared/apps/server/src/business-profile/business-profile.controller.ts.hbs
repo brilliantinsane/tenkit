@@ -35,7 +35,7 @@ export class BusinessProfileController {
   ) {}
 
   @Get()
-  read(
+  {{#if hasDatabaseWorkspace}}async {{/if}}read(
     {{#if isClerkAuth}}@Req() request: Request,
     {{/if}}@Query() query: BusinessProfileQueryDto,
   ) {
@@ -46,7 +46,7 @@ export class BusinessProfileController {
 
     {{/if}}
     try {
-      return { profile: this.businessProfiles.resolve(query) };
+      return { profile: {{#if hasDatabaseWorkspace}}await {{/if}}this.businessProfiles.resolve(query) };
     } catch (error) {
       if (error instanceof BusinessProfileRequestError) {
         throw new HttpException({ error: error.message }, error.status);

@@ -1,15 +1,112 @@
 import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
 import request from 'supertest';
 import { afterAll, beforeAll{{#if isClerkAuth}}, beforeEach{{/if}}, describe, expect, test } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+{{#if hasDatabaseWorkspace}}
+import { BUSINESS_DATA_REPOSITORY } from '../src/business-profile/business-profile.service.js';
+{{/if}}
 {{#if isClerkAuth}}
 import { ClerkAuthenticationService } from '../src/business-profile/business-profile.controller.js';
 {{/if}}
 import { configureApplication } from '../src/configure-application.js';
 import type { ServerEnvironment } from '../src/server-environment.js';
+
+{{#if hasDatabaseWorkspace}}
+function createTestBusinessDataRepository(): BusinessDataRepository {
+  return {
+    async findAppVariant(appVariantId) {
+{{#ifSetupType 'white-label-apps'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[0].displayNameStringLiteral}}},
+          profileDescription: 'The first white-label Business Data Example.',
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[1].displayNameStringLiteral}}},
+          profileDescription: 'The second white-label Business Data Example.',
+        };
+      }
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'single-app',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'generic',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'standalone',
+          standaloneRuntimeTenantId: 103,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/ifSetupType}}
+      return null;
+    },
+    async hasRuntimeTenantAccess(appVariantId, runtimeTenantId) {
+      return (
+        appVariantId === {{appVariants.[0].appVariantId}} &&
+        [100, 101, 102].includes(runtimeTenantId)
+      );
+    },
+    async findRuntimeTenant(runtimeTenantId) {
+      const runtimeTenants = new Map<number, { name: string; description: string }>([
+{{#if isSingleAppRuntimeTenants}}
+        [100, { name: 'North Branch', description: 'The northern branch Business Data Example.' }],
+        [101, { name: 'South Branch', description: 'The southern branch Business Data Example.' }],
+        [102, { name: 'East Branch', description: 'The eastern branch Business Data Example.' }],
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+        [100, { name: 'North Studio', description: 'The North Studio Business Data Example.' }],
+        [101, { name: 'South Studio', description: 'The South Studio Business Data Example.' }],
+        [102, { name: 'East Studio', description: 'The East Studio Business Data Example.' }],
+        [103, { name: 'West Studio', description: 'The standalone West Studio Business Data Example.' }],
+{{/ifSetupType}}
+      ]);
+      const runtimeTenant = runtimeTenants.get(runtimeTenantId);
+      return runtimeTenant
+        ? {
+            runtimeTenantId,
+            profileName: runtimeTenant.name,
+            profileDescription: runtimeTenant.description,
+          }
+        : null;
+    },
+    async close() {},
+  };
+}
+{{/if}}
 
 describe('NestJS Backend', () => {
   let app: INestApplication;
@@ -19,6 +116,12 @@ describe('NestJS Backend', () => {
 
   beforeAll(async () => {
     const testingModule = Test.createTestingModule({ imports: [AppModule] });
+    {{#if hasDatabaseWorkspace}}
+    testingModule.overrideProvider(BUSINESS_DATA_REPOSITORY).useValue({
+      ...createTestBusinessDataRepository(),
+      onApplicationShutdown: async () => {},
+    });
+    {{/if}}
     {{#if isClerkAuth}}
     testingModule.overrideProvider(ClerkAuthenticationService).useValue({
       isAuthenticated: () => isAuthenticated,
@@ -27,11 +130,15 @@ describe('NestJS Backend', () => {
     const moduleReference = await testingModule.compile();
     app = moduleReference.createNestApplication();
     const environment = app.get<ConfigService<ServerEnvironment, true>>(ConfigService);
+    {{#if isClerkAuth}}
     configureApplication(
       app,
       environment.getOrThrow('CLIENT_ORIGIN', { infer: true }),
-      {{#if isClerkAuth}}(_request, _response, next) => next(),{{/if}}
+      (_request, _response, next) => next(),
     );
+    {{else}}
+    configureApplication(app, environment.getOrThrow('CLIENT_ORIGIN', { infer: true }));
+    {{/if}}
     await app.init();
   });
 

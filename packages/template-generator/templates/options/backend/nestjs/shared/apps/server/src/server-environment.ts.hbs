@@ -8,6 +8,16 @@ const serverEnvironmentSchema = z.object({
   CLERK_SECRET_KEY: z.string().startsWith('sk_'),
   {{/if}}
   CLIENT_ORIGIN: z.string().url(),
+  {{#if hasDatabaseWorkspace}}
+  DATABASE_URL: z.string().refine((databaseUrl) => {
+    try {
+      const protocol = new URL(databaseUrl).protocol;
+      return protocol === 'postgresql:' || protocol === 'postgres:';
+    } catch {
+      return false;
+    }
+  }, 'DATABASE_URL must be a PostgreSQL URL'),
+  {{/if}}
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
 });
 

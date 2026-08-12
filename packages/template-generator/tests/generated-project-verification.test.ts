@@ -36,6 +36,13 @@ const NESTJS_OPTIONS = {
   orm: 'none',
 } as const;
 
+const NESTJS_POSTGRESQL_PRISMA_OPTIONS = {
+  backend: 'nestjs',
+  auth: 'none',
+  database: 'postgresql',
+  orm: 'prisma',
+} as const;
+
 const CONVEX_OPTIONS = {
   backend: 'convex',
   auth: 'none',
@@ -58,6 +65,11 @@ const NESTJS_NODE_SELECTION = {
 const POSTGRESQL_NODE_SELECTION = {
   ...NODE_SELECTION,
   generatedAppOptions: EXPRESS_POSTGRESQL_PRISMA_OPTIONS,
+} as const;
+
+const NESTJS_POSTGRESQL_NODE_SELECTION = {
+  ...NODE_SELECTION,
+  generatedAppOptions: NESTJS_POSTGRESQL_PRISMA_OPTIONS,
 } as const;
 
 const CONVEX_SELECTION = {
@@ -153,6 +165,7 @@ async function createWrittenServerWorkspaceProject(
     | typeof NODE_SELECTION
     | typeof NESTJS_NODE_SELECTION
     | typeof POSTGRESQL_NODE_SELECTION
+    | typeof NESTJS_POSTGRESQL_NODE_SELECTION
     | typeof CONVEX_SELECTION = NODE_SELECTION,
 ): Promise<string> {
   const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-server-workspace-verification-'));
@@ -466,6 +479,43 @@ test('the PostgreSQL Prisma profile generates, migrates, seeds, builds, runs, an
     expect.objectContaining({
       env: environment,
       readinessUrl: 'http://127.0.0.1:43130/health',
+    }),
+  );
+  expect(evidence.phases.find(({ phase }) => phase === 'shutdown')).toMatchObject({
+    status: 'passed',
+  });
+});
+
+test('the NestJS PostgreSQL Prisma profile runs the canonical SQL and server lifecycle', async () => {
+  const targetDir = await createWrittenServerWorkspaceProject(NESTJS_POSTGRESQL_NODE_SELECTION);
+  const environment = {
+    PATH: '/safe/bin',
+    PORT: '43132',
+    CLIENT_ORIGIN: 'http://localhost:8081',
+    DATABASE_URL: 'postgresql://postgres:password@localhost:5432/tenkit',
+  };
+
+  const evidence = await verifyGeneratedProject({
+    targetDir,
+    selection: NESTJS_POSTGRESQL_NODE_SELECTION,
+    environment,
+    profile: 'node-server',
+  });
+
+  expect(evidence.status).toBe('passed');
+  expect(runGeneratedAppCommand).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'db:setup'],
+    expect.objectContaining({ env: environment }),
+  );
+  expect(startGeneratedAppProcess).toHaveBeenCalledWith(
+    targetDir,
+    'pnpm',
+    ['run', 'server:start:prod'],
+    expect.objectContaining({
+      env: environment,
+      readinessUrl: 'http://127.0.0.1:43132/health',
     }),
   );
   expect(evidence.phases.find(({ phase }) => phase === 'shutdown')).toMatchObject({

@@ -1,4 +1,9 @@
+{{#if hasDatabaseWorkspace}}
+import { Inject, Injectable, type OnApplicationShutdown } from '@nestjs/common';
+import type { BusinessDataRepository } from '@tenkit/db';
+{{else}}
 import { Injectable } from '@nestjs/common';
+{{/if}}
 
 import type { BusinessProfileQueryDto } from './business-profile-query.dto.js';
 
@@ -6,6 +11,14 @@ export type BusinessProfile = {
   name: string;
   description: string;
 };
+
+{{#if hasDatabaseWorkspace}}
+export const BUSINESS_DATA_REPOSITORY = Symbol('BUSINESS_DATA_REPOSITORY');
+type NestBusinessDataRepository = BusinessDataRepository & OnApplicationShutdown;
+
+const selectedSetupType = '{{setupType}}';
+{{else}}
+const selectedSetupType = '{{setupType}}';
 
 type AppVariantBusinessData = {
   appVariantId: number;
@@ -17,8 +30,6 @@ type AppVariantBusinessData = {
 type RuntimeTenantBusinessData = BusinessProfile & {
   runtimeTenantId: number;
 };
-
-const selectedSetupType = '{{setupType}}';
 
 const appVariants: AppVariantBusinessData[] = [
 {{#ifSetupType 'white-label-apps'}}
@@ -74,6 +85,7 @@ const runtimeTenantAccess = new Map<number, readonly number[]>([
   [{{appVariants.[0].appVariantId}}, [100, 101, 102]],
 {{/ifSetupType}}
 ]);
+{{/if}}
 
 export class BusinessProfileRequestError extends Error {
   constructor(
@@ -87,33 +99,56 @@ export class BusinessProfileRequestError extends Error {
 
 @Injectable()
 export class BusinessProfileService {
+{{#if hasDatabaseWorkspace}}
+  constructor(
+    @Inject(BUSINESS_DATA_REPOSITORY)
+    private readonly businessDataRepository: NestBusinessDataRepository,
+  ) {}
+
+  async resolve({
+    setupType,
+    appVariantId,
+    runtimeTenantId,
+  }: BusinessProfileQueryDto): Promise<BusinessProfile> {
+{{else}}
   resolve({ setupType, appVariantId, runtimeTenantId }: BusinessProfileQueryDto): BusinessProfile {
+{{/if}}
     if (setupType !== selectedSetupType) {
       throw new BusinessProfileRequestError('Setup Type does not match this generated project', 400);
     }
 
+{{#if hasDatabaseWorkspace}}
+    const appVariant = await this.businessDataRepository.findAppVariant(appVariantId);
+{{else}}
     const appVariant = appVariants.find((candidate) => candidate.appVariantId === appVariantId);
+{{/if}}
     if (!appVariant) {
       throw new BusinessProfileRequestError('App Variant does not exist', 404);
     }
 
-    if (appVariant.role === 'white-label') {
+{{#ifSetupType 'white-label-apps'}}
       if (runtimeTenantId !== undefined) {
         throw new BusinessProfileRequestError(
           'White Label Apps do not accept Runtime Tenant context',
           403,
         );
       }
-      if (!appVariant.profile) {
+      if ({{#if hasDatabaseWorkspace}}!appVariant.profileName || !appVariant.profileDescription{{else}}!appVariant.profile{{/if}}) {
         throw new Error('White Label App Variant is missing Business Data.');
       }
-      return appVariant.profile;
-    }
+      return {{#if hasDatabaseWorkspace}}{
+        name: appVariant.profileName,
+        description: appVariant.profileDescription,
+      }{{else}}appVariant.profile{{/if}};
+{{else}}
 
     const selectedRuntimeTenantId =
       appVariant.role === 'standalone' ? appVariant.standaloneRuntimeTenantId : runtimeTenantId;
 
-    if (selectedRuntimeTenantId === undefined) {
+    if (
+      selectedRuntimeTenantId === undefined{{#if hasDatabaseWorkspace}} ||
+      selectedRuntimeTenantId === null{{/if}}
+    ) {
       throw new BusinessProfileRequestError('Runtime Tenant context is required', 400);
     }
     if (
@@ -125,9 +160,15 @@ export class BusinessProfileService {
         403,
       );
     }
+{{#if hasDatabaseWorkspace}}
+    const hasRuntimeTenantAccess = await this.businessDataRepository.hasRuntimeTenantAccess(
+      appVariant.appVariantId,
+      selectedRuntimeTenantId,
+    );
+{{/if}}
     if (
       appVariant.role !== 'standalone' &&
-      !runtimeTenantAccess.get(appVariant.appVariantId)?.includes(selectedRuntimeTenantId)
+      !{{#if hasDatabaseWorkspace}}hasRuntimeTenantAccess{{else}}runtimeTenantAccess.get(appVariant.appVariantId)?.includes(selectedRuntimeTenantId){{/if}}
     ) {
       throw new BusinessProfileRequestError(
         'Runtime Tenant is not allowed by this App Variant',
@@ -135,13 +176,22 @@ export class BusinessProfileService {
       );
     }
 
+{{#if hasDatabaseWorkspace}}
+    const runtimeTenant =
+      await this.businessDataRepository.findRuntimeTenant(selectedRuntimeTenantId);
+{{else}}
     const runtimeTenant = runtimeTenants.find(
       (candidate) => candidate.runtimeTenantId === selectedRuntimeTenantId,
     );
+{{/if}}
     if (!runtimeTenant) {
       throw new BusinessProfileRequestError('Runtime Tenant does not exist', 404);
     }
 
-    return { name: runtimeTenant.name, description: runtimeTenant.description };
+    return {
+      name: runtimeTenant.{{#if hasDatabaseWorkspace}}profileName{{else}}name{{/if}},
+      description: runtimeTenant.{{#if hasDatabaseWorkspace}}profileDescription{{else}}description{{/if}},
+    };
+{{/ifSetupType}}
   }
 }
