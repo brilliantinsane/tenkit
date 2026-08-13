@@ -487,7 +487,14 @@ test('interactive creation resolves NestJS with PostgreSQL and Prisma without Au
       { value: 'postgresql', label: 'PostgreSQL' },
     ],
   });
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'ORM',
+    initialValue: 'prisma',
+    options: [
+      { value: 'prisma', label: 'Prisma' },
+      { value: 'drizzle', label: 'Drizzle' },
+    ],
+  });
 });
 
 test('interactive creation resolves NestJS with Better Auth to PostgreSQL and Prisma', async () => {

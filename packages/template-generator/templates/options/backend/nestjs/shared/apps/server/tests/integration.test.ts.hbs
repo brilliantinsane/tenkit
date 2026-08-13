@@ -161,7 +161,9 @@ test('compiled NestJS serves health and {{#if hasAuth}}protects Business Data{{e
     throw new Error('NestJS PostgreSQL integration requires DATABASE_URL.');
   }
   await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
+    {{#if isPrismaOrm}}
     '_prisma_migrations',
+    {{/if}}
     {{#if isBetterAuth}}
     'account',
     {{/if}}

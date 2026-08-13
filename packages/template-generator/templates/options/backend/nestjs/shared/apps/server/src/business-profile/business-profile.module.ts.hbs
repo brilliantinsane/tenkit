@@ -30,10 +30,17 @@ import { BusinessProfileService } from './business-profile.service.js';
       provide: BUSINESS_DATA_REPOSITORY,
       inject: [ConfigService],
       async useFactory(environment: ConfigService<ServerEnvironment, true>) {
-        const { createBusinessDataRepository } = await import('@tenkit/db');
+        const { createBusinessDataRepository{{#if isDrizzleOrm}}, createPostgresqlDrizzleDatabase{{/if}} } = await import('@tenkit/db');
+        {{#if isDrizzleOrm}}
+        const database = createPostgresqlDrizzleDatabase(
+          environment.getOrThrow('DATABASE_URL', { infer: true }),
+        );
+        const repository = createBusinessDataRepository(database);
+        {{else}}
         const repository = createBusinessDataRepository(
           environment.getOrThrow('DATABASE_URL', { infer: true }),
         );
+        {{/if}}
 
         return {
           ...repository,
