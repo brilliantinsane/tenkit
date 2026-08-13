@@ -494,6 +494,7 @@ test('interactive creation resolves NestJS with PostgreSQL and Prisma without Au
     options: [
       { value: 'none', label: 'None' },
       { value: 'postgresql', label: 'PostgreSQL' },
+      { value: 'mysql', label: 'MySQL' },
     ],
   });
   expect(prompts.select).toHaveBeenCalledWith({

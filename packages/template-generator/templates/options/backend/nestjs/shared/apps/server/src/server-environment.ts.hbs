@@ -16,11 +16,15 @@ const serverEnvironmentSchema = z.object({
   DATABASE_URL: z.string().refine((databaseUrl) => {
     try {
       const protocol = new URL(databaseUrl).protocol;
+      {{#if isMysqlDatabase}}
+      return protocol === 'mysql:';
+      {{else}}
       return protocol === 'postgresql:' || protocol === 'postgres:';
+      {{/if}}
     } catch {
       return false;
     }
-  }, 'DATABASE_URL must be a PostgreSQL URL'),
+  }, 'DATABASE_URL must be a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} URL'),
   {{/if}}
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   {{#if isBetterAuth}}

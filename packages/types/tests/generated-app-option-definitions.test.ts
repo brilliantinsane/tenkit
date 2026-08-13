@@ -160,6 +160,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -316,6 +322,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -396,6 +408,26 @@ test('resolves Express with Clerk, MySQL, and Prisma', () => {
       selection: {
         backend: 'express',
         auth: 'clerk',
+        database: 'mysql',
+        orm: 'prisma',
+      },
+    },
+  );
+});
+
+test('resolves NestJS with MySQL and Prisma without Auth', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'prisma',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'nestjs',
+        auth: 'none',
         database: 'mysql',
         orm: 'prisma',
       },
@@ -493,7 +525,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
     auth: { status: 'selectable', values: ['none', 'clerk', 'better-auth'] },
-    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    database: { status: 'selectable', values: ['none', 'postgresql', 'mysql'] },
     orm: { status: 'selectable', values: ['none', 'prisma', 'drizzle'] },
   });
 
@@ -517,6 +549,21 @@ test('derives dependency-aware partial choices from the same supported list', ()
       auth: { status: 'selected', values: ['none'], value: 'none' },
       database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
       orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
+    },
+  );
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'nestjs',
+      auth: 'none',
+      database: 'mysql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
+      auth: { status: 'selected', values: ['none'], value: 'none' },
+      database: { status: 'selected', values: ['mysql'], value: 'mysql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
     },
   );
 
@@ -584,6 +631,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:none:none:none',
     'nestjs:none:postgresql:prisma',
     'nestjs:none:postgresql:drizzle',
+    'nestjs:none:mysql:prisma',
     'nestjs:better-auth:postgresql:prisma',
     'nestjs:better-auth:postgresql:drizzle',
     'nestjs:clerk:none:none',
