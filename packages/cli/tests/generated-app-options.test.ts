@@ -1,61 +1,16 @@
 /// <reference types="node" />
 
-import { tmpdir } from 'node:os';
-
 import fs from 'fs-extra';
 import { join } from 'pathe';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { generateProject } from '@tenkit/template-generator';
 import { DEFAULT_GENERATED_APP_OPTIONS } from '@tenkit/types/generated-app-option-definitions';
 
 import { createProgram } from '../src/commands/create';
 import { runCreateFlow } from '../src/create/run-create';
-import type { CreateFlowEnvironment, PromptAdapter } from '../src/create/types';
-
-const tempRoots: string[] = [];
-
-afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((tempRoot) => fs.remove(tempRoot)));
-});
-
-async function createTempRoot(): Promise<string> {
-  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-cli-options-test-'));
-  tempRoots.push(tempRoot);
-  return tempRoot;
-}
-
-function createEnvironment(
-  cwd: string,
-  overrides: Partial<CreateFlowEnvironment> = {},
-): CreateFlowEnvironment & { lines: string[] } {
-  const lines: string[] = [];
-  const prompts: PromptAdapter = {
-    text: vi.fn(async () => {
-      throw new Error('Unexpected text prompt.');
-    }),
-    select: vi.fn(async () => {
-      throw new Error('Unexpected select prompt.');
-    }),
-    confirm: vi.fn(async () => false),
-  };
-
-  return {
-    cwd,
-    isInteractive: false,
-    lines,
-    output: {
-      log(message = '') {
-        lines.push(message);
-      },
-      error(message) {
-        lines.push(message);
-      },
-    },
-    prompts,
-    ...overrides,
-  };
-}
+import type { PromptAdapter } from '../src/create/types';
+import { createEnvironment, createTempRoot } from './generated-app-options-test-helpers';
 
 test('plain --yes resolves the zero-service defaults and passes them into generation', async () => {
   const tempRoot = await createTempRoot();

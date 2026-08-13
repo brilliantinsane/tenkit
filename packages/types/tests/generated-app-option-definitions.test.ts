@@ -100,6 +100,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'clerk',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -193,6 +199,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     {
       backend: 'nestjs',
       auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'prisma',
+    },
+    {
+      backend: 'nestjs',
+      auth: 'clerk',
       database: 'postgresql',
       orm: 'prisma',
     },
@@ -329,9 +341,24 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
     auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
-    database: { status: 'resolved', values: ['none'], value: 'none' },
-    orm: { status: 'resolved', values: ['none'], value: 'none' },
+    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    orm: { status: 'selectable', values: ['none', 'prisma'] },
   });
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'nestjs',
+      auth: 'clerk',
+      database: 'postgresql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
+      auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
+      database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    },
+  );
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'convex' }), {
     status: 'available',
@@ -369,6 +396,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:none:postgresql:prisma',
     'nestjs:better-auth:postgresql:prisma',
     'nestjs:clerk:none:none',
+    'nestjs:clerk:postgresql:prisma',
     'convex:none:none:none',
   ]);
 });
