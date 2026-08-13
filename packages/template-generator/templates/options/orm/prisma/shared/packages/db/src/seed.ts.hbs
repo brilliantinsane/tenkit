@@ -5,16 +5,16 @@ import {
   runtimeTenantAccessStarterData,
   runtimeTenantStarterData,
 } from './starter-data.js';
-import { createPostgresqlPrismaClient } from './repository.js';
+import { {{#if isMysqlDatabase}}createMysqlPrismaClient{{else}}createPostgresqlPrismaClient{{/if}} } from './repository.js';
 
 config({ path: '../../apps/server/.env.local', quiet: true });
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required to seed PostgreSQL Starter Data.');
+  throw new Error('DATABASE_URL is required to seed {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} Starter Data.');
 }
 
-const database = createPostgresqlPrismaClient(databaseUrl);
+const database = {{#if isMysqlDatabase}}createMysqlPrismaClient{{else}}createPostgresqlPrismaClient{{/if}}(databaseUrl);
 
 try {
   await database.$transaction(async (transaction) => {

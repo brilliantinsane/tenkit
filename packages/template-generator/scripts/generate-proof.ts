@@ -42,7 +42,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql>] [--orm <none|prisma|drizzle>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
+  return `Usage: pnpm -F @tenkit/template-generator proof -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> --target <folder> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql|mysql>] [--orm <none|prisma|drizzle>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>] [--force] [--no-install] [--project-name <name>] [--package-name <name>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {

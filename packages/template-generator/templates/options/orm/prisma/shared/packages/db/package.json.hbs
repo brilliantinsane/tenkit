@@ -22,14 +22,21 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    {{#if isMysqlDatabase}}
+    "@prisma/adapter-mariadb": "7.5.0",
+    {{else}}
     "@prisma/adapter-pg": "7.5.0",
+    {{/if}}
     "@prisma/client": "7.5.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^17.4.2"{{#unless isMysqlDatabase}},
     "pg": "8.16.3"
+    {{/unless}}
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
+    {{#unless isMysqlDatabase}}
     "@types/pg": "8.16.0",
+    {{/unless}}
     "prisma": "7.5.0",
     "tsx": "^4.22.4",
     "typescript": "~6.0.3",

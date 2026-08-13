@@ -36,7 +36,7 @@ type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql>] [--orm <none|prisma|drizzle>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql|mysql>] [--orm <none|prisma|drizzle>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -158,10 +158,12 @@ async function main() {
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
   const isNodeBackend = isGeneratedNodeBackend(args.generatedAppOptions.backend);
-  const databaseUrl =
-    args.generatedAppOptions.database === 'postgresql' ? process.env.DATABASE_URL : undefined;
-  if (args.generatedAppOptions.database === 'postgresql' && !databaseUrl) {
-    throw new Error('PostgreSQL generated-app verification requires DATABASE_URL.');
+  const hasSqlDatabase = args.generatedAppOptions.database !== 'none';
+  const databaseUrl = hasSqlDatabase ? process.env.DATABASE_URL : undefined;
+  if (hasSqlDatabase && !databaseUrl) {
+    throw new Error(
+      `${args.generatedAppOptions.database === 'mysql' ? 'MySQL' : 'PostgreSQL'} generated-app verification requires DATABASE_URL.`,
+    );
   }
   const port = isNodeBackend ? await acquireAvailablePort() : undefined;
   const environment = createGeneratedAppCommandEnvironment(

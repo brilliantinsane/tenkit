@@ -17,11 +17,15 @@ const serverEnvironmentSchema = z.object({
   DATABASE_URL: z.string().refine((databaseUrl) => {
     try {
       const protocol = new URL(databaseUrl).protocol;
+      {{#if isMysqlDatabase}}
+      return protocol === 'mysql:';
+      {{else}}
       return protocol === 'postgresql:' || protocol === 'postgres:';
+      {{/if}}
     } catch {
       return false;
     }
-  }, 'DATABASE_URL must be a PostgreSQL URL'),
+  }, 'DATABASE_URL must be a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} URL'),
   {{/if}}
   PORT: z.coerce.number().int().min(1).max(65_535),
   {{#if isBetterAuth}}
@@ -38,7 +42,7 @@ export function readServerEnvironment(
 
   if (!parsedEnvironment.success) {
     throw new Error(
-      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a PostgreSQL DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}{{#if isBetterAuth}}, plus BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET{{/if}}.',
+      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}{{#if isBetterAuth}}, plus BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET{{/if}}.',
     );
   }
 

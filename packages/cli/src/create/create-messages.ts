@@ -50,8 +50,9 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
         '- Set BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET in apps/server/.env.local',
       );
     }
-    if (result.generatedAppOptions.database === 'postgresql') {
-      output.log('- Set DATABASE_URL in apps/server/.env.local to your PostgreSQL database');
+    if (result.generatedAppOptions.database !== 'none') {
+      const databaseName = result.generatedAppOptions.database === 'mysql' ? 'MySQL' : 'PostgreSQL';
+      output.log(`- Set DATABASE_URL in apps/server/.env.local to your ${databaseName} database`);
       output.log(`- ${formatRunCommand(result.packageManager, 'db:setup')}`);
     }
     output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');

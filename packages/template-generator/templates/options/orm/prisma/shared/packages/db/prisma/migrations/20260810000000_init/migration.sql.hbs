@@ -1,3 +1,39 @@
+{{#if isMysqlDatabase}}
+CREATE TABLE `app_variant` (
+  `appVariantId` INTEGER NOT NULL,
+  `role` VARCHAR(191) NULL,
+  `standaloneRuntimeTenantId` INTEGER NULL,
+  `profileName` VARCHAR(191) NULL,
+  `profileDescription` VARCHAR(191) NULL,
+  PRIMARY KEY (`appVariantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `runtime_tenant` (
+  `runtimeTenantId` INTEGER NOT NULL,
+  `profileName` VARCHAR(191) NOT NULL,
+  `profileDescription` VARCHAR(191) NOT NULL,
+  PRIMARY KEY (`runtimeTenantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `app_variant_runtime_tenant_access` (
+  `appVariantId` INTEGER NOT NULL,
+  `runtimeTenantId` INTEGER NOT NULL,
+  `isDefault` BOOLEAN NOT NULL DEFAULT false,
+  PRIMARY KEY (`appVariantId`, `runtimeTenantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `app_variant_runtime_tenant_access`
+  ADD CONSTRAINT `avrt_access_app_variant_fkey`
+  FOREIGN KEY (`appVariantId`)
+  REFERENCES `app_variant` (`appVariantId`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `app_variant_runtime_tenant_access`
+  ADD CONSTRAINT `avrt_access_runtime_tenant_fkey`
+  FOREIGN KEY (`runtimeTenantId`)
+  REFERENCES `runtime_tenant` (`runtimeTenantId`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+{{else}}
 {{#if isBetterAuth}}
 CREATE TABLE "user" (
   "id" TEXT NOT NULL,
@@ -96,3 +132,4 @@ ALTER TABLE "app_variant_runtime_tenant_access"
   FOREIGN KEY ("runtimeTenantId")
   REFERENCES "runtime_tenant" ("runtimeTenantId")
   ON DELETE CASCADE ON UPDATE CASCADE;
+{{/if}}

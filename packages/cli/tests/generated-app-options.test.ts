@@ -191,6 +191,7 @@ test('interactive creation resolves Express with PostgreSQL and Prisma without A
     options: [
       { value: 'none', label: 'None' },
       { value: 'postgresql', label: 'PostgreSQL' },
+      { value: 'mysql', label: 'MySQL' },
     ],
   });
   expect(prompts.select).toHaveBeenCalledWith({

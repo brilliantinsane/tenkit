@@ -1,0 +1,5 @@
+# MySQL Database
+
+The generated {{#if isPrismaOrm}}Prisma{{else}}Drizzle{{/if}} migration owns the schema. Run `{{packageManagerRunCommand}} db:setup` against a fresh MySQL 8.4 database before starting the Backend.
+
+`DATABASE_URL` must use the `mysql://` protocol and identify the database. Keep credentials only in `apps/server/.env.local`. Production provisioning, TLS, connection limits, backups, and network access remain operator-owned.

@@ -5,7 +5,11 @@ generator client {
 }
 
 datasource db {
+  {{#if isMysqlDatabase}}
+  provider = "mysql"
+  {{else}}
   provider = "postgresql"
+  {{/if}}
 }
 
 {{#if isBetterAuth}}

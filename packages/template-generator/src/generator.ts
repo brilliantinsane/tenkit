@@ -214,6 +214,7 @@ function normalizeTemplateContext({
     isExpressBackend: generatedAppOptions.backend === 'express',
     isNestjsBackend: generatedAppOptions.backend === 'nestjs',
     isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
+    isMysqlDatabase: generatedAppOptions.database === 'mysql',
     isPostgresqlDatabase: generatedAppOptions.database === 'postgresql',
     isDrizzleOrm: generatedAppOptions.orm === 'drizzle',
     isPrismaOrm: generatedAppOptions.orm === 'prisma',
@@ -296,7 +297,9 @@ function readProjectTemplateTree({
         : [];
   const databaseTree = context.isPostgresqlDatabase
     ? readTemplateTree('options/db/postgresql/shared', context)
-    : [];
+    : context.isMysqlDatabase
+      ? readTemplateTree('options/db/mysql/shared', context)
+      : [];
   const ormTree = context.isPrismaOrm
     ? readTemplateTree('options/orm/prisma/shared', context)
     : context.isDrizzleOrm

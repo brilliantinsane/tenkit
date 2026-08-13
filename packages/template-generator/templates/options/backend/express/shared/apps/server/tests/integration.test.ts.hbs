@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 {{#if hasDatabaseWorkspace}}
-import { inspectPostgresqlTableNames } from '@tenkit/db';
+import { {{#if isMysqlDatabase}}inspectMysqlTableNames{{else}}inspectPostgresqlTableNames{{/if}} } from '@tenkit/db';
 {{/if}}
 
 function serverUrl(path: string): URL {
@@ -135,9 +135,9 @@ test('compiled Express serves public health and {{#if hasAuth}}protects Business
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error('Express PostgreSQL integration requires DATABASE_URL.');
+    throw new Error('Express {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} integration requires DATABASE_URL.');
   }
-  await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
+  await expect({{#if isMysqlDatabase}}inspectMysqlTableNames{{else}}inspectPostgresqlTableNames{{/if}}(databaseUrl)).resolves.toEqual([
     {{#if isPrismaOrm}}
     '_prisma_migrations',
     {{/if}}
