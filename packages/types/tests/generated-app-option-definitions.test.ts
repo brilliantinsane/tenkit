@@ -148,6 +148,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -292,6 +298,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -332,6 +344,26 @@ test('resolves Express with MySQL and Prisma without Auth', () => {
       selection: {
         backend: 'express',
         auth: 'none',
+        database: 'mysql',
+        orm: 'prisma',
+      },
+    },
+  );
+});
+
+test('resolves Express with Better Auth, MySQL, and Prisma', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'express',
+        auth: 'better-auth',
         database: 'mysql',
         orm: 'prisma',
       },
@@ -406,9 +438,24 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
     auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
-    database: { status: 'resolved', values: ['postgresql'], value: 'postgresql' },
+    database: { status: 'selectable', values: ['postgresql', 'mysql'] },
     orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
   });
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['express'], value: 'express' },
+      auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
+      database: { status: 'selected', values: ['mysql'], value: 'mysql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    },
+  );
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'nestjs' }), {
     status: 'available',
@@ -497,6 +544,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:none:mysql:prisma',
     'express:better-auth:postgresql:prisma',
     'express:better-auth:postgresql:drizzle',
+    'express:better-auth:mysql:prisma',
     'express:clerk:none:none',
     'express:clerk:postgresql:prisma',
     'express:clerk:postgresql:drizzle',

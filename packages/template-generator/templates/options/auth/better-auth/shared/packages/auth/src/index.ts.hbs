@@ -3,7 +3,7 @@ import { expo } from '@better-auth/expo';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { schema, type TenkitDatabase } from '@tenkit/db';
 {{else}}
-import { createPostgresqlPrismaClient } from '@tenkit/db';
+import { {{#if isMysqlDatabase}}createMysqlPrismaClient{{else}}createPostgresqlPrismaClient{{/if}} } from '@tenkit/db';
 {{/if}}
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 {{#if isPrismaOrm}}
@@ -44,13 +44,13 @@ export function createTenkitAuth({
   development,
 }: CreateTenkitAuthInput): TenkitAuthRuntime {
   {{#if isPrismaOrm}}
-  const database = createPostgresqlPrismaClient(databaseUrl);
+  const database = {{#if isMysqlDatabase}}createMysqlPrismaClient{{else}}createPostgresqlPrismaClient{{/if}}(databaseUrl);
   {{/if}}
   const options: BetterAuthOptions = {
     appName: {{projectNameStringLiteral}},
     baseURL: baseUrl,
     secret,
-    database: {{#if isDrizzleOrm}}drizzleAdapter(database, { provider: 'pg', schema }){{else}}prismaAdapter(database, { provider: 'postgresql' }){{/if}},
+    database: {{#if isDrizzleOrm}}drizzleAdapter(database, { provider: 'pg', schema }){{else}}prismaAdapter(database, { provider: '{{#if isMysqlDatabase}}mysql{{else}}postgresql{{/if}}' }){{/if}},
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
