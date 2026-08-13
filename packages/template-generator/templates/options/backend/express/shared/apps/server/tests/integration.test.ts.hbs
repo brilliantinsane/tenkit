@@ -138,7 +138,9 @@ test('compiled Express serves public health and {{#if hasAuth}}protects Business
     throw new Error('Express PostgreSQL integration requires DATABASE_URL.');
   }
   await expect(inspectPostgresqlTableNames(databaseUrl)).resolves.toEqual([
+    {{#if isPrismaOrm}}
     '_prisma_migrations',
+    {{/if}}
     {{#if isBetterAuth}}
     'account',
     {{/if}}

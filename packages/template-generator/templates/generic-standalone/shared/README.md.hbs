@@ -52,13 +52,13 @@ Better Auth owns Email and Password identity and durable cookie sessions in Post
 {{/if}}
 
 {{#if hasDatabaseWorkspace}}
-PostgreSQL and Prisma live in `packages/db`. Create an empty PostgreSQL database, set its connection URL only in `apps/server/.env.local`, then apply the committed migration, seed Setup Type-specific Starter Data, generate Prisma Client, and build the Database package:
+PostgreSQL and {{#if isPrismaOrm}}Prisma{{else}}Drizzle{{/if}} live in `packages/db`. Create an empty PostgreSQL database, set its connection URL only in `apps/server/.env.local`, then apply the committed migration, seed Setup Type-specific Starter Data, {{#if isPrismaOrm}}generate Prisma Client, {{/if}}and build the Database package:
 
 ```bash
 {{packageManagerRunCommand}} db:setup
 ```
 
-Run this setup before the first Backend start and during deployment before starting compiled output. The Database contains Tenkit App Variant, Runtime Tenant, and Runtime Tenant Access tables{{#if isBetterAuth}}, plus Better Auth User, Session, Account, and Verification tables{{/if}} and Prisma migration metadata. See `packages/db/POSTGRESQL.md` for provider guidance.
+Run this setup before the first Backend start and during deployment before starting compiled output. The Database contains Tenkit App Variant, Runtime Tenant, and Runtime Tenant Access tables{{#if isBetterAuth}}, plus Better Auth User, Session, Account, and Verification tables{{/if}}{{#if isPrismaOrm}} and Prisma migration metadata{{/if}}. See `packages/db/POSTGRESQL.md` for provider guidance.
 {{/if}}
 
 Run Expo and {{nodeBackendDisplayName}} together:

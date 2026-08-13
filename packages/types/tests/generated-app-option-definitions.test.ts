@@ -106,6 +106,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -208,6 +214,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'postgresql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -241,7 +253,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
     backend: { status: 'selectable', values: ['none', 'express', 'nestjs', 'convex'] },
     auth: { status: 'selectable', values: ['none', 'clerk', 'better-auth'] },
     database: { status: 'selectable', values: ['none', 'postgresql'] },
-    orm: { status: 'selectable', values: ['none', 'prisma'] },
+    orm: { status: 'selectable', values: ['none', 'prisma', 'drizzle'] },
   });
 
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'none' }), {
@@ -257,7 +269,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
     backend: { status: 'selected', values: ['express'], value: 'express' },
     auth: { status: 'selectable', values: ['none', 'clerk', 'better-auth'] },
     database: { status: 'selectable', values: ['none', 'postgresql'] },
-    orm: { status: 'selectable', values: ['none', 'prisma'] },
+    orm: { status: 'selectable', values: ['none', 'prisma', 'drizzle'] },
   });
 
   assert.deepEqual(
@@ -271,7 +283,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
       backend: { status: 'selected', values: ['express'], value: 'express' },
       auth: { status: 'selected', values: ['none'], value: 'none' },
       database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
-      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+      orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
     },
   );
 
@@ -389,6 +401,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'none:none:none:none',
     'express:none:none:none',
     'express:none:postgresql:prisma',
+    'express:none:postgresql:drizzle',
     'express:better-auth:postgresql:prisma',
     'express:clerk:none:none',
     'express:clerk:postgresql:prisma',

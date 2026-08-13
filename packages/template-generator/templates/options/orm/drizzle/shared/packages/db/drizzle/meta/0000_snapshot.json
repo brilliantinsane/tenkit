@@ -1,0 +1,149 @@
+{
+  "id": "52ac300e-0820-4165-86e6-a23fde1b0486",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.app_variant_runtime_tenant_access": {
+      "name": "app_variant_runtime_tenant_access",
+      "schema": "",
+      "columns": {
+        "appVariantId": {
+          "name": "appVariantId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "runtimeTenantId": {
+          "name": "runtimeTenantId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isDefault": {
+          "name": "isDefault",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "app_variant_runtime_tenant_access_appVariantId_app_variant_appVariantId_fk": {
+          "name": "app_variant_runtime_tenant_access_appVariantId_app_variant_appVariantId_fk",
+          "tableFrom": "app_variant_runtime_tenant_access",
+          "tableTo": "app_variant",
+          "columnsFrom": ["appVariantId"],
+          "columnsTo": ["appVariantId"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "app_variant_runtime_tenant_access_runtimeTenantId_runtime_tenant_runtimeTenantId_fk": {
+          "name": "app_variant_runtime_tenant_access_runtimeTenantId_runtime_tenant_runtimeTenantId_fk",
+          "tableFrom": "app_variant_runtime_tenant_access",
+          "tableTo": "runtime_tenant",
+          "columnsFrom": ["runtimeTenantId"],
+          "columnsTo": ["runtimeTenantId"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "app_variant_runtime_tenant_access_appVariantId_runtimeTenantId_pk": {
+          "name": "app_variant_runtime_tenant_access_appVariantId_runtimeTenantId_pk",
+          "columns": ["appVariantId", "runtimeTenantId"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.app_variant": {
+      "name": "app_variant",
+      "schema": "",
+      "columns": {
+        "appVariantId": {
+          "name": "appVariantId",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standaloneRuntimeTenantId": {
+          "name": "standaloneRuntimeTenantId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profileName": {
+          "name": "profileName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profileDescription": {
+          "name": "profileDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.runtime_tenant": {
+      "name": "runtime_tenant",
+      "schema": "",
+      "columns": {
+        "runtimeTenantId": {
+          "name": "runtimeTenantId",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profileName": {
+          "name": "profileName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profileDescription": {
+          "name": "profileDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

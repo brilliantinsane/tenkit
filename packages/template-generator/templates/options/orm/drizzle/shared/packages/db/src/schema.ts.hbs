@@ -1,0 +1,35 @@
+import { boolean, foreignKey, integer, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
+
+export const appVariants = pgTable('app_variant', {
+  appVariantId: integer('appVariantId').primaryKey(),
+  role: text('role'),
+  standaloneRuntimeTenantId: integer('standaloneRuntimeTenantId'),
+  profileName: text('profileName'),
+  profileDescription: text('profileDescription'),
+});
+
+export const runtimeTenants = pgTable('runtime_tenant', {
+  runtimeTenantId: integer('runtimeTenantId').primaryKey(),
+  profileName: text('profileName').notNull(),
+  profileDescription: text('profileDescription').notNull(),
+});
+
+export const appVariantRuntimeTenantAccess = pgTable(
+  'app_variant_runtime_tenant_access',
+  {
+    appVariantId: integer('appVariantId').notNull(),
+    runtimeTenantId: integer('runtimeTenantId').notNull(),
+    isDefault: boolean('isDefault').default(false).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.appVariantId, table.runtimeTenantId] }),
+    foreignKey({
+      columns: [table.appVariantId],
+      foreignColumns: [appVariants.appVariantId],
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.runtimeTenantId],
+      foreignColumns: [runtimeTenants.runtimeTenantId],
+    }).onDelete('cascade'),
+  ],
+);

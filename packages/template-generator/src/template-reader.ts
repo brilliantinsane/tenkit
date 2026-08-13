@@ -27,6 +27,7 @@ export type TemplateContext = {
   isNestjsBackend: boolean;
   isNodeBackend: boolean;
   isPostgresqlDatabase: boolean;
+  isDrizzleOrm: boolean;
   isPrismaOrm: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;

@@ -1,7 +1,7 @@
 # PostgreSQL
 
 Create an empty PostgreSQL database and set `DATABASE_URL` in `apps/server/.env.local`.
-The generated Prisma migration owns the schema. Run `{{packageManagerRunCommand}} db:setup`
+The generated {{#if isPrismaOrm}}Prisma{{else}}Drizzle{{/if}} migration owns the schema. Run `{{packageManagerRunCommand}} db:setup`
 before the first development or production start and whenever deploying to a fresh database.
 
 Use a dedicated database user in deployed environments and require TLS according to your

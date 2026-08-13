@@ -215,6 +215,7 @@ function normalizeTemplateContext({
     isNestjsBackend: generatedAppOptions.backend === 'nestjs',
     isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
     isPostgresqlDatabase: generatedAppOptions.database === 'postgresql',
+    isDrizzleOrm: generatedAppOptions.orm === 'drizzle',
     isPrismaOrm: generatedAppOptions.orm === 'prisma',
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
@@ -296,7 +297,11 @@ function readProjectTemplateTree({
   const databaseTree = context.isPostgresqlDatabase
     ? readTemplateTree('options/db/postgresql/shared', context)
     : [];
-  const ormTree = context.isPrismaOrm ? readTemplateTree('options/orm/prisma/shared', context) : [];
+  const ormTree = context.isPrismaOrm
+    ? readTemplateTree('options/orm/prisma/shared', context)
+    : context.isDrizzleOrm
+      ? readTemplateTree('options/orm/drizzle/shared', context)
+      : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({

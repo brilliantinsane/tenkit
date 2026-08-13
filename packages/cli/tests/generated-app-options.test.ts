@@ -193,7 +193,51 @@ test('interactive creation resolves Express with PostgreSQL and Prisma without A
       { value: 'postgresql', label: 'PostgreSQL' },
     ],
   });
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'ORM',
+    initialValue: 'prisma',
+    options: [
+      { value: 'prisma', label: 'Prisma' },
+      { value: 'drizzle', label: 'Drizzle' },
+    ],
+  });
+});
+
+test('interactive creation resolves Express with PostgreSQL and Drizzle without Auth', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') return 'express';
+      if (options.message === 'Auth') return 'none';
+      if (options.message === 'Database') return 'postgresql';
+      if (options.message === 'ORM') return 'drizzle';
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-postgresql-drizzle',
+      setup: 'runtime-tenants',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'none',
+    database: 'postgresql',
+    orm: 'drizzle',
+  });
 });
 
 test('interactive creation resolves Express with Better Auth, PostgreSQL, and Prisma', async () => {
@@ -683,6 +727,45 @@ test('explicit Express, PostgreSQL, and Prisma flags resolve and write the SQL s
     true,
   );
   expect(await fs.pathExists(join(tempRoot, 'express-postgresql-prisma-app/packages/auth'))).toBe(
+    false,
+  );
+});
+
+test('explicit Express, PostgreSQL, and Drizzle flags resolve and write the SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-postgresql-drizzle-app',
+      backend: 'express',
+      auth: 'none',
+      database: 'postgresql',
+      orm: 'drizzle',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'none',
+    database: 'postgresql',
+    orm: 'drizzle',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Database: postgresql');
+  expect(environment.lines).toContain('- ORM: drizzle');
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(
+    await fs.pathExists(join(tempRoot, 'express-postgresql-drizzle-app/packages/db/package.json')),
+  ).toBe(true);
+  expect(await fs.pathExists(join(tempRoot, 'express-postgresql-drizzle-app/packages/auth'))).toBe(
     false,
   );
 });
