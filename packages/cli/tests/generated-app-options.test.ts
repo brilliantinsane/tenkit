@@ -387,6 +387,7 @@ test('interactive creation resolves Express with Clerk, PostgreSQL, and Prisma',
     options: [
       { value: 'none', label: 'None' },
       { value: 'postgresql', label: 'PostgreSQL' },
+      { value: 'mysql', label: 'MySQL' },
     ],
   });
   expect(prompts.select).toHaveBeenCalledWith({

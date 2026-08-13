@@ -154,6 +154,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -304,6 +310,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -371,6 +383,26 @@ test('resolves Express with Better Auth, MySQL, and Prisma', () => {
   );
 });
 
+test('resolves Express with Clerk, MySQL, and Prisma', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'prisma',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'express',
+        auth: 'clerk',
+        database: 'mysql',
+        orm: 'prisma',
+      },
+    },
+  );
+});
+
 test('derives dependency-aware partial choices from the same supported list', () => {
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
@@ -415,7 +447,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['express'], value: 'express' },
     auth: { status: 'selected', values: ['clerk'], value: 'clerk' },
-    database: { status: 'selectable', values: ['none', 'postgresql'] },
+    database: { status: 'selectable', values: ['none', 'postgresql', 'mysql'] },
     orm: { status: 'selectable', values: ['none', 'prisma', 'drizzle'] },
   });
 
@@ -548,6 +580,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:clerk:none:none',
     'express:clerk:postgresql:prisma',
     'express:clerk:postgresql:drizzle',
+    'express:clerk:mysql:prisma',
     'nestjs:none:none:none',
     'nestjs:none:postgresql:prisma',
     'nestjs:none:postgresql:drizzle',
