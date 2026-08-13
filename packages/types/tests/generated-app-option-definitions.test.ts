@@ -166,6 +166,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -328,6 +334,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    },
   ]);
 });
 
@@ -435,6 +447,26 @@ test('resolves NestJS with MySQL and Prisma without Auth', () => {
   );
 });
 
+test('resolves NestJS with Better Auth, MySQL, and Prisma', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'nestjs',
+        auth: 'better-auth',
+        database: 'mysql',
+        orm: 'prisma',
+      },
+    },
+  );
+});
+
 test('derives dependency-aware partial choices from the same supported list', () => {
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
@@ -533,9 +565,24 @@ test('derives dependency-aware partial choices from the same supported list', ()
     status: 'available',
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
     auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
-    database: { status: 'resolved', values: ['postgresql'], value: 'postgresql' },
+    database: { status: 'selectable', values: ['postgresql', 'mysql'] },
     orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
   });
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'mysql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
+      auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
+      database: { status: 'selected', values: ['mysql'], value: 'mysql' },
+      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    },
+  );
 
   assert.deepEqual(
     getGeneratedAppOptionChoiceState({
@@ -634,6 +681,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:none:mysql:prisma',
     'nestjs:better-auth:postgresql:prisma',
     'nestjs:better-auth:postgresql:drizzle',
+    'nestjs:better-auth:mysql:prisma',
     'nestjs:clerk:none:none',
     'nestjs:clerk:postgresql:prisma',
     'nestjs:clerk:postgresql:drizzle',

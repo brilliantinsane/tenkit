@@ -553,7 +553,14 @@ test('interactive creation defaults NestJS with Better Auth to Prisma and offers
       { value: 'clerk', label: 'Clerk' },
     ],
   });
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Database' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'Database',
+    initialValue: 'postgresql',
+    options: [
+      { value: 'postgresql', label: 'PostgreSQL' },
+      { value: 'mysql', label: 'MySQL' },
+    ],
+  });
   expect(prompts.select).toHaveBeenCalledWith({
     message: 'ORM',
     initialValue: 'prisma',
