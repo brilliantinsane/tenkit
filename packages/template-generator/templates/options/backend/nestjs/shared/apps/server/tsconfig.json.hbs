@@ -12,9 +12,13 @@
     "outDir": "dist",
     "removeComments": true,
     "rewriteRelativeImportExtensions": true,
-    {{#unless isClerkAuth}}
+    {{#if isClerkAuth}}
+    {{#if isDrizzleOrm}}
     "skipLibCheck": true,
-    {{/unless}}
+    {{/if}}
+    {{else}}
+    "skipLibCheck": true,
+    {{/if}}
     "sourceMap": true,
     "strict": true,
     "target": "ES2023",

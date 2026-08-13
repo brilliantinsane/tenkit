@@ -6,6 +6,9 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      {{#if isNestjsBackend}}
+      "development": "./src/index.ts",
+      {{/if}}
       "import": "./dist/src/index.js"
     }
   },
