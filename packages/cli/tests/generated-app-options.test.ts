@@ -497,7 +497,7 @@ test('interactive creation resolves NestJS with PostgreSQL and Prisma without Au
   });
 });
 
-test('interactive creation resolves NestJS with Better Auth to PostgreSQL and Prisma', async () => {
+test('interactive creation defaults NestJS with Better Auth to Prisma and offers Drizzle', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
     text: vi.fn(async () => {
@@ -544,7 +544,14 @@ test('interactive creation resolves NestJS with Better Auth to PostgreSQL and Pr
     ],
   });
   expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Database' }));
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'ORM',
+    initialValue: 'prisma',
+    options: [
+      { value: 'prisma', label: 'Prisma' },
+      { value: 'drizzle', label: 'Drizzle' },
+    ],
+  });
 });
 
 test('explicit Convex flags resolve managed persistence and write Convex-owned output', async () => {

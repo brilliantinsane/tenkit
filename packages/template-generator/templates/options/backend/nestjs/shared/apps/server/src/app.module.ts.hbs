@@ -1,11 +1,14 @@
-import { {{#if isBetterAuth}}Inject, Injectable, {{/if}}Module{{#if isBetterAuth}}, type OnApplicationShutdown{{/if}} } from '@nestjs/common';
+import { {{#if isBetterAuth}}{{#if isPrismaOrm}}Inject, Injectable, {{/if}}{{/if}}Module{{#if isBetterAuth}}{{#if isPrismaOrm}}, type OnApplicationShutdown{{/if}}{{/if}} } from '@nestjs/common';
 {{#if isBetterAuth}}
 import { createTenkitAuth, type TenkitAuth, type TenkitAuthRuntime } from '@tenkit/auth';
+{{#if isDrizzleOrm}}
+import type { TenkitDatabase } from '@tenkit/db';
+{{/if}}
 import { AuthModule } from '@thallesp/nestjs-better-auth';
 {{/if}}
 import { ConfigModule{{#if isBetterAuth}}, ConfigService{{/if}} } from '@nestjs/config';
 
-import { BusinessProfileModule } from './business-profile/business-profile.module.js';
+import { BusinessProfileModule{{#if isDrizzleOrm}}, DrizzleDatabaseRuntimeModule, TENKIT_DATABASE{{/if}} } from './business-profile/business-profile.module.js';
 import { HealthModule } from './health/health.module.js';
 import {
   serverEnvironmentFile,
@@ -17,6 +20,7 @@ import {
 const TENKIT_AUTH = Symbol('TENKIT_AUTH');
 const TENKIT_AUTH_RUNTIME = Symbol('TENKIT_AUTH_RUNTIME');
 
+{{#if isPrismaOrm}}
 @Injectable()
 class AuthShutdown implements OnApplicationShutdown {
   constructor(@Inject(TENKIT_AUTH_RUNTIME) private readonly authRuntime: TenkitAuthRuntime) {}
@@ -25,15 +29,26 @@ class AuthShutdown implements OnApplicationShutdown {
     await this.authRuntime.close();
   }
 }
+{{/if}}
 
 @Module({
+  {{#if isDrizzleOrm}}
+  imports: [DrizzleDatabaseRuntimeModule],
+  {{/if}}
   providers: [
     {
       provide: TENKIT_AUTH_RUNTIME,
-      inject: [ConfigService],
-      useFactory(environment: ConfigService<ServerEnvironment, true>): TenkitAuthRuntime {
+      inject: [ConfigService{{#if isDrizzleOrm}}, TENKIT_DATABASE{{/if}}],
+      useFactory(
+        environment: ConfigService<ServerEnvironment, true>,
+        {{#if isDrizzleOrm}}database: TenkitDatabase,{{/if}}
+      ): TenkitAuthRuntime {
         return createTenkitAuth({
+          {{#if isDrizzleOrm}}
+          database,
+          {{else}}
           databaseUrl: environment.getOrThrow('DATABASE_URL', { infer: true }),
+          {{/if}}
           baseUrl: environment.getOrThrow('BETTER_AUTH_URL', { infer: true }),
           secret: environment.getOrThrow('BETTER_AUTH_SECRET', { infer: true }),
           clientOrigin: environment.getOrThrow('CLIENT_ORIGIN', { infer: true }),
@@ -46,7 +61,7 @@ class AuthShutdown implements OnApplicationShutdown {
       inject: [TENKIT_AUTH_RUNTIME],
       useFactory: (authRuntime: TenkitAuthRuntime): TenkitAuth => authRuntime.auth,
     },
-    AuthShutdown,
+    {{#if isPrismaOrm}}AuthShutdown,{{/if}}
   ],
   exports: [TENKIT_AUTH],
 })

@@ -130,6 +130,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'postgresql',
       orm: 'drizzle',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -256,6 +262,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'postgresql',
       orm: 'drizzle',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -367,7 +379,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
     backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
     auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
     database: { status: 'resolved', values: ['postgresql'], value: 'postgresql' },
-    orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+    orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
   });
 
   assert.deepEqual(
@@ -447,6 +459,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:none:postgresql:prisma',
     'nestjs:none:postgresql:drizzle',
     'nestjs:better-auth:postgresql:prisma',
+    'nestjs:better-auth:postgresql:drizzle',
     'nestjs:clerk:none:none',
     'nestjs:clerk:postgresql:prisma',
     'convex:none:none:none',

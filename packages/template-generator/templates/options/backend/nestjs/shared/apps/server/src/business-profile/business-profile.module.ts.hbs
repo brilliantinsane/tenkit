@@ -1,6 +1,9 @@
-import { Module } from '@nestjs/common';
+import { {{#if isDrizzleOrm}}Inject, Injectable, {{/if}}Module{{#if isDrizzleOrm}}, type OnApplicationShutdown{{/if}} } from '@nestjs/common';
 {{#if hasDatabaseWorkspace}}
 import { ConfigService } from '@nestjs/config';
+{{#if isDrizzleOrm}}
+import { createPostgresqlDrizzleDatabase, type TenkitDatabase } from '@tenkit/db';
+{{/if}}
 
 import type { ServerEnvironment } from '../server-environment.js';
 {{/if}}
@@ -22,30 +25,60 @@ import {
 import { BusinessProfileService } from './business-profile.service.js';
 {{/if}}
 
+{{#if isDrizzleOrm}}
+export const TENKIT_DATABASE = Symbol('TENKIT_DATABASE');
+
+@Injectable()
+class DatabaseShutdown implements OnApplicationShutdown {
+  constructor(@Inject(TENKIT_DATABASE) private readonly database: TenkitDatabase) {}
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.database.$client.end();
+  }
+}
+
 @Module({
+  providers: [
+    {
+      provide: TENKIT_DATABASE,
+      inject: [ConfigService],
+      useFactory(environment: ConfigService<ServerEnvironment, true>): TenkitDatabase {
+        return createPostgresqlDrizzleDatabase(
+          environment.getOrThrow('DATABASE_URL', { infer: true }),
+        );
+      },
+    },
+    DatabaseShutdown,
+  ],
+  exports: [TENKIT_DATABASE],
+})
+export class DrizzleDatabaseRuntimeModule {}
+{{/if}}
+
+@Module({
+  {{#if isDrizzleOrm}}
+  imports: [DrizzleDatabaseRuntimeModule],
+  {{/if}}
   controllers: [BusinessProfileController],
   providers: [
     {{#if hasDatabaseWorkspace}}
     {
       provide: BUSINESS_DATA_REPOSITORY,
-      inject: [ConfigService],
-      async useFactory(environment: ConfigService<ServerEnvironment, true>) {
-        const { createBusinessDataRepository{{#if isDrizzleOrm}}, createPostgresqlDrizzleDatabase{{/if}} } = await import('@tenkit/db');
+      inject: [{{#if isDrizzleOrm}}TENKIT_DATABASE{{else}}ConfigService{{/if}}],
+      async useFactory({{#if isDrizzleOrm}}database: TenkitDatabase{{else}}environment: ConfigService<ServerEnvironment, true>{{/if}}) {
+        const { createBusinessDataRepository } = await import('@tenkit/db');
         {{#if isDrizzleOrm}}
-        const database = createPostgresqlDrizzleDatabase(
-          environment.getOrThrow('DATABASE_URL', { infer: true }),
-        );
-        const repository = createBusinessDataRepository(database);
+        return createBusinessDataRepository(database);
         {{else}}
         const repository = createBusinessDataRepository(
           environment.getOrThrow('DATABASE_URL', { infer: true }),
         );
-        {{/if}}
 
         return {
           ...repository,
           onApplicationShutdown: () => repository.close(),
         };
+        {{/if}}
       },
     },
     {{/if}}
