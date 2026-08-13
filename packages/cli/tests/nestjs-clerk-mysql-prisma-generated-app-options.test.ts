@@ -10,22 +10,16 @@ import { runCreateFlow } from '../src/create/run-create';
 import type { PromptAdapter } from '../src/create/types';
 import { createEnvironment, createTempRoot } from './generated-app-options-test-helpers';
 
-test('interactive creation resolves NestJS with Clerk, PostgreSQL, and Prisma', async () => {
+test('interactive creation resolves NestJS with Clerk, MySQL, and Prisma', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
     text: vi.fn(async () => {
       throw new Error('Unexpected text prompt.');
     }),
     select: vi.fn(async (options) => {
-      if (options.message === 'Backend') {
-        return 'nestjs';
-      }
-      if (options.message === 'Auth') {
-        return 'clerk';
-      }
-      if (options.message === 'Database') {
-        return 'postgresql';
-      }
+      if (options.message === 'Backend') return 'nestjs';
+      if (options.message === 'Auth') return 'clerk';
+      if (options.message === 'Database') return 'mysql';
       return options.initialValue;
     }),
     confirm: vi.fn(async () => false),
@@ -33,8 +27,8 @@ test('interactive creation resolves NestJS with Clerk, PostgreSQL, and Prisma', 
 
   const result = await runCreateFlow(
     {
-      name: 'interactive-nestjs-clerk-postgresql-prisma',
-      setup: 'runtime-tenants',
+      name: 'interactive-nestjs-clerk-mysql-prisma',
+      setup: 'generic-standalone',
       styling: 'bare',
       packageManager: 'pnpm',
       install: false,
@@ -47,7 +41,7 @@ test('interactive creation resolves NestJS with Clerk, PostgreSQL, and Prisma', 
   expect(result.generatedAppOptions).toEqual({
     backend: 'nestjs',
     auth: 'clerk',
-    database: 'postgresql',
+    database: 'mysql',
     orm: 'prisma',
   });
   expect(prompts.select).toHaveBeenCalledWith({
@@ -59,27 +53,20 @@ test('interactive creation resolves NestJS with Clerk, PostgreSQL, and Prisma', 
       { value: 'mysql', label: 'MySQL' },
     ],
   });
-  expect(prompts.select).toHaveBeenCalledWith({
-    message: 'ORM',
-    initialValue: 'prisma',
-    options: [
-      { value: 'prisma', label: 'Prisma' },
-      { value: 'drizzle', label: 'Drizzle' },
-    ],
-  });
+  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
 });
 
-test('explicit flags write the protected NestJS Clerk PostgreSQL Prisma stack', async () => {
+test('explicit flags write the protected NestJS Clerk MySQL Prisma stack', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);
   const environment = createEnvironment(tempRoot, { generate });
 
   const result = await runCreateFlow(
     {
-      name: 'nestjs-clerk-postgresql-prisma-app',
+      name: 'nestjs-clerk-mysql-prisma-app',
       backend: 'nestjs',
       auth: 'clerk',
-      database: 'postgresql',
+      database: 'mysql',
       orm: 'prisma',
       yes: true,
       install: false,
@@ -91,7 +78,7 @@ test('explicit flags write the protected NestJS Clerk PostgreSQL Prisma stack', 
   expect(result.generatedAppOptions).toEqual({
     backend: 'nestjs',
     auth: 'clerk',
-    database: 'postgresql',
+    database: 'mysql',
     orm: 'prisma',
   });
   expect(generate).toHaveBeenCalledWith(
@@ -99,34 +86,28 @@ test('explicit flags write the protected NestJS Clerk PostgreSQL Prisma stack', 
   );
   expect(environment.lines).toContain('- Backend: nestjs');
   expect(environment.lines).toContain('- Auth: clerk');
-  expect(environment.lines).toContain('- Database: postgresql');
+  expect(environment.lines).toContain('- Database: mysql');
   expect(environment.lines).toContain('- ORM: prisma');
   expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
   expect(environment.lines).toContain(
     '- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local',
   );
+  expect(environment.lines).toContain(
+    '- Set DATABASE_URL in apps/server/.env.local to your MySQL database',
+  );
   expect(environment.lines).toContain('- pnpm run db:setup');
   expect(
-    await fs.readJson(
-      join(tempRoot, 'nestjs-clerk-postgresql-prisma-app/apps/server/package.json'),
-    ),
-  ).toMatchObject({
-    dependencies: {
-      '@clerk/express': '2.1.50',
-      '@tenkit/db': 'workspace:*',
-    },
-  });
+    await fs.readJson(join(tempRoot, 'nestjs-clerk-mysql-prisma-app/apps/server/package.json')),
+  ).toMatchObject({ dependencies: { '@clerk/express': '2.1.50', '@tenkit/db': 'workspace:*' } });
+  expect(
+    await fs.readJson(join(tempRoot, 'nestjs-clerk-mysql-prisma-app/packages/db/package.json')),
+  ).toMatchObject({ dependencies: { '@prisma/adapter-mariadb': '7.5.0' } });
   expect(
     await fs.pathExists(
-      join(tempRoot, 'nestjs-clerk-postgresql-prisma-app/src/auth/clerk-provider.tsx'),
+      join(tempRoot, 'nestjs-clerk-mysql-prisma-app/src/auth/clerk-provider.tsx'),
     ),
   ).toBe(true);
-  expect(
-    await fs.pathExists(
-      join(tempRoot, 'nestjs-clerk-postgresql-prisma-app/packages/db/package.json'),
-    ),
-  ).toBe(true);
-  expect(
-    await fs.pathExists(join(tempRoot, 'nestjs-clerk-postgresql-prisma-app/packages/auth')),
-  ).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'nestjs-clerk-mysql-prisma-app/packages/auth'))).toBe(
+    false,
+  );
 });
