@@ -287,7 +287,50 @@ test('interactive creation resolves Express with Better Auth, PostgreSQL, and Pr
     ],
   });
   expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Database' }));
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'ORM',
+    initialValue: 'prisma',
+    options: [
+      { value: 'prisma', label: 'Prisma' },
+      { value: 'drizzle', label: 'Drizzle' },
+    ],
+  });
+});
+
+test('interactive creation resolves Express with Better Auth, PostgreSQL, and Drizzle', async () => {
+  const tempRoot = await createTempRoot();
+  const prompts: PromptAdapter = {
+    text: vi.fn(async () => {
+      throw new Error('Unexpected text prompt.');
+    }),
+    select: vi.fn(async (options) => {
+      if (options.message === 'Backend') return 'express';
+      if (options.message === 'Auth') return 'better-auth';
+      if (options.message === 'ORM') return 'drizzle';
+      return options.initialValue;
+    }),
+    confirm: vi.fn(async () => false),
+  };
+
+  const result = await runCreateFlow(
+    {
+      name: 'interactive-express-better-auth-postgresql-drizzle',
+      setup: 'runtime-tenants',
+      styling: 'bare',
+      packageManager: 'pnpm',
+      install: false,
+      git: false,
+      dryRun: true,
+    },
+    createEnvironment(tempRoot, { isInteractive: true, prompts }),
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'drizzle',
+  });
 });
 
 test('interactive creation resolves Express with Clerk, PostgreSQL, and Prisma', async () => {
@@ -811,6 +854,49 @@ test('explicit Express, Better Auth, PostgreSQL, and Prisma flags write the prot
   expect(
     await fs.pathExists(
       join(tempRoot, 'express-better-auth-postgresql-prisma-app/packages/db/package.json'),
+    ),
+  ).toBe(true);
+});
+
+test('explicit Express, Better Auth, PostgreSQL, and Drizzle flags write the protected SQL stack', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'express-better-auth-postgresql-drizzle-app',
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'postgresql',
+      orm: 'drizzle',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'express',
+    auth: 'better-auth',
+    database: 'postgresql',
+    orm: 'drizzle',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Auth: better-auth');
+  expect(environment.lines).toContain('- ORM: drizzle');
+  expect(environment.lines).toContain('- pnpm run db:setup');
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-better-auth-postgresql-drizzle-app/packages/auth/package.json'),
+    ),
+  ).toBe(true);
+  expect(
+    await fs.pathExists(
+      join(tempRoot, 'express-better-auth-postgresql-drizzle-app/packages/db/package.json'),
     ),
   ).toBe(true);
 });

@@ -45,9 +45,7 @@ export function createPostgresqlDrizzleDatabase(databaseUrl: string) {
 
 export type TenkitDatabase = ReturnType<typeof createPostgresqlDrizzleDatabase>;
 
-export function createBusinessDataRepository(databaseUrl: string): BusinessDataRepository {
-  const database = createPostgresqlDrizzleDatabase(databaseUrl);
-
+export function createBusinessDataRepository(database: TenkitDatabase): BusinessDataRepository {
   return {
     async findAppVariant(appVariantId) {
       const rows = await database

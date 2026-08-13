@@ -13,3 +13,6 @@ export {
   appVariants,
   runtimeTenants,
 } from './schema.js';
+{{#if isBetterAuth}}
+export * as schema from './schema.js';
+{{/if}}

@@ -42,6 +42,9 @@ test('generates the exact Auth-free Express PostgreSQL Drizzle shape for every S
     const rootManifest = readVirtualManifest(tree, 'package.json');
     const serverManifest = readVirtualManifest(tree, 'apps/server/package.json');
     const databaseManifest = readVirtualManifest(tree, 'packages/db/package.json');
+    const drizzleSnapshot = JSON.parse(
+      readVirtualText(tree, 'packages/db/drizzle/meta/0000_snapshot.json'),
+    ) as { tables: Record<string, unknown> };
     const generatedText = tree
       .flatMap(({ contents }) => (typeof contents === 'string' ? [contents] : []))
       .join('\n');
@@ -96,6 +99,11 @@ test('generates the exact Auth-free Express PostgreSQL Drizzle shape for every S
       test: 'vitest run tests/repository.test.ts',
       typecheck: 'tsc --noEmit --pretty false',
     });
+    assert.deepEqual(Object.keys(drizzleSnapshot.tables).sort(), [
+      'public.app_variant',
+      'public.app_variant_runtime_tenant_access',
+      'public.runtime_tenant',
+    ]);
 
     assert.equal(rootManifest.scripts['db:generate'], 'pnpm --dir packages/db run generate');
     assert.equal(rootManifest.scripts['db:migrate'], 'pnpm --dir packages/db run migrate');

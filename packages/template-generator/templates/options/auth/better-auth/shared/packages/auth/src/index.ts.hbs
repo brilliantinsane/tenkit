@@ -1,12 +1,23 @@
 import { expo } from '@better-auth/expo';
+{{#if isDrizzleOrm}}
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { schema, type TenkitDatabase } from '@tenkit/db';
+{{else}}
 import { createPostgresqlPrismaClient } from '@tenkit/db';
+{{/if}}
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
+{{#if isPrismaOrm}}
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+{{/if}}
 
 import { createTrustedOrigins } from './trusted-origins.js';
 
 export type CreateTenkitAuthInput = {
+  {{#if isDrizzleOrm}}
+  database: TenkitDatabase;
+  {{else}}
   databaseUrl: string;
+  {{/if}}
   baseUrl: string;
   secret: string;
   clientOrigin: string;
@@ -16,22 +27,30 @@ export type CreateTenkitAuthInput = {
 export type TenkitAuth = ReturnType<typeof betterAuth>;
 export type TenkitAuthRuntime = {
   auth: TenkitAuth;
+  {{#if isPrismaOrm}}
   close(): Promise<void>;
+  {{/if}}
 };
 
 export function createTenkitAuth({
+  {{#if isDrizzleOrm}}
+  database,
+  {{else}}
   databaseUrl,
+  {{/if}}
   baseUrl,
   secret,
   clientOrigin,
   development,
 }: CreateTenkitAuthInput): TenkitAuthRuntime {
+  {{#if isPrismaOrm}}
   const database = createPostgresqlPrismaClient(databaseUrl);
+  {{/if}}
   const options: BetterAuthOptions = {
     appName: {{projectNameStringLiteral}},
     baseURL: baseUrl,
     secret,
-    database: prismaAdapter(database, { provider: 'postgresql' }),
+    database: {{#if isDrizzleOrm}}drizzleAdapter(database, { provider: 'pg', schema }){{else}}prismaAdapter(database, { provider: 'postgresql' }){{/if}},
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
@@ -43,6 +62,8 @@ export function createTenkitAuth({
 
   return {
     auth,
+    {{#if isPrismaOrm}}
     close: () => database.$disconnect(),
+    {{/if}}
   };
 }

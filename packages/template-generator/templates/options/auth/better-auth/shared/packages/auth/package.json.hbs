@@ -19,6 +19,9 @@
   },
   "dependencies": {
     "@better-auth/expo": "1.6.25",
+    {{#if isDrizzleOrm}}
+    "@better-auth/drizzle-adapter": "1.6.25",
+    {{/if}}
     "@tenkit/db": "workspace:*",
     "better-auth": "1.6.25"
   },

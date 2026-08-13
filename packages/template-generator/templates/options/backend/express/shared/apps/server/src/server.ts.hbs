@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 {{#if hasDatabaseWorkspace}}
-import { createBusinessDataRepository } from '@tenkit/db';
+import { createBusinessDataRepository{{#if isDrizzleOrm}}, createPostgresqlDrizzleDatabase{{/if}} } from '@tenkit/db';
 {{/if}}
 {{#if isBetterAuth}}
 import { createTenkitAuth } from '@tenkit/auth';
@@ -13,11 +13,20 @@ config({ path: '.env.local', quiet: true });
 
 const environment = readServerEnvironment();
 {{#if hasDatabaseWorkspace}}
+{{#if isDrizzleOrm}}
+const database = createPostgresqlDrizzleDatabase(environment.DATABASE_URL);
+const businessDataRepository = createBusinessDataRepository(database);
+{{else}}
 const businessDataRepository = createBusinessDataRepository(environment.DATABASE_URL);
 {{/if}}
+{{/if}}
 {{#if isBetterAuth}}
-const { auth, close: closeAuth } = createTenkitAuth({
+const { auth{{#if isPrismaOrm}}, close: closeAuth{{/if}} } = createTenkitAuth({
+  {{#if isDrizzleOrm}}
+  database,
+  {{else}}
   databaseUrl: environment.DATABASE_URL,
+  {{/if}}
   baseUrl: environment.BETTER_AUTH_URL,
   secret: environment.BETTER_AUTH_SECRET,
   clientOrigin: environment.CLIENT_ORIGIN,
@@ -65,11 +74,13 @@ async function shutdown(): Promise<void> {
   }
   {{/if}}
   {{#if isBetterAuth}}
+  {{#if isPrismaOrm}}
   try {
     await closeAuth();
   } catch {
     shutdownFailed = true;
   }
+  {{/if}}
   {{/if}}
 
   if (shutdownFailed) {
