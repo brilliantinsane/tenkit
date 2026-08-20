@@ -10,7 +10,14 @@ import { runCreateFlow } from '../src/create/run-create';
 import type { PromptAdapter } from '../src/create/types';
 import { createEnvironment, createTempRoot } from './generated-app-options-test-helpers';
 
-test('interactive creation resolves Express with Clerk, MySQL, and Prisma', async () => {
+const EXPRESS_CLERK_MYSQL_DRIZZLE_OPTIONS = {
+  backend: 'express',
+  auth: 'clerk',
+  database: 'mysql',
+  orm: 'drizzle',
+} as const;
+
+test('interactive creation resolves Express with Clerk, MySQL, and Drizzle', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
     text: vi.fn(async () => {
@@ -20,6 +27,7 @@ test('interactive creation resolves Express with Clerk, MySQL, and Prisma', asyn
       if (options.message === 'Backend') return 'express';
       if (options.message === 'Auth') return 'clerk';
       if (options.message === 'Database') return 'mysql';
+      if (options.message === 'ORM') return 'drizzle';
       return options.initialValue;
     }),
     confirm: vi.fn(async () => false),
@@ -27,7 +35,7 @@ test('interactive creation resolves Express with Clerk, MySQL, and Prisma', asyn
 
   const result = await runCreateFlow(
     {
-      name: 'interactive-express-clerk-mysql-prisma',
+      name: 'interactive-express-clerk-mysql-drizzle',
       setup: 'generic-standalone',
       styling: 'bare',
       packageManager: 'pnpm',
@@ -38,21 +46,7 @@ test('interactive creation resolves Express with Clerk, MySQL, and Prisma', asyn
     createEnvironment(tempRoot, { isInteractive: true, prompts }),
   );
 
-  expect(result.generatedAppOptions).toEqual({
-    backend: 'express',
-    auth: 'clerk',
-    database: 'mysql',
-    orm: 'prisma',
-  });
-  expect(prompts.select).toHaveBeenCalledWith({
-    message: 'Database',
-    initialValue: 'none',
-    options: [
-      { value: 'none', label: 'None' },
-      { value: 'postgresql', label: 'PostgreSQL' },
-      { value: 'mysql', label: 'MySQL' },
-    ],
-  });
+  expect(result.generatedAppOptions).toEqual(EXPRESS_CLERK_MYSQL_DRIZZLE_OPTIONS);
   expect(prompts.select).toHaveBeenCalledWith({
     message: 'ORM',
     initialValue: 'prisma',
@@ -63,18 +57,15 @@ test('interactive creation resolves Express with Clerk, MySQL, and Prisma', asyn
   });
 });
 
-test('explicit flags write the protected Express Clerk MySQL Prisma stack', async () => {
+test('explicit flags write the protected Express Clerk MySQL Drizzle stack', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);
   const environment = createEnvironment(tempRoot, { generate });
 
   const result = await runCreateFlow(
     {
-      name: 'express-clerk-mysql-prisma-app',
-      backend: 'express',
-      auth: 'clerk',
-      database: 'mysql',
-      orm: 'prisma',
+      name: 'express-clerk-mysql-drizzle-app',
+      ...EXPRESS_CLERK_MYSQL_DRIZZLE_OPTIONS,
       yes: true,
       install: false,
       git: false,
@@ -82,19 +73,13 @@ test('explicit flags write the protected Express Clerk MySQL Prisma stack', asyn
     environment,
   );
 
-  expect(result.generatedAppOptions).toEqual({
-    backend: 'express',
-    auth: 'clerk',
-    database: 'mysql',
-    orm: 'prisma',
-  });
+  expect(result.generatedAppOptions).toEqual(EXPRESS_CLERK_MYSQL_DRIZZLE_OPTIONS);
   expect(generate).toHaveBeenCalledWith(
-    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+    expect.objectContaining({ generatedAppOptions: EXPRESS_CLERK_MYSQL_DRIZZLE_OPTIONS }),
   );
-  expect(environment.lines).toContain('- Backend: express');
   expect(environment.lines).toContain('- Auth: clerk');
   expect(environment.lines).toContain('- Database: mysql');
-  expect(environment.lines).toContain('- ORM: prisma');
+  expect(environment.lines).toContain('- ORM: drizzle');
   expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
   expect(environment.lines).toContain(
     '- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local',
@@ -102,14 +87,10 @@ test('explicit flags write the protected Express Clerk MySQL Prisma stack', asyn
   expect(environment.lines).toContain(
     '- Set DATABASE_URL in apps/server/.env.local to your MySQL database',
   );
-  expect(environment.lines).toContain('- pnpm run db:setup');
   expect(
-    await fs.readJson(join(tempRoot, 'express-clerk-mysql-prisma-app/apps/server/package.json')),
-  ).toMatchObject({ dependencies: { '@clerk/express': '2.1.50', '@tenkit/db': 'workspace:*' } });
-  expect(
-    await fs.readJson(join(tempRoot, 'express-clerk-mysql-prisma-app/packages/db/package.json')),
-  ).toMatchObject({ dependencies: { '@prisma/adapter-mariadb': '7.5.0' } });
-  expect(await fs.pathExists(join(tempRoot, 'express-clerk-mysql-prisma-app/packages/auth'))).toBe(
+    await fs.readJson(join(tempRoot, 'express-clerk-mysql-drizzle-app/packages/db/package.json')),
+  ).toMatchObject({ dependencies: { 'drizzle-orm': '0.45.2', mysql2: '3.20.0' } });
+  expect(await fs.pathExists(join(tempRoot, 'express-clerk-mysql-drizzle-app/packages/auth'))).toBe(
     false,
   );
 });

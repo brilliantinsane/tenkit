@@ -190,6 +190,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'drizzle',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -376,6 +382,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'drizzle',
     },
+    {
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -498,6 +510,26 @@ test('resolves Express with Clerk, MySQL, and Prisma', () => {
         auth: 'clerk',
         database: 'mysql',
         orm: 'prisma',
+      },
+    },
+  );
+});
+
+test('resolves Express with Clerk, MySQL, and Drizzle', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'express',
+      auth: 'clerk',
+      database: 'mysql',
+      orm: 'drizzle',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'express',
+        auth: 'clerk',
+        database: 'mysql',
+        orm: 'drizzle',
       },
     },
   );
@@ -783,6 +815,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:clerk:postgresql:prisma',
     'express:clerk:postgresql:drizzle',
     'express:clerk:mysql:prisma',
+    'express:clerk:mysql:drizzle',
     'nestjs:none:none:none',
     'nestjs:none:postgresql:prisma',
     'nestjs:none:postgresql:drizzle',
