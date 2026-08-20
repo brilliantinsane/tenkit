@@ -1,8 +1,17 @@
 import { expect, test } from 'vitest';
-import { resolveAuthSessionRouteState } from './auth-session-boundary';
+import {
+  resolveAuthSessionRouteState,
+  resolveProtectedConvexQueryState,
+} from './auth-session-boundary';
 
 test('restored Better Auth session state gates protected app routes', () => {
   expect(resolveAuthSessionRouteState(true, false)).toBe('loading');
   expect(resolveAuthSessionRouteState(false, false)).toBe('auth');
   expect(resolveAuthSessionRouteState(false, true)).toBe('app');
+});
+
+test('does not issue protected Convex queries before Better Auth establishes a session', () => {
+  expect(resolveProtectedConvexQueryState(true, false)).toBe('skip');
+  expect(resolveProtectedConvexQueryState(false, false)).toBe('skip');
+  expect(resolveProtectedConvexQueryState(false, true)).toBe('query');
 });

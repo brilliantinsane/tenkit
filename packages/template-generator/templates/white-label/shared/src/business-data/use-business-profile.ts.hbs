@@ -1,6 +1,10 @@
 {{#if isConvexBackend}}
 import { api } from '@server/convex/_generated/api';
 import { useQuery } from 'convex/react';
+{{#if isBetterAuth}}
+import { authClient } from '@/auth/auth-client';
+import { resolveProtectedConvexQueryState } from '@/auth/auth-session-boundary';
+{{/if}}
 {{/if}}
 {{#if isNodeBackend}}
 {{#unless isClerkAuth}}
@@ -35,15 +39,23 @@ export type BusinessProfileState = {
 {{#if isConvexBackend}}
 export function useBusinessProfile(): BusinessProfileState {
   const { appVariant } = useAppVariantConfig();
-  const profile = useQuery(api.businessProfiles.get, {
-    setupType: '{{setupType}}',
+  {{#if isBetterAuth}}
+  const { data: session, isPending } = authClient.useSession();
+  const protectedQueryState = resolveProtectedConvexQueryState(isPending, session !== null);
+  {{/if}}
+  const businessProfileRequest = {
+    setupType: '{{setupType}}' as const,
     appVariantId: appVariant.id,
-  });
+  };
+  const profile = useQuery(
+    api.businessProfiles.get,
+    {{#if isBetterAuth}}protectedQueryState === 'query' ? businessProfileRequest : 'skip'{{else}}businessProfileRequest{{/if}},
+  );
 
   return {
     profile: profile ?? null,
     error: null,
-    isLoading: profile === undefined,
+    isLoading: {{#if isBetterAuth}}protectedQueryState === 'skip' || {{/if}}profile === undefined,
   };
 }
 {{else}}

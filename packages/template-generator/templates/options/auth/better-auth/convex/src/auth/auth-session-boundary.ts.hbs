@@ -1,5 +1,14 @@
 export type AuthSessionRouteState = 'loading' | 'auth' | 'app';
 
+export type ProtectedConvexQueryState = 'skip' | 'query';
+
 export function resolveAuthSessionRouteState(isPending: boolean, hasSession: boolean): AuthSessionRouteState {
   return isPending ? 'loading' : hasSession ? 'app' : 'auth';
+}
+
+export function resolveProtectedConvexQueryState(
+  isPending: boolean,
+  hasSession: boolean,
+): ProtectedConvexQueryState {
+  return resolveAuthSessionRouteState(isPending, hasSession) === 'app' ? 'query' : 'skip';
 }

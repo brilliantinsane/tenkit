@@ -4,6 +4,7 @@ import {
   isGeneratedNodeBackend,
   resolveGeneratedAppOptions,
   type GeneratedAuth,
+  type GeneratedBackend,
   type GeneratedDatabase,
   type RawGeneratedAppOptions,
 } from '@tenkit/types/generated-app-option-definitions';
@@ -176,6 +177,7 @@ function expectedWrittenTree(selection: GeneratedProjectVerificationSelection): 
 
 function expectedServerWorkspaceScripts(
   packageManager: GeneratedProjectPackageManager,
+  backend: GeneratedBackend,
   auth: GeneratedAuth,
   database: GeneratedDatabase,
 ): Readonly<
@@ -201,7 +203,7 @@ function expectedServerWorkspaceScripts(
         ? 'npm --prefix packages/auth run'
         : 'bun --cwd packages/auth run';
   const hasDatabaseWorkspace = database !== 'none';
-  const hasAuthWorkspace = auth === 'better-auth';
+  const hasAuthWorkspace = auth === 'better-auth' && isGeneratedNodeBackend(backend);
 
   return {
     build: `${hasDatabaseWorkspace ? `${databaseRunCommand} build && ` : ''}${hasAuthWorkspace ? `${authRunCommand} build && ` : ''}${serverRunCommand} build`,
@@ -266,7 +268,7 @@ async function inspectWrittenGeneratedProject(
 
   const expectedTypecheck =
     resolvedSelection.generatedAppOptions.backend !== 'none'
-      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager, resolvedSelection.generatedAppOptions.auth, resolvedSelection.generatedAppOptions.database).typecheck}`
+      ? `tsc --noEmit --pretty false && ${expectedServerWorkspaceScripts(selection.packageManager, resolvedSelection.generatedAppOptions.backend, resolvedSelection.generatedAppOptions.auth, resolvedSelection.generatedAppOptions.database).typecheck}`
       : 'tsc --noEmit --pretty false';
   if (manifest.scripts.typecheck !== expectedTypecheck) {
     throw new Error('The generated project package manifest has no canonical typecheck command.');
@@ -277,6 +279,7 @@ async function inspectWrittenGeneratedProject(
   if (profile === 'node-server') {
     const expectedScripts = expectedServerWorkspaceScripts(
       selection.packageManager,
+      resolvedSelection.generatedAppOptions.backend,
       resolvedSelection.generatedAppOptions.auth,
       resolvedSelection.generatedAppOptions.database,
     );

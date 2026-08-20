@@ -47,6 +47,14 @@ test('generates Convex-owned Better Auth for every Setup Type without SQL artifa
       assert.match(readVirtualText(tree, 'apps/server/convex/auth.ts'), /authComponent\.adapter/);
       assert.match(readVirtualText(tree, 'apps/server/convex/businessProfiles.ts'), /getAuthUser/);
       assert.match(readVirtualText(tree, 'src/auth/auth-client.ts'), /convexClient\(\)/);
+      assert.match(
+        readVirtualText(tree, 'src/business-data/use-business-profile.ts'),
+        /resolveProtectedConvexQueryState/,
+      );
+      assert.match(
+        readVirtualText(tree, 'src/business-data/use-business-profile.ts'),
+        /protectedQueryState === 'query'/,
+      );
       assert.match(readVirtualText(tree, 'src/app/_layout.tsx'), /ConvexBetterAuthProvider/);
       assert.match(generatedText, /Auth: better-auth/);
       assert.notMatch(generatedText, /DATABASE_URL|drizzle|prisma|packages\/db|packages\/auth/i);
