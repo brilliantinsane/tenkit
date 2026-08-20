@@ -2,7 +2,7 @@ import { {{#if isDrizzleOrm}}Inject, Injectable, {{/if}}Module{{#if isDrizzleOrm
 {{#if hasDatabaseWorkspace}}
 import { ConfigService } from '@nestjs/config';
 {{#if isDrizzleOrm}}
-import { createPostgresqlDrizzleDatabase, type TenkitDatabase } from '@tenkit/db';
+import { create{{#if isMysqlDatabase}}Mysql{{else}}Postgresql{{/if}}DrizzleDatabase, type TenkitDatabase } from '@tenkit/db';
 {{/if}}
 
 import type { ServerEnvironment } from '../server-environment.js';
@@ -43,7 +43,7 @@ class DatabaseShutdown implements OnApplicationShutdown {
       provide: TENKIT_DATABASE,
       inject: [ConfigService],
       useFactory(environment: ConfigService<ServerEnvironment, true>): TenkitDatabase {
-        return createPostgresqlDrizzleDatabase(
+        return create{{#if isMysqlDatabase}}Mysql{{else}}Postgresql{{/if}}DrizzleDatabase(
           environment.getOrThrow('DATABASE_URL', { infer: true }),
         );
       },
