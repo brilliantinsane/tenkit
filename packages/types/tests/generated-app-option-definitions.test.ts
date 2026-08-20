@@ -202,6 +202,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'drizzle',
     },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -397,6 +403,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     {
       backend: 'nestjs',
       auth: 'none',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
+    {
+      backend: 'nestjs',
+      auth: 'better-auth',
       database: 'mysql',
       orm: 'drizzle',
     },
@@ -735,7 +747,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
       backend: { status: 'selected', values: ['nestjs'], value: 'nestjs' },
       auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
       database: { status: 'selected', values: ['mysql'], value: 'mysql' },
-      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+      orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
     },
   );
 
@@ -856,6 +868,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:better-auth:postgresql:prisma',
     'nestjs:better-auth:postgresql:drizzle',
     'nestjs:better-auth:mysql:prisma',
+    'nestjs:better-auth:mysql:drizzle',
     'nestjs:clerk:none:none',
     'nestjs:clerk:postgresql:prisma',
     'nestjs:clerk:postgresql:drizzle',
