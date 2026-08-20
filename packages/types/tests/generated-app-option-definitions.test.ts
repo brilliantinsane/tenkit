@@ -184,6 +184,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'drizzle',
     },
+    {
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -364,6 +370,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'drizzle',
     },
+    {
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -446,6 +458,26 @@ test('resolves Express with Better Auth, MySQL, and Prisma', () => {
         auth: 'better-auth',
         database: 'mysql',
         orm: 'prisma',
+      },
+    },
+  );
+});
+
+test('resolves Express with Better Auth, MySQL, and Drizzle', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'drizzle',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'express',
+        auth: 'better-auth',
+        database: 'mysql',
+        orm: 'drizzle',
       },
     },
   );
@@ -608,7 +640,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
       backend: { status: 'selected', values: ['express'], value: 'express' },
       auth: { status: 'selected', values: ['better-auth'], value: 'better-auth' },
       database: { status: 'selected', values: ['mysql'], value: 'mysql' },
-      orm: { status: 'resolved', values: ['prisma'], value: 'prisma' },
+      orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
     },
   );
 
@@ -746,6 +778,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:better-auth:postgresql:prisma',
     'express:better-auth:postgresql:drizzle',
     'express:better-auth:mysql:prisma',
+    'express:better-auth:mysql:drizzle',
     'express:clerk:none:none',
     'express:clerk:postgresql:prisma',
     'express:clerk:postgresql:drizzle',

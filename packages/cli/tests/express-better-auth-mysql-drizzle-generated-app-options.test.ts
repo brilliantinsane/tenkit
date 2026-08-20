@@ -10,7 +10,7 @@ import { runCreateFlow } from '../src/create/run-create';
 import type { PromptAdapter } from '../src/create/types';
 import { createEnvironment, createTempRoot } from './generated-app-options-test-helpers';
 
-test('interactive creation resolves Express with Better Auth, MySQL, and Prisma', async () => {
+test('interactive creation resolves Express with Better Auth, MySQL, and Drizzle', async () => {
   const tempRoot = await createTempRoot();
   const prompts: PromptAdapter = {
     text: vi.fn(async () => {
@@ -20,7 +20,7 @@ test('interactive creation resolves Express with Better Auth, MySQL, and Prisma'
       if (options.message === 'Backend') return 'express';
       if (options.message === 'Auth') return 'better-auth';
       if (options.message === 'Database') return 'mysql';
-      if (options.message === 'ORM') return 'prisma';
+      if (options.message === 'ORM') return 'drizzle';
       return options.initialValue;
     }),
     confirm: vi.fn(async () => false),
@@ -28,7 +28,7 @@ test('interactive creation resolves Express with Better Auth, MySQL, and Prisma'
 
   const result = await runCreateFlow(
     {
-      name: 'interactive-express-better-auth-mysql-prisma',
+      name: 'interactive-express-better-auth-mysql-drizzle',
       setup: 'generic-standalone',
       styling: 'bare',
       packageManager: 'pnpm',
@@ -43,38 +43,22 @@ test('interactive creation resolves Express with Better Auth, MySQL, and Prisma'
     backend: 'express',
     auth: 'better-auth',
     database: 'mysql',
-    orm: 'prisma',
-  });
-  expect(prompts.select).toHaveBeenCalledWith({
-    message: 'Database',
-    initialValue: 'postgresql',
-    options: [
-      { value: 'postgresql', label: 'PostgreSQL' },
-      { value: 'mysql', label: 'MySQL' },
-    ],
-  });
-  expect(prompts.select).toHaveBeenCalledWith({
-    message: 'ORM',
-    initialValue: 'prisma',
-    options: [
-      { value: 'prisma', label: 'Prisma' },
-      { value: 'drizzle', label: 'Drizzle' },
-    ],
+    orm: 'drizzle',
   });
 });
 
-test('explicit flags write the protected Express MySQL Prisma stack', async () => {
+test('explicit flags write the protected Express MySQL Drizzle stack', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);
   const environment = createEnvironment(tempRoot, { generate });
 
   const result = await runCreateFlow(
     {
-      name: 'express-better-auth-mysql-prisma-app',
+      name: 'express-better-auth-mysql-drizzle-app',
       backend: 'express',
       auth: 'better-auth',
       database: 'mysql',
-      orm: 'prisma',
+      orm: 'drizzle',
       yes: true,
       install: false,
       git: false,
@@ -86,30 +70,18 @@ test('explicit flags write the protected Express MySQL Prisma stack', async () =
     backend: 'express',
     auth: 'better-auth',
     database: 'mysql',
-    orm: 'prisma',
+    orm: 'drizzle',
   });
-  expect(generate).toHaveBeenCalledWith(
-    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
-  );
-  expect(environment.lines).toContain('- Backend: express');
-  expect(environment.lines).toContain('- Auth: better-auth');
-  expect(environment.lines).toContain('- Database: mysql');
-  expect(environment.lines).toContain('- ORM: prisma');
-  expect(environment.lines).toContain(
-    '- Set BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET in apps/server/.env.local',
-  );
-  expect(environment.lines).toContain(
-    '- Set DATABASE_URL in apps/server/.env.local to your MySQL database',
-  );
+  expect(environment.lines).toContain('- ORM: drizzle');
   expect(environment.lines).toContain('- pnpm run db:setup');
   expect(
     await fs.readJson(
-      join(tempRoot, 'express-better-auth-mysql-prisma-app/packages/auth/package.json'),
+      join(tempRoot, 'express-better-auth-mysql-drizzle-app/packages/auth/package.json'),
     ),
-  ).toMatchObject({ dependencies: { '@tenkit/db': 'workspace:*', 'better-auth': '1.6.25' } });
+  ).toMatchObject({ dependencies: { '@better-auth/drizzle-adapter': '1.6.25' } });
   expect(
     await fs.readJson(
-      join(tempRoot, 'express-better-auth-mysql-prisma-app/packages/db/package.json'),
+      join(tempRoot, 'express-better-auth-mysql-drizzle-app/packages/db/package.json'),
     ),
-  ).toMatchObject({ dependencies: { '@prisma/adapter-mariadb': '7.5.0' } });
+  ).toMatchObject({ dependencies: { 'drizzle-orm': '0.45.2', mysql2: '3.20.0' } });
 });

@@ -8,6 +8,12 @@ import { Pool } from 'pg';
 {{/if}}
 
 import {
+  {{#if isBetterAuth}}
+  account,
+  session,
+  user,
+  verification,
+  {{/if}}
   appVariantRuntimeTenantAccess,
   appVariants,
   runtimeTenants,
@@ -54,7 +60,17 @@ export function {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createP
   const pool = createPool({ uri: validateMysqlDatabaseUrl(databaseUrl) });
   return drizzle({
     client: pool,
-    schema: { appVariantRuntimeTenantAccess, appVariants, runtimeTenants },
+    schema: {
+      {{#if isBetterAuth}}
+      account,
+      session,
+      user,
+      verification,
+      {{/if}}
+      appVariantRuntimeTenantAccess,
+      appVariants,
+      runtimeTenants,
+    },
     mode: 'default',
   });
   {{else}}

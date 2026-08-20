@@ -1,5 +1,86 @@
 {{#if isMysqlDatabase}}
-import { boolean, foreignKey, int, mysqlTable, primaryKey, varchar } from 'drizzle-orm/mysql-core';
+import { sql } from 'drizzle-orm';
+import {
+  boolean,
+  datetime,
+  foreignKey,
+  index,
+  int,
+  mysqlTable,
+  primaryKey,
+  uniqueIndex,
+  varchar,
+} from 'drizzle-orm/mysql-core';
+
+{{#if isBetterAuth}}
+const authText = (name: string) => varchar(name, { length: 191 });
+const authDate = (name: string) => datetime(name, { mode: 'date', fsp: 3 });
+
+export const user = mysqlTable(
+  'user',
+  {
+    id: authText('id').primaryKey(),
+    name: authText('name').notNull(),
+    email: authText('email').notNull(),
+    emailVerified: boolean('emailVerified').default(false).notNull(),
+    image: authText('image'),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [uniqueIndex('user_email_key').on(table.email)],
+);
+
+export const session = mysqlTable(
+  'session',
+  {
+    id: authText('id').primaryKey(),
+    expiresAt: authDate('expiresAt').notNull(),
+    token: authText('token').notNull(),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    ipAddress: authText('ipAddress'),
+    userAgent: authText('userAgent'),
+    userId: authText('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    uniqueIndex('session_token_key').on(table.token),
+    index('session_userId_idx').on(table.userId),
+  ],
+);
+
+export const account = mysqlTable(
+  'account',
+  {
+    id: authText('id').primaryKey(),
+    accountId: authText('accountId').notNull(),
+    providerId: authText('providerId').notNull(),
+    userId: authText('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: authText('accessToken'),
+    refreshToken: authText('refreshToken'),
+    idToken: authText('idToken'),
+    accessTokenExpiresAt: authDate('accessTokenExpiresAt'),
+    refreshTokenExpiresAt: authDate('refreshTokenExpiresAt'),
+    scope: authText('scope'),
+    password: authText('password'),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [index('account_userId_idx').on(table.userId)],
+);
+
+export const verification = mysqlTable(
+  'verification',
+  {
+    id: authText('id').primaryKey(),
+    identifier: authText('identifier').notNull(),
+    value: authText('value').notNull(),
+    expiresAt: authDate('expiresAt').notNull(),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [index('verification_identifier_idx').on(table.identifier)],
+);
+{{/if}}
 
 export const appVariants = mysqlTable('app_variant', {
   appVariantId: int('appVariantId').primaryKey(),

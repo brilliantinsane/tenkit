@@ -1,4 +1,58 @@
 {{#if isMysqlDatabase}}
+{{#if isBetterAuth}}
+CREATE TABLE `account` (
+	`id` varchar(191) NOT NULL,
+	`accountId` varchar(191) NOT NULL,
+	`providerId` varchar(191) NOT NULL,
+	`userId` varchar(191) NOT NULL,
+	`accessToken` varchar(191),
+	`refreshToken` varchar(191),
+	`idToken` varchar(191),
+	`accessTokenExpiresAt` datetime(3),
+	`refreshTokenExpiresAt` datetime(3),
+	`scope` varchar(191),
+	`password` varchar(191),
+	`createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`updatedAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	CONSTRAINT `account_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `session` (
+	`id` varchar(191) NOT NULL,
+	`expiresAt` datetime(3) NOT NULL,
+	`token` varchar(191) NOT NULL,
+	`createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`updatedAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`ipAddress` varchar(191),
+	`userAgent` varchar(191),
+	`userId` varchar(191) NOT NULL,
+	CONSTRAINT `session_id` PRIMARY KEY(`id`),
+	CONSTRAINT `session_token_key` UNIQUE(`token`)
+);
+--> statement-breakpoint
+CREATE TABLE `user` (
+	`id` varchar(191) NOT NULL,
+	`name` varchar(191) NOT NULL,
+	`email` varchar(191) NOT NULL,
+	`emailVerified` boolean NOT NULL DEFAULT false,
+	`image` varchar(191),
+	`createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`updatedAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	CONSTRAINT `user_id` PRIMARY KEY(`id`),
+	CONSTRAINT `user_email_key` UNIQUE(`email`)
+);
+--> statement-breakpoint
+CREATE TABLE `verification` (
+	`id` varchar(191) NOT NULL,
+	`identifier` varchar(191) NOT NULL,
+	`value` varchar(191) NOT NULL,
+	`expiresAt` datetime(3) NOT NULL,
+	`createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	`updatedAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+	CONSTRAINT `verification_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+{{/if}}
 CREATE TABLE `app_variant_runtime_tenant_access` (
 	`appVariantId` int NOT NULL,
 	`runtimeTenantId` int NOT NULL,
@@ -24,6 +78,14 @@ CREATE TABLE `runtime_tenant` (
 --> statement-breakpoint
 ALTER TABLE `app_variant_runtime_tenant_access` ADD CONSTRAINT `app_variant_access_app_variant_fk` FOREIGN KEY (`appVariantId`) REFERENCES `app_variant`(`appVariantId`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `app_variant_runtime_tenant_access` ADD CONSTRAINT `app_variant_access_runtime_tenant_fk` FOREIGN KEY (`runtimeTenantId`) REFERENCES `runtime_tenant`(`runtimeTenantId`) ON DELETE cascade ON UPDATE no action;
+{{#if isBetterAuth}}
+--> statement-breakpoint
+ALTER TABLE `account` ADD CONSTRAINT `account_userId_user_id_fk` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `session` ADD CONSTRAINT `session_userId_user_id_fk` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX `account_userId_idx` ON `account` (`userId`);--> statement-breakpoint
+CREATE INDEX `session_userId_idx` ON `session` (`userId`);--> statement-breakpoint
+CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);
+{{/if}}
 {{else}}
 {{#if isBetterAuth}}
 CREATE TABLE "account" (

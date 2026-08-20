@@ -50,7 +50,7 @@ export function createTenkitAuth({
     appName: {{projectNameStringLiteral}},
     baseURL: baseUrl,
     secret,
-    database: {{#if isDrizzleOrm}}drizzleAdapter(database, { provider: 'pg', schema }){{else}}prismaAdapter(database, { provider: '{{#if isMysqlDatabase}}mysql{{else}}postgresql{{/if}}' }){{/if}},
+    database: {{#if isDrizzleOrm}}drizzleAdapter(database, { provider: '{{#if isMysqlDatabase}}mysql{{else}}pg{{/if}}', schema }){{else}}prismaAdapter(database, { provider: '{{#if isMysqlDatabase}}mysql{{else}}postgresql{{/if}}' }){{/if}},
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
