@@ -178,6 +178,12 @@ test('owns one supported-combinations list containing the released service slice
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -352,6 +358,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
       database: 'mysql',
       orm: 'prisma',
     },
+    {
+      backend: 'express',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'drizzle',
+    },
   ]);
 });
 
@@ -394,6 +406,26 @@ test('resolves Express with MySQL and Prisma without Auth', () => {
         auth: 'none',
         database: 'mysql',
         orm: 'prisma',
+      },
+    },
+  );
+});
+
+test('resolves Express with MySQL and Drizzle without Auth', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'express',
+      auth: 'none',
+      database: 'mysql',
+      orm: 'drizzle',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'express',
+        auth: 'none',
+        database: 'mysql',
+        orm: 'drizzle',
       },
     },
   );
@@ -515,6 +547,21 @@ test('derives dependency-aware partial choices from the same supported list', ()
       backend: { status: 'selected', values: ['express'], value: 'express' },
       auth: { status: 'selected', values: ['none'], value: 'none' },
       database: { status: 'selected', values: ['postgresql'], value: 'postgresql' },
+      orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
+    },
+  );
+
+  assert.deepEqual(
+    getGeneratedAppOptionChoiceState({
+      backend: 'express',
+      auth: 'none',
+      database: 'mysql',
+    }),
+    {
+      status: 'available',
+      backend: { status: 'selected', values: ['express'], value: 'express' },
+      auth: { status: 'selected', values: ['none'], value: 'none' },
+      database: { status: 'selected', values: ['mysql'], value: 'mysql' },
       orm: { status: 'selectable', values: ['prisma', 'drizzle'] },
     },
   );
@@ -695,6 +742,7 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'express:none:postgresql:prisma',
     'express:none:postgresql:drizzle',
     'express:none:mysql:prisma',
+    'express:none:mysql:drizzle',
     'express:better-auth:postgresql:prisma',
     'express:better-auth:postgresql:drizzle',
     'express:better-auth:mysql:prisma',

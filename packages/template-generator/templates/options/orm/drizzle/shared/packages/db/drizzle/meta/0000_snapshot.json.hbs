@@ -1,3 +1,155 @@
+{{#if isMysqlDatabase}}
+{
+  "version": "5",
+  "dialect": "mysql",
+  "id": "5fb3e743-e2d5-4a0e-84ea-6592d6b5cfd6",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "app_variant_runtime_tenant_access": {
+      "name": "app_variant_runtime_tenant_access",
+      "columns": {
+        "appVariantId": {
+          "name": "appVariantId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "runtimeTenantId": {
+          "name": "runtimeTenantId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "isDefault": {
+          "name": "isDefault",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "app_variant_access_app_variant_fk": {
+          "name": "app_variant_access_app_variant_fk",
+          "tableFrom": "app_variant_runtime_tenant_access",
+          "tableTo": "app_variant",
+          "columnsFrom": ["appVariantId"],
+          "columnsTo": ["appVariantId"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "app_variant_access_runtime_tenant_fk": {
+          "name": "app_variant_access_runtime_tenant_fk",
+          "tableFrom": "app_variant_runtime_tenant_access",
+          "tableTo": "runtime_tenant",
+          "columnsFrom": ["runtimeTenantId"],
+          "columnsTo": ["runtimeTenantId"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "app_variant_access_pk": {
+          "name": "app_variant_access_pk",
+          "columns": ["appVariantId", "runtimeTenantId"]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "app_variant": {
+      "name": "app_variant",
+      "columns": {
+        "appVariantId": {
+          "name": "appVariantId",
+          "type": "int",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(191)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "standaloneRuntimeTenantId": {
+          "name": "standaloneRuntimeTenantId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "profileName": {
+          "name": "profileName",
+          "type": "varchar(191)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "profileDescription": {
+          "name": "profileDescription",
+          "type": "varchar(191)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "runtime_tenant": {
+      "name": "runtime_tenant",
+      "columns": {
+        "runtimeTenantId": {
+          "name": "runtimeTenantId",
+          "type": "int",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "profileName": {
+          "name": "profileName",
+          "type": "varchar(191)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "profileDescription": {
+          "name": "profileDescription",
+          "type": "varchar(191)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {},
+    "indexes": {}
+  }
+}
+{{else}}
 {
   "id": "d1ba9e67-c578-467d-b9fb-7135629d836f",
   "prevId": "00000000-0000-0000-0000-000000000000",
@@ -535,3 +687,4 @@
     "tables": {}
   }
 }
+{{/if}}

@@ -24,11 +24,17 @@
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "dotenv": "^17.4.2",
+    {{#if isMysqlDatabase}}
+    "mysql2": "3.20.0"
+    {{else}}
     "pg": "8.16.3"
+    {{/if}}
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
+    {{#unless isMysqlDatabase}}
     "@types/pg": "8.16.0",
+    {{/unless}}
     "drizzle-kit": "0.31.10",
     "tsx": "^4.22.4",
     "typescript": "~6.0.3",

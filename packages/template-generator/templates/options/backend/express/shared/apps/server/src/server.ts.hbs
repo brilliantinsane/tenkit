@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 {{#if hasDatabaseWorkspace}}
-import { createBusinessDataRepository{{#if isDrizzleOrm}}, createPostgresqlDrizzleDatabase{{/if}} } from '@tenkit/db';
+import { createBusinessDataRepository{{#if isDrizzleOrm}}, {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}{{/if}} } from '@tenkit/db';
 {{/if}}
 {{#if isBetterAuth}}
 import { createTenkitAuth } from '@tenkit/auth';
@@ -14,7 +14,7 @@ config({ path: '.env.local', quiet: true });
 const environment = readServerEnvironment();
 {{#if hasDatabaseWorkspace}}
 {{#if isDrizzleOrm}}
-const database = createPostgresqlDrizzleDatabase(environment.DATABASE_URL);
+const database = {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}(environment.DATABASE_URL);
 const businessDataRepository = createBusinessDataRepository(database);
 {{else}}
 const businessDataRepository = createBusinessDataRepository(environment.DATABASE_URL);

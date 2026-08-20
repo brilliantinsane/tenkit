@@ -1,3 +1,45 @@
+{{#if isMysqlDatabase}}
+import { boolean, foreignKey, int, mysqlTable, primaryKey, varchar } from 'drizzle-orm/mysql-core';
+
+export const appVariants = mysqlTable('app_variant', {
+  appVariantId: int('appVariantId').primaryKey(),
+  role: varchar('role', { length: 191 }),
+  standaloneRuntimeTenantId: int('standaloneRuntimeTenantId'),
+  profileName: varchar('profileName', { length: 191 }),
+  profileDescription: varchar('profileDescription', { length: 191 }),
+});
+
+export const runtimeTenants = mysqlTable('runtime_tenant', {
+  runtimeTenantId: int('runtimeTenantId').primaryKey(),
+  profileName: varchar('profileName', { length: 191 }).notNull(),
+  profileDescription: varchar('profileDescription', { length: 191 }).notNull(),
+});
+
+export const appVariantRuntimeTenantAccess = mysqlTable(
+  'app_variant_runtime_tenant_access',
+  {
+    appVariantId: int('appVariantId').notNull(),
+    runtimeTenantId: int('runtimeTenantId').notNull(),
+    isDefault: boolean('isDefault').default(false).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'app_variant_access_pk',
+      columns: [table.appVariantId, table.runtimeTenantId],
+    }),
+    foreignKey({
+      name: 'app_variant_access_app_variant_fk',
+      columns: [table.appVariantId],
+      foreignColumns: [appVariants.appVariantId],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'app_variant_access_runtime_tenant_fk',
+      columns: [table.runtimeTenantId],
+      foreignColumns: [runtimeTenants.runtimeTenantId],
+    }).onDelete('cascade'),
+  ],
+);
+{{else}}
 import {
   boolean,
   foreignKey,
@@ -114,3 +156,4 @@ export const appVariantRuntimeTenantAccess = pgTable(
     }).onDelete('cascade'),
   ],
 );
+{{/if}}

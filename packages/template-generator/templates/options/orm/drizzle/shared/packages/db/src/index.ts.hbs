@@ -1,8 +1,14 @@
 export {
   createBusinessDataRepository,
+  {{#if isMysqlDatabase}}
+  createMysqlDrizzleDatabase,
+  inspectMysqlTableNames,
+  validateMysqlDatabaseUrl,
+  {{else}}
   createPostgresqlDrizzleDatabase,
   inspectPostgresqlTableNames,
   validatePostgresqlDatabaseUrl,
+  {{/if}}
   type AppVariantBusinessData,
   type BusinessDataRepository,
   type RuntimeTenantBusinessData,

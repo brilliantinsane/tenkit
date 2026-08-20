@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 
-import { createPostgresqlDrizzleDatabase } from './repository.js';
+import { {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}} } from './repository.js';
 import {
   appVariantRuntimeTenantAccess,
   appVariants,
@@ -16,10 +16,10 @@ config({ path: '../../apps/server/.env.local', quiet: true });
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required to seed PostgreSQL Starter Data.');
+  throw new Error('DATABASE_URL is required to seed {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} Starter Data.');
 }
 
-const database = createPostgresqlDrizzleDatabase(databaseUrl);
+const database = {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}(databaseUrl);
 
 try {
   await database.transaction(async (transaction) => {

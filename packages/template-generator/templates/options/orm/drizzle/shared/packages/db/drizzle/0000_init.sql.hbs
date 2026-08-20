@@ -1,3 +1,30 @@
+{{#if isMysqlDatabase}}
+CREATE TABLE `app_variant_runtime_tenant_access` (
+	`appVariantId` int NOT NULL,
+	`runtimeTenantId` int NOT NULL,
+	`isDefault` boolean NOT NULL DEFAULT false,
+	CONSTRAINT `app_variant_access_pk` PRIMARY KEY(`appVariantId`,`runtimeTenantId`)
+);
+--> statement-breakpoint
+CREATE TABLE `app_variant` (
+	`appVariantId` int NOT NULL,
+	`role` varchar(191),
+	`standaloneRuntimeTenantId` int,
+	`profileName` varchar(191),
+	`profileDescription` varchar(191),
+	CONSTRAINT `app_variant_appVariantId` PRIMARY KEY(`appVariantId`)
+);
+--> statement-breakpoint
+CREATE TABLE `runtime_tenant` (
+	`runtimeTenantId` int NOT NULL,
+	`profileName` varchar(191) NOT NULL,
+	`profileDescription` varchar(191) NOT NULL,
+	CONSTRAINT `runtime_tenant_runtimeTenantId` PRIMARY KEY(`runtimeTenantId`)
+);
+--> statement-breakpoint
+ALTER TABLE `app_variant_runtime_tenant_access` ADD CONSTRAINT `app_variant_access_app_variant_fk` FOREIGN KEY (`appVariantId`) REFERENCES `app_variant`(`appVariantId`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `app_variant_runtime_tenant_access` ADD CONSTRAINT `app_variant_access_runtime_tenant_fk` FOREIGN KEY (`runtimeTenantId`) REFERENCES `runtime_tenant`(`runtimeTenantId`) ON DELETE cascade ON UPDATE no action;
+{{else}}
 {{#if isBetterAuth}}
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -84,4 +111,5 @@ CREATE INDEX "session_userId_idx" ON "session" USING btree ("userId");
 CREATE UNIQUE INDEX "user_email_key" ON "user" USING btree ("email");
 --> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");
+{{/if}}
 {{/if}}

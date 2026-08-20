@@ -1,10 +1,10 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "{{#if isMysqlDatabase}}mysql{{else}}postgresql{{/if}}",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
+      "version": "{{#if isMysqlDatabase}}5{{else}}7{{/if}}",
       "when": 1786608000000,
       "tag": "0000_init",
       "breakpoints": true

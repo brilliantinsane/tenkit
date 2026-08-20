@@ -1,6 +1,11 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq{{#unless isMysqlDatabase}}, sql{{/unless}} } from 'drizzle-orm';
+{{#if isMysqlDatabase}}
+import { drizzle } from 'drizzle-orm/mysql2';
+import { createPool, type RowDataPacket } from 'mysql2/promise';
+{{else}}
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+{{/if}}
 
 import {
   appVariantRuntimeTenantAccess,
@@ -18,32 +23,47 @@ export type BusinessDataRepository = {
   close(): Promise<void>;
 };
 
-export function validatePostgresqlDatabaseUrl(databaseUrl: string): string {
+export function {{#if isMysqlDatabase}}validateMysqlDatabaseUrl{{else}}validatePostgresqlDatabaseUrl{{/if}}(databaseUrl: string): string {
   let parsedUrl: URL;
 
   try {
     parsedUrl = new URL(databaseUrl);
   } catch {
-    throw new Error('DATABASE_URL must be a valid PostgreSQL URL.');
+    throw new Error('DATABASE_URL must be a valid {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} URL.');
   }
 
+  {{#if isMysqlDatabase}}
+  if (parsedUrl.protocol !== 'mysql:') {
+    throw new Error('DATABASE_URL must use the mysql protocol.');
+  }
+  {{else}}
   if (parsedUrl.protocol !== 'postgresql:' && parsedUrl.protocol !== 'postgres:') {
     throw new Error('DATABASE_URL must use the postgresql or postgres protocol.');
   }
+  {{/if}}
 
   if (!parsedUrl.hostname || parsedUrl.pathname === '/' || parsedUrl.pathname.length === 0) {
-    throw new Error('DATABASE_URL must identify a PostgreSQL host and database.');
+    throw new Error('DATABASE_URL must identify a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} host and database.');
   }
 
   return databaseUrl;
 }
 
-export function createPostgresqlDrizzleDatabase(databaseUrl: string) {
+export function {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}(databaseUrl: string) {
+  {{#if isMysqlDatabase}}
+  const pool = createPool({ uri: validateMysqlDatabaseUrl(databaseUrl) });
+  return drizzle({
+    client: pool,
+    schema: { appVariantRuntimeTenantAccess, appVariants, runtimeTenants },
+    mode: 'default',
+  });
+  {{else}}
   const pool = new Pool({ connectionString: validatePostgresqlDatabaseUrl(databaseUrl) });
   return drizzle({ client: pool });
+  {{/if}}
 }
 
-export type TenkitDatabase = ReturnType<typeof createPostgresqlDrizzleDatabase>;
+export type TenkitDatabase = ReturnType<typeof {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}>;
 
 export function createBusinessDataRepository(database: TenkitDatabase): BusinessDataRepository {
   return {
@@ -79,10 +99,16 @@ export function createBusinessDataRepository(database: TenkitDatabase): Business
   };
 }
 
-export async function inspectPostgresqlTableNames(databaseUrl: string): Promise<string[]> {
-  const database = createPostgresqlDrizzleDatabase(databaseUrl);
+export async function {{#if isMysqlDatabase}}inspectMysqlTableNames{{else}}inspectPostgresqlTableNames{{/if}}(databaseUrl: string): Promise<string[]> {
+  const database = {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}(databaseUrl);
 
   try {
+    {{#if isMysqlDatabase}}
+    const [rows] = await database.$client.query<(RowDataPacket & { tableName: string })[]>(
+      'SELECT table_name AS tableName FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name',
+    );
+    return rows.map(({ tableName }) => tableName);
+    {{else}}
     const rows = await database.execute<{ table_name: string }>(sql`
       SELECT table_name
       FROM information_schema.tables
@@ -90,6 +116,7 @@ export async function inspectPostgresqlTableNames(databaseUrl: string): Promise<
       ORDER BY table_name
     `);
     return rows.rows.map(({ table_name: tableName }) => tableName);
+    {{/if}}
   } finally {
     await database.$client.end();
   }
