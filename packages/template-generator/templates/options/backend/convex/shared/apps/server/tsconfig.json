@@ -10,7 +10,8 @@
     "noEmit": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "ESNext"
+    "target": "ESNext",
+    "types": ["node"]
   },
   "include": ["convex/**/*.ts", "tests/**/*.ts"]
 }

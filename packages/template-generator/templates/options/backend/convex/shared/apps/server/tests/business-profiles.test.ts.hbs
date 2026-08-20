@@ -17,6 +17,15 @@ test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async 
   const counts = await convex.mutation(internal.starterData.seed, {});
   await expect(convex.query(api.health.check, {})).resolves.toEqual({ status: 'ok' });
 
+{{#if isBetterAuth}}
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    }),
+  ).rejects.toThrow(/Unauthenticated/);
+{{else}}
+
 {{#ifSetupType 'white-label-apps'}}
   expect(counts).toEqual({ appVariants: 2, runtimeTenants: 0, runtimeTenantAccessGrants: 0 });
   for (const [appVariantId, name] of [
@@ -152,4 +161,5 @@ test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async 
       await expect(ctx.db.query(table).collect()).resolves.toEqual([]);
     }
   });
+{{/if}}
 });

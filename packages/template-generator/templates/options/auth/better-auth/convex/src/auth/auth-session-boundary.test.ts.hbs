@@ -1,0 +1,8 @@
+import { expect, test } from 'vitest';
+import { resolveAuthSessionRouteState } from './auth-session-boundary';
+
+test('restored Better Auth session state gates protected app routes', () => {
+  expect(resolveAuthSessionRouteState(true, false)).toBe('loading');
+  expect(resolveAuthSessionRouteState(false, false)).toBe('auth');
+  expect(resolveAuthSessionRouteState(false, true)).toBe('app');
+});

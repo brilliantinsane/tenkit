@@ -90,6 +90,10 @@ cp apps/server/.env.example apps/server/.env.local
 
 The Convex CLI writes deployment metadata to the ignored `apps/server/.env.local`. Set `EXPO_PUBLIC_CONVEX_URL` in the root `.env.local` to that deployment's public HTTPS URL, then seed Convex-owned Starter Data and run Expo with Convex sync:
 
+{{#if isBetterAuth}}
+Better Auth runs inside the Convex Better Auth component. Set `EXPO_PUBLIC_CONVEX_SITE_URL` in the root `.env.local` from the deployment's site URL. Set `SITE_URL` to that same URL and generate `BETTER_AUTH_SECRET` only in the Convex deployment environment. Registration creates an immediate SecureStore-backed session; never commit either local environment file or the secret.
+{{/if}}
+
 ```bash
 {{packageManagerRunCommand}} convex:seed
 {{packageManagerRunCommand}} dev

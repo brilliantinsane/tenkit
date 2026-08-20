@@ -68,6 +68,12 @@ export const SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS = Object.freeze([
     orm: 'none',
   } as const satisfies GeneratedAppOptions),
   Object.freeze({
+    backend: 'convex',
+    auth: 'better-auth',
+    database: 'none',
+    orm: 'none',
+  } as const satisfies GeneratedAppOptions),
+  Object.freeze({
     backend: 'express',
     auth: 'clerk',
     database: 'none',

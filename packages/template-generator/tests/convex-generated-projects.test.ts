@@ -90,6 +90,7 @@ test('generates the exact Auth-free Convex-managed shape for every Setup Type', 
 
     assert.deepEqual(serverManifest.dependencies, { convex: '1.43.0' });
     assert.deepEqual(serverManifest.devDependencies, {
+      '@types/node': '^25.9.3',
       'convex-test': '0.0.55',
       typescript: '~6.0.3',
       vitest: '^4.1.9',

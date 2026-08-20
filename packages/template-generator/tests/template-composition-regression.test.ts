@@ -39,7 +39,7 @@ test('Template source paths use ADR 0009 owners', () => {
       return false;
     }
 
-    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind|unistyles)\//.test(path);
+    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind|unistyles|convex)\//.test(path);
   });
 
   assert.deepEqual(unexpectedPaths, []);
@@ -65,6 +65,18 @@ test('Template source paths use ADR 0009 owners', () => {
       'runtime-tenants/shared/package.json.hbs',
       'white-label/shared/package.json.hbs',
     ],
+  );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/better-auth/convex/'))
+      .map((path) => path.replace('options/auth/better-auth/convex/', ''))
+      .filter(
+        (path) =>
+          !path.startsWith('apps/server/convex/') &&
+          !path.startsWith('src/app/(auth)/') &&
+          !path.startsWith('src/auth/'),
+      ),
+    [],
   );
 
   assert.deepEqual(
@@ -137,7 +149,8 @@ test('Template source paths use ADR 0009 owners', () => {
         path,
       ) ||
         path.startsWith('options/auth/clerk/shared/src/app/(auth)/') ||
-        path.startsWith('options/auth/better-auth/shared/src/app/(auth)/'),
+        path.startsWith('options/auth/better-auth/shared/src/app/(auth)/') ||
+        path.startsWith('options/auth/better-auth/convex/src/app/(auth)/'),
     );
   }
 });

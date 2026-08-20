@@ -1,0 +1,14 @@
+import { Stack } from 'expo-router';
+import { type PropsWithChildren } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { authClient } from './auth-client';
+import { resolveAuthSessionRouteState } from './auth-session-boundary';
+
+export function BetterAuthBoundary({ children }: PropsWithChildren) {
+  const { data: session, isPending } = authClient.useSession();
+  if (resolveAuthSessionRouteState(isPending, session !== null) === 'loading') {
+    return <View style=\{{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
+  }
+  if (session !== null) return children;
+  return <Stack screenOptions=\{{ headerShown: false }}><Stack.Screen name="(auth)" /></Stack>;
+}

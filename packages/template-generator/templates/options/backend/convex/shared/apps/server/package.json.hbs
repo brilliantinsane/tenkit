@@ -12,9 +12,15 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    {{#if isBetterAuth}}
+    "@better-auth/expo": "1.6.25",
+    "@convex-dev/better-auth": "0.12.5",
+    "better-auth": "1.6.25",
+    {{/if}}
     "convex": "1.43.0"
   },
   "devDependencies": {
+    "@types/node": "^25.9.3",
     "convex-test": "0.0.55",
     "typescript": "~6.0.3",
     "vitest": "^4.1.9"

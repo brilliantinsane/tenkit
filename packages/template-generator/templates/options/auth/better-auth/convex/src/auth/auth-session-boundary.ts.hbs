@@ -1,0 +1,5 @@
+export type AuthSessionRouteState = 'loading' | 'auth' | 'app';
+
+export function resolveAuthSessionRouteState(isPending: boolean, hasSession: boolean): AuthSessionRouteState {
+  return isPending ? 'loading' : hasSession ? 'app' : 'auth';
+}

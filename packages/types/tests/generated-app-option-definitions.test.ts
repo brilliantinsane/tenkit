@@ -32,6 +32,26 @@ test('identifies only the generated Node Backends', () => {
   assert.equal(isGeneratedNodeBackend('convex'), false);
 });
 
+test('resolves Convex Better Auth with Convex-managed persistence', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'convex',
+      auth: 'better-auth',
+      database: 'none',
+      orm: 'none',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'convex',
+        auth: 'better-auth',
+        database: 'none',
+        orm: 'none',
+      },
+    },
+  );
+});
+
 test('owns one supported-combinations list containing the released service slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
@@ -55,6 +75,12 @@ test('owns one supported-combinations list containing the released service slice
     {
       backend: 'convex',
       auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'convex',
+      auth: 'better-auth',
       database: 'none',
       orm: 'none',
     },
@@ -265,6 +291,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     {
       backend: 'convex',
       auth: 'none',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'convex',
+      auth: 'better-auth',
       database: 'none',
       orm: 'none',
     },
@@ -635,7 +667,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({}), {
     status: 'available',
     backend: { status: 'selectable', values: ['none', 'express', 'nestjs', 'convex'] },
-    auth: { status: 'selectable', values: ['none', 'clerk', 'better-auth'] },
+    auth: { status: 'selectable', values: ['none', 'better-auth', 'clerk'] },
     database: { status: 'selectable', values: ['none', 'postgresql', 'mysql'] },
     orm: { status: 'selectable', values: ['none', 'prisma', 'drizzle'] },
   });
@@ -834,7 +866,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'convex' }), {
     status: 'available',
     backend: { status: 'selected', values: ['convex'], value: 'convex' },
-    auth: { status: 'resolved', values: ['none'], value: 'none' },
+    auth: { status: 'selectable', values: ['none', 'better-auth'] },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
@@ -887,5 +919,6 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:clerk:mysql:prisma',
     'nestjs:clerk:mysql:drizzle',
     'convex:none:none:none',
+    'convex:better-auth:none:none',
   ]);
 });

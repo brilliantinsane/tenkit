@@ -62,6 +62,12 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
     output.log('- cp apps/server/.env.example apps/server/.env.local');
     output.log(`- ${formatRunCommand(result.packageManager, 'convex:sync')}`);
     output.log('- Set EXPO_PUBLIC_CONVEX_URL in .env.local to the synced deployment HTTPS URL');
+    if (result.generatedAppOptions.auth === 'better-auth') {
+      output.log(
+        '- Set EXPO_PUBLIC_CONVEX_SITE_URL in .env.local to the synced deployment site URL',
+      );
+      output.log('- Set SITE_URL and BETTER_AUTH_SECRET only in the Convex deployment environment');
+    }
     output.log(`- ${formatRunCommand(result.packageManager, 'convex:seed')}`);
     output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
   }

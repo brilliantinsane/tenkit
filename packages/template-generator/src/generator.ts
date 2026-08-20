@@ -205,7 +205,9 @@ function normalizeTemplateContext({
       setupTypeDefinition,
     }),
     hasAuth: generatedAppOptions.auth !== 'none',
-    hasAuthWorkspace: generatedAppOptions.auth === 'better-auth',
+    hasAuthWorkspace:
+      generatedAppOptions.auth === 'better-auth' &&
+      isGeneratedNodeBackend(generatedAppOptions.backend),
     hasDatabaseWorkspace: generatedAppOptions.database !== 'none',
     hasServerWorkspace: generatedAppOptions.backend !== 'none',
     isBetterAuth: generatedAppOptions.auth === 'better-auth',
@@ -280,9 +282,11 @@ function readProjectTemplateTree({
       : [];
   const authSharedTree = context.isClerkAuth
     ? readTemplateTree('options/auth/clerk/shared', context)
-    : context.isBetterAuth
+    : context.isBetterAuth && context.isNodeBackend
       ? readTemplateTree('options/auth/better-auth/shared', context)
-      : [];
+      : context.isBetterAuth && context.isConvexBackend
+        ? readTemplateTree('options/auth/better-auth/convex', context)
+        : [];
   const authStylingTree = context.isClerkAuth
     ? readTemplateTree(`options/auth/clerk/${context.stylingChoice}`, context)
     : context.isBetterAuth

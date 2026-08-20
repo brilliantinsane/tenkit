@@ -12,6 +12,10 @@ import { ActivityIndicator, View } from 'react-native';
 
 {{#if isConvexBackend}}
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+{{#if isBetterAuth}}
+import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
+import { convexBetterAuthClient } from '@/auth/auth-client';
+{{/if}}
 
 function resolveConvexDeploymentUrl(): string {
   const deploymentUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -87,7 +91,11 @@ function AuthenticatedRootLayout({ dark }: { dark: boolean }) {
 
   return (
     {{#if isConvexBackend}}
+    {{#if isBetterAuth}}
+    <ConvexBetterAuthProvider authClient={convexBetterAuthClient} client={convexClient}>
+    {{else}}
     <ConvexProvider client={convexClient}>
+    {{/if}}
     {{/if}}
     <>
       <ThemeProvider value={navigationTheme}>
@@ -118,7 +126,11 @@ function AuthenticatedRootLayout({ dark }: { dark: boolean }) {
       <StatusBar style={dark ? 'light' : 'dark'} />
     </>
     {{#if isConvexBackend}}
+    {{#if isBetterAuth}}
+    </ConvexBetterAuthProvider>
+    {{else}}
     </ConvexProvider>
+    {{/if}}
     {{/if}}
   );
 }

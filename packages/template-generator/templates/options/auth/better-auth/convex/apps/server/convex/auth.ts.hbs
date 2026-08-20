@@ -1,0 +1,31 @@
+import { createClient, type GenericCtx } from '@convex-dev/better-auth';
+import { convex } from '@convex-dev/better-auth/plugins';
+import { expo } from '@better-auth/expo';
+import { betterAuth, type BetterAuthOptions } from 'better-auth/minimal';
+
+import { components } from './_generated/api';
+import type { DataModel } from './_generated/dataModel';
+import authConfig from './auth.config';
+
+export const authComponent = createClient<DataModel>(components.betterAuth);
+
+export function createAuth(ctx: GenericCtx<DataModel>) {
+  const siteUrl = process.env.SITE_URL;
+
+  if (!siteUrl) {
+    throw new Error('SITE_URL is required in the Convex deployment environment.');
+  }
+
+  return betterAuth({
+    baseURL: siteUrl,
+    trustedOrigins: [
+{{#each appVariants}}
+      '{{scheme}}://',
+      '{{scheme}}://*',
+{{/each}}
+    ],
+    database: authComponent.adapter(ctx),
+    emailAndPassword: { enabled: true, requireEmailVerification: false },
+    plugins: [expo(), convex({ authConfig })],
+  } satisfies BetterAuthOptions);
+}
