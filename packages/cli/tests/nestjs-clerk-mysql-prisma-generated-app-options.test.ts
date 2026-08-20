@@ -20,6 +20,7 @@ test('interactive creation resolves NestJS with Clerk, MySQL, and Prisma', async
       if (options.message === 'Backend') return 'nestjs';
       if (options.message === 'Auth') return 'clerk';
       if (options.message === 'Database') return 'mysql';
+      if (options.message === 'ORM') return 'prisma';
       return options.initialValue;
     }),
     confirm: vi.fn(async () => false),
@@ -53,7 +54,14 @@ test('interactive creation resolves NestJS with Clerk, MySQL, and Prisma', async
       { value: 'mysql', label: 'MySQL' },
     ],
   });
-  expect(prompts.select).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'ORM' }));
+  expect(prompts.select).toHaveBeenCalledWith({
+    message: 'ORM',
+    initialValue: 'prisma',
+    options: [
+      { value: 'prisma', label: 'Prisma' },
+      { value: 'drizzle', label: 'Drizzle' },
+    ],
+  });
 });
 
 test('explicit flags write the protected NestJS Clerk MySQL Prisma stack', async () => {
