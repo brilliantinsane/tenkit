@@ -115,6 +115,35 @@ test('matrix cells run in stable order with bounded concurrency and machine-read
   expect(JSON.stringify(report)).not.toContain('alpha-secret');
 });
 
+test('matrix cancellation stops scheduling at the next cell boundary', async () => {
+  const controller = new AbortController();
+  const started: string[] = [];
+
+  const report = await runGeneratedVerificationMatrix({
+    cells: [cell('alpha'), cell('bravo'), cell('charlie')],
+    concurrency: 2,
+    signal: controller.signal,
+    sourceSha: '9'.repeat(40),
+    verifyCell: async ({ id }) => {
+      started.push(id);
+      if (started.length === 2) {
+        controller.abort();
+      }
+      await Promise.resolve();
+      return evidence(id);
+    },
+    workspaceRoot: '/workspace',
+  });
+
+  expect(started).toEqual(['alpha', 'bravo']);
+  expect(report.cells).toEqual([
+    expect.objectContaining({ cellId: 'alpha', status: 'passed' }),
+    expect.objectContaining({ cellId: 'bravo', status: 'passed' }),
+    expect.objectContaining({ cellId: 'charlie', skipReason: 'cancelled', status: 'skipped' }),
+  ]);
+  expect(report.finalReadiness).toBe('not-ready');
+});
+
 test('resume reuses same-source passed evidence and runs only missing or failed cells', async () => {
   const previousReport = await runGeneratedVerificationMatrix({
     cells: [cell('alpha'), cell('bravo'), cell('charlie')],

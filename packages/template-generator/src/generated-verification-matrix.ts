@@ -63,7 +63,7 @@ export type GeneratedVerificationMatrixCellReport = {
   evidence?: GeneratedProjectVerificationEvidence;
   failures: readonly GeneratedProjectVerificationFailure[];
   resources: readonly GeneratedVerificationResourceEvidence[];
-  skipReason?: 'already-passed' | 'not-selected';
+  skipReason?: 'already-passed' | 'cancelled' | 'not-selected';
 };
 
 export type GeneratedVerificationMatrixReport = {
@@ -97,6 +97,7 @@ export type RunGeneratedVerificationMatrixOptions = {
   concurrency: number;
   sourceSha: string;
   workspaceRoot: string;
+  signal?: AbortSignal;
   selectedCellIds?: readonly string[];
   resumeFrom?: GeneratedVerificationMatrixReport;
   resumeFromCells?: readonly GeneratedVerificationCellEvidenceRecord[];
@@ -403,6 +404,9 @@ export async function runGeneratedVerificationMatrix(
   let nextCellIndex = 0;
   const worker = async (): Promise<void> => {
     while (nextCellIndex < pendingCells.length) {
+      if (options.signal?.aborted) {
+        return;
+      }
       const matrixCell = pendingCells[nextCellIndex];
       nextCellIndex += 1;
       if (matrixCell === undefined) {
@@ -556,6 +560,21 @@ export async function runGeneratedVerificationMatrix(
   await Promise.all(
     Array.from({ length: Math.min(options.concurrency, pendingCells.length) }, () => worker()),
   );
+
+  if (options.signal?.aborted) {
+    for (const matrixCell of pendingCells) {
+      if (!reports.has(matrixCell.id)) {
+        reports.set(matrixCell.id, {
+          ...createCellReportBase(matrixCell),
+          durationMs: 0,
+          failures: [],
+          resources: [],
+          skipReason: 'cancelled',
+          status: 'skipped',
+        });
+      }
+    }
+  }
 
   const cells = sortedCells.map((matrixCell) => {
     const report = reports.get(matrixCell.id);
