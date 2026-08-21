@@ -13,13 +13,13 @@
   },
   "dependencies": {
     {{#if hasDatabaseWorkspace}}
-    "@tenkit/db": "workspace:*",
+    "@tenkit/db": "{{workspaceDependencyVersion}}",
     {{/if}}
     {{#if isClerkAuth}}
     "@clerk/express": "2.1.50",
     {{/if}}
     {{#if isBetterAuth}}
-    "@tenkit/auth": "workspace:*",
+    "@tenkit/auth": "{{workspaceDependencyVersion}}",
     "@thallesp/nestjs-better-auth": "2.7.0",
     "better-auth": "1.6.25",
     {{/if}}

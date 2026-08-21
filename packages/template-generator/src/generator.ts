@@ -252,6 +252,7 @@ function normalizeTemplateContext({
           : 'bun --cwd apps/server run',
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
+    workspaceDependencyVersion: packageManager === 'npm' ? '*' : 'workspace:*',
     nodeBackendDisplayName:
       generatedAppOptions.backend === 'express'
         ? 'Express'

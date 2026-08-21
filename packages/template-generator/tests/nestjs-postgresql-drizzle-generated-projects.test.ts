@@ -113,7 +113,7 @@ test('generates the exact Auth-free NestJS PostgreSQL Drizzle shape for every Se
     );
     assert.notMatch(
       readVirtualText(tree, 'apps/server/tests/integration.test.ts'),
-      /_prisma_migrations/,
+      /__drizzle_migrations|_prisma_migrations/,
     );
     assert.match(readVirtualText(tree, 'README.md'), /PostgreSQL and Drizzle/);
     assert.match(generatedText, /Auth: none/);

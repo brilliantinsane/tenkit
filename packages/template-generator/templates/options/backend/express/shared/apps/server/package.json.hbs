@@ -13,10 +13,10 @@
   },
   "dependencies": {
     {{#if hasDatabaseWorkspace}}
-    "@tenkit/db": "workspace:*",
+    "@tenkit/db": "{{workspaceDependencyVersion}}",
     {{/if}}
     {{#if isBetterAuth}}
-    "@tenkit/auth": "workspace:*",
+    "@tenkit/auth": "{{workspaceDependencyVersion}}",
     "better-auth": "1.6.25",
     {{/if}}
     {{#if isClerkAuth}}

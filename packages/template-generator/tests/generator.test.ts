@@ -1302,6 +1302,35 @@ test('Template generation renders selected package manager into generated app ou
   assert.match(readVirtualFile(runtimeTenantsTree, 'scripts/tenkit-cli-core.ts'), /bin: 'pnpm'/);
 });
 
+test.each(['express', 'nestjs'] as const)(
+  'npm generated %s workspaces use npm-compatible local dependency ranges',
+  (backend) => {
+    const tree = generateProject({
+      setupType: 'white-label-apps',
+      stylingChoice: 'bare',
+      packageManager: 'npm',
+      generatedAppOptions: {
+        backend,
+        auth: 'better-auth',
+        database: 'postgresql',
+        orm: 'prisma',
+      },
+    });
+    const serverManifest = parsePackageManifest(
+      readVirtualFile(tree, 'apps/server/package.json'),
+      'apps/server/package.json',
+    );
+    const authManifest = parsePackageManifest(
+      readVirtualFile(tree, 'packages/auth/package.json'),
+      'packages/auth/package.json',
+    );
+
+    assert.equal(serverManifest.dependencies['@tenkit/auth'], '*');
+    assert.equal(serverManifest.dependencies['@tenkit/db'], '*');
+    assert.equal(authManifest.dependencies['@tenkit/db'], '*');
+  },
+);
+
 test('White Label Apps generated tree is standalone and does not import from the Playground', () => {
   const tree = generateProject({ setupType: 'white-label-apps' });
   const appVariants = readVirtualFile(tree, 'src/constants/app-variants.ts');

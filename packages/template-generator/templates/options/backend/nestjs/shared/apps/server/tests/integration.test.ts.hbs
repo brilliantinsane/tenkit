@@ -161,8 +161,10 @@ test('compiled NestJS serves health and {{#if hasAuth}}protects Business Data{{e
     throw new Error('NestJS {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} integration requires DATABASE_URL.');
   }
   await expect({{#if isMysqlDatabase}}inspectMysqlTableNames{{else}}inspectPostgresqlTableNames{{/if}}(databaseUrl)).resolves.toEqual([
+    {{#if isMysqlDatabase}}
     {{#if isDrizzleOrm}}
     '__drizzle_migrations',
+    {{/if}}
     {{/if}}
     {{#if isPrismaOrm}}
     '_prisma_migrations',

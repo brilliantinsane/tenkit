@@ -44,6 +44,7 @@ export type TemplateContext = {
   packageManagerRunCommand: string;
   packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;
+  workspaceDependencyVersion: string;
   nodeBackendDisplayName?: 'Express' | 'NestJS';
   projectName: string;
   projectNameStringLiteral: string;
