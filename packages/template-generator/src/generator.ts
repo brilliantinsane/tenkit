@@ -236,20 +236,20 @@ function normalizeTemplateContext({
         ? 'pnpm --dir packages/db run'
         : packageManager === 'npm'
           ? 'npm --prefix packages/db run'
-          : 'bun --cwd packages/db run',
+          : 'bun run --cwd packages/db',
     packageManagerAuthRunCommand:
       packageManager === 'pnpm'
         ? 'pnpm --dir packages/auth run'
         : packageManager === 'npm'
           ? 'npm --prefix packages/auth run'
-          : 'bun --cwd packages/auth run',
+          : 'bun run --cwd packages/auth',
     packageManagerRunCommand: `${packageManager} run`,
     packageManagerServerRunCommand:
       packageManager === 'pnpm'
         ? 'pnpm --dir apps/server run'
         : packageManager === 'npm'
           ? 'npm --prefix apps/server run'
-          : 'bun --cwd apps/server run',
+          : 'bun run --cwd apps/server',
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
     workspaceDependencyVersion: packageManager === 'npm' ? '*' : 'workspace:*',

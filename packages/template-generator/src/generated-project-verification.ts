@@ -188,20 +188,20 @@ function expectedServerWorkspaceScripts(
       ? 'pnpm --dir apps/server run'
       : packageManager === 'npm'
         ? 'npm --prefix apps/server run'
-        : 'bun --cwd apps/server run';
+        : 'bun run --cwd apps/server';
   const rootRunCommand = `${packageManager} run`;
   const databaseRunCommand =
     packageManager === 'pnpm'
       ? 'pnpm --dir packages/db run'
       : packageManager === 'npm'
         ? 'npm --prefix packages/db run'
-        : 'bun --cwd packages/db run';
+        : 'bun run --cwd packages/db';
   const authRunCommand =
     packageManager === 'pnpm'
       ? 'pnpm --dir packages/auth run'
       : packageManager === 'npm'
         ? 'npm --prefix packages/auth run'
-        : 'bun --cwd packages/auth run';
+        : 'bun run --cwd packages/auth';
   const hasDatabaseWorkspace = database !== 'none';
   const hasAuthWorkspace = auth === 'better-auth' && isGeneratedNodeBackend(backend);
 

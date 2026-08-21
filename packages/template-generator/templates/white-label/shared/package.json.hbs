@@ -10,6 +10,11 @@
   "workspaces": ["apps/server"{{#if hasDatabaseWorkspace}}, "packages/db"{{/if}}{{#if hasAuthWorkspace}}, "packages/auth"{{/if}}],
   {{/if}}
   {{/if}}
+  {{#if isNpmPackageManager}}
+  {{#if isBetterAuth}}
+  "overrides": { "@better-auth/core": "1.6.25" },
+  {{/if}}
+  {{/if}}
   "main": "{{#if isUnistylesStyling}}index.ts{{else}}expo-router/entry{{/if}}",
   "scripts": {
     "start": "expo start",

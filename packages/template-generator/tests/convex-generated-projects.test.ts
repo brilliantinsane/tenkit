@@ -215,7 +215,7 @@ test.each([
   },
   {
     packageManager: 'bun',
-    serverRunCommand: 'bun --cwd apps/server run',
+    serverRunCommand: 'bun run --cwd apps/server',
     usesManifestWorkspace: true,
   },
 ] as const)(

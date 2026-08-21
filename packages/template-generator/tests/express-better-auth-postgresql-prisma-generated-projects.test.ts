@@ -28,6 +28,7 @@ function readVirtualManifest(tree: VirtualFileTree, path: string) {
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
     scripts: Record<string, string>;
+    overrides?: Record<string, string>;
     workspaces?: string[];
   };
 }
@@ -155,6 +156,21 @@ test('keeps Better Auth UI inside every selected Styling option layer', () => {
       readVirtualText(tree, 'src/auth/sign-out-button.tsx'),
       stylingSignatures[stylingChoice],
     );
+  }
+});
+
+test('npm pins one compatible Better Auth core version for every Setup Type', () => {
+  for (const setupType of SUPPORTED_GENERATED_SETUP_TYPE_IDS) {
+    const tree = generateProject({
+      setupType,
+      stylingChoice: 'uniwind',
+      packageManager: 'npm',
+      generatedAppOptions: EXPRESS_BETTER_AUTH_POSTGRESQL_PRISMA_OPTIONS,
+    });
+
+    assert.deepEqual(readVirtualManifest(tree, 'package.json').overrides, {
+      '@better-auth/core': '1.6.25',
+    });
   }
 });
 

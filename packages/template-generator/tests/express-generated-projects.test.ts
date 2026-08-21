@@ -189,7 +189,7 @@ test.each([
   },
   {
     packageManager: 'bun',
-    serverRunCommand: 'bun --cwd apps/server run',
+    serverRunCommand: 'bun run --cwd apps/server',
     usesManifestWorkspace: true,
   },
 ] as const)(
@@ -219,3 +219,26 @@ test.each([
     );
   },
 );
+
+test('Bun workspace commands execute package scripts after selecting the workspace', () => {
+  const tree = generateProject({
+    setupType: 'generic-with-standalone-app-variants',
+    stylingChoice: 'bare',
+    packageManager: 'bun',
+    generatedAppOptions: {
+      backend: 'express',
+      auth: 'better-auth',
+      database: 'mysql',
+      orm: 'prisma',
+    },
+  });
+  const manifest = readVirtualManifest(tree, 'package.json') as {
+    scripts: Record<string, string>;
+  };
+
+  assert.equal(manifest.scripts['db:generate'], 'bun run --cwd packages/db generate');
+  assert.equal(
+    manifest.scripts.typecheck,
+    'tsc --noEmit --pretty false && bun run --cwd packages/db typecheck && bun run --cwd packages/auth typecheck && bun run --cwd apps/server typecheck',
+  );
+});
