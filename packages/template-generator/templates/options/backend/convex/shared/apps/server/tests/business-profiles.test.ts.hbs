@@ -13,18 +13,23 @@ declare global {
 const modules = import.meta.glob('../convex/**/*.ts');
 
 test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async () => {
-  const convex = convexTest(schema, modules);
-  const counts = await convex.mutation(internal.starterData.seed, {});
-  await expect(convex.query(api.health.check, {})).resolves.toEqual({ status: 'ok' });
+{{#if isClerkAuth}}
+  process.env.CLERK_FRONTEND_API_URL = 'https://tenkit-test.clerk.accounts.dev';
+{{/if}}
+  const backend = convexTest(schema, modules);
+  const counts = await backend.mutation(internal.starterData.seed, {});
+  await expect(backend.query(api.health.check, {})).resolves.toEqual({ status: 'ok' });
 
-{{#if isBetterAuth}}
+{{#if hasAuth}}
   await expect(
-    convex.query(api.businessProfiles.get, {
+    backend.query(api.businessProfiles.get, {
       setupType: '{{setupType}}',
       appVariantId: {{appVariants.[0].appVariantId}},
     }),
-  ).rejects.toThrow(/Unauthenticated/);
-{{else}}
+  ).rejects.toThrow(/{{#if isClerkAuth}}UNAUTHENTICATED{{else}}Unauthenticated{{/if}}/);
+{{/if}}
+{{#unless isBetterAuth}}
+  const convex = {{#if isClerkAuth}}backend.withIdentity({ subject: 'clerk-test-user' }){{else}}backend{{/if}};
 
 {{#ifSetupType 'white-label-apps'}}
   expect(counts).toEqual({ appVariants: 2, runtimeTenants: 0, runtimeTenantAccessGrants: 0 });
@@ -161,5 +166,5 @@ test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async 
       await expect(ctx.db.query(table).collect()).resolves.toEqual([]);
     }
   });
-{{/if}}
+{{/unless}}
 });

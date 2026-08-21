@@ -17,6 +17,12 @@ export const get = query({
 {{#if isBetterAuth}}
     await authComponent.getAuthUser(ctx);
 {{/if}}
+{{#if isClerkAuth}}
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new ConvexError('UNAUTHENTICATED');
+    }
+{{/if}}
     if (
       !Number.isSafeInteger(request.appVariantId) ||
       request.appVariantId <= 0 ||

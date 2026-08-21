@@ -107,6 +107,13 @@ test('Template source paths use ADR 0009 owners', () => {
       .filter((path) => !path.startsWith('src/app/(auth)/') && !path.startsWith('src/auth/')),
     [],
   );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/clerk/convex/'))
+      .map((path) => path.replace('options/auth/clerk/convex/', ''))
+      .filter((path) => !path.startsWith('apps/server/convex/')),
+    [],
+  );
   for (const stylingChoice of stylingTemplatePaths) {
     assert.deepEqual(
       paths

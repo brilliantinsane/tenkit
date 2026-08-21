@@ -292,6 +292,10 @@ function readProjectTemplateTree({
     : context.isBetterAuth
       ? readTemplateTree(`options/auth/better-auth/${context.stylingChoice}`, context)
       : [];
+  const authBackendTree =
+    context.isClerkAuth && context.isConvexBackend
+      ? readTemplateTree('options/auth/clerk/convex', context)
+      : [];
   const backendTree = context.isExpressBackend
     ? readTemplateTree('options/backend/express/shared', context)
     : context.isNestjsBackend
@@ -324,6 +328,7 @@ function readProjectTemplateTree({
     packageManagerTree,
     authSharedTree,
     authStylingTree,
+    authBackendTree,
     backendTree,
     databaseTree,
     ormTree,

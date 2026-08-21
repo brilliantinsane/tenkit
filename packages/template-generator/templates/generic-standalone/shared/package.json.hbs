@@ -36,7 +36,10 @@
     "convex:dev": "{{packageManagerServerRunCommand}} dev",
     "convex:seed": "{{packageManagerServerRunCommand}} seed",
     "convex:sync": "{{packageManagerServerRunCommand}} sync",
-    "test": "{{packageManagerServerRunCommand}} test",
+    "test": "{{#if isClerkAuth}}{{packageManagerRunCommand}} test:mobile && {{/if}}{{packageManagerServerRunCommand}} test",
+    {{#if isClerkAuth}}
+    "test:mobile": "vitest run src/auth/clerk-business-profile-client.test.ts src/auth/clerk-post-auth-navigation.test.ts src/auth/clerk-session-boundary.test.ts",
+    {{/if}}
     "test:integration": "{{packageManagerServerRunCommand}} test",
   {{/if}}
     "tenkit": "tsx scripts/tenkit-cli.ts",

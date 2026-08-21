@@ -613,6 +613,53 @@ test('explicit Convex flags resolve managed persistence and write Convex-owned o
   expect(await fs.pathExists(join(tempRoot, 'convex-app/packages/db'))).toBe(false);
 });
 
+test('explicit Convex and Clerk flags resolve protected Convex-owned output', async () => {
+  const tempRoot = await createTempRoot();
+  const generate = vi.fn(generateProject);
+  const environment = createEnvironment(tempRoot, { generate });
+
+  const result = await runCreateFlow(
+    {
+      name: 'convex-clerk-app',
+      setupType: 'generic-standalone',
+      backend: 'convex',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+      yes: true,
+      install: false,
+      git: false,
+    },
+    environment,
+  );
+
+  expect(result.generatedAppOptions).toEqual({
+    backend: 'convex',
+    auth: 'clerk',
+    database: 'none',
+    orm: 'none',
+  });
+  expect(generate).toHaveBeenCalledWith(
+    expect.objectContaining({ generatedAppOptions: result.generatedAppOptions }),
+  );
+  expect(environment.lines).toContain('- Backend: convex');
+  expect(environment.lines).toContain('- Auth: clerk');
+  expect(environment.lines).toContain('- Database: Convex-managed');
+  expect(environment.lines).toContain('- ORM: not applicable');
+  expect(environment.lines).toContain('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+  expect(environment.lines).toContain(
+    '- Set CLERK_FRONTEND_API_URL only in the Convex deployment environment',
+  );
+  expect(
+    await fs.pathExists(join(tempRoot, 'convex-clerk-app/apps/server/convex/auth.config.ts')),
+  ).toBe(true);
+  expect(await fs.pathExists(join(tempRoot, 'convex-clerk-app/src/auth/clerk-provider.tsx'))).toBe(
+    true,
+  );
+  expect(await fs.pathExists(join(tempRoot, 'convex-clerk-app/packages/auth'))).toBe(false);
+  expect(await fs.pathExists(join(tempRoot, 'convex-clerk-app/packages/db'))).toBe(false);
+});
+
 test('rejects invalid values and unsupported combinations before generation or writing', async () => {
   const tempRoot = await createTempRoot();
   const generate = vi.fn(generateProject);

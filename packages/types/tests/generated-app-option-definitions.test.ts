@@ -52,6 +52,26 @@ test('resolves Convex Better Auth with Convex-managed persistence', () => {
   );
 });
 
+test('resolves Convex with Clerk and Convex-managed persistence', () => {
+  assert.deepEqual(
+    resolveGeneratedAppOptions({
+      backend: 'convex',
+      auth: 'clerk',
+      database: 'none',
+      orm: 'none',
+    }),
+    {
+      status: 'resolved',
+      selection: {
+        backend: 'convex',
+        auth: 'clerk',
+        database: 'none',
+        orm: 'none',
+      },
+    },
+  );
+});
+
 test('owns one supported-combinations list containing the released service slices', () => {
   assert.deepEqual(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS, [
     {
@@ -81,6 +101,12 @@ test('owns one supported-combinations list containing the released service slice
     {
       backend: 'convex',
       auth: 'better-auth',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'convex',
+      auth: 'clerk',
       database: 'none',
       orm: 'none',
     },
@@ -297,6 +323,12 @@ test('does not expose mutable references to the canonical compatibility catalog'
     {
       backend: 'convex',
       auth: 'better-auth',
+      database: 'none',
+      orm: 'none',
+    },
+    {
+      backend: 'convex',
+      auth: 'clerk',
       database: 'none',
       orm: 'none',
     },
@@ -866,7 +898,7 @@ test('derives dependency-aware partial choices from the same supported list', ()
   assert.deepEqual(getGeneratedAppOptionChoiceState({ backend: 'convex' }), {
     status: 'available',
     backend: { status: 'selected', values: ['convex'], value: 'convex' },
-    auth: { status: 'selectable', values: ['none', 'better-auth'] },
+    auth: { status: 'selectable', values: ['none', 'better-auth', 'clerk'] },
     database: { status: 'resolved', values: ['none'], value: 'none' },
     orm: { status: 'resolved', values: ['none'], value: 'none' },
   });
@@ -920,5 +952,6 @@ test('accepts exactly the combinations present in the one supported list', () =>
     'nestjs:clerk:mysql:drizzle',
     'convex:none:none:none',
     'convex:better-auth:none:none',
+    'convex:clerk:none:none',
   ]);
 });

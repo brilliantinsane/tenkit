@@ -7,7 +7,10 @@ import { ActivityIndicator, View } from 'react-native';
 {{/if}}
 
 {{#if isConvexBackend}}
-import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ConvexProvider, ConvexReactClient{{#if isClerkAuth}}, useConvexAuth{{/if}} } from 'convex/react';
+{{#if isClerkAuth}}
+import { ConvexProviderWithClerk } from 'convex/react-clerk';
+{{/if}}
 {{#if isBetterAuth}}
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { convexBetterAuthClient } from '@/auth/auth-client';
@@ -33,6 +36,8 @@ function resolveConvexDeploymentUrl(): string {
 }
 
 const convexClient = new ConvexReactClient(resolveConvexDeploymentUrl(), {
+  {{#if isClerkAuth}}expectAuth: true,
+  {{/if}}
   unsavedChangesWarning: false,
 });
 {{/if}}
@@ -55,8 +60,16 @@ function RootLayoutInner() {
   {{#if isClerkAuth}}
   const { isLoaded, isSignedIn } = useAuth();
   const sessionRouteState = resolveClerkSessionRouteState(isLoaded, isSignedIn);
+  {{#if isConvexBackend}}
+  const { isAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth();
+  if (isSignedIn && !isConvexAuthLoading && !isAuthenticated) {
+    throw new Error(
+      'Convex could not verify the Clerk session. Confirm CLERK_FRONTEND_API_URL and sync the Convex deployment.',
+    );
+  }
+  {{/if}}
 
-  if (sessionRouteState === 'loading') {
+  if (sessionRouteState === 'loading'{{#if isConvexBackend}} || (isSignedIn && isConvexAuthLoading){{/if}}) {
     return (
       <View style=\{{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={brand.accent} />
@@ -114,7 +127,11 @@ export default function RootLayout() {
       {{#if isBetterAuth}}
       <ConvexBetterAuthProvider authClient={convexBetterAuthClient} client={convexClient}>
       {{else}}
+      {{#if isClerkAuth}}
+      <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+      {{else}}
       <ConvexProvider client={convexClient}>
+      {{/if}}
       {{/if}}
       {{/if}}
       <RootLayoutInner />
@@ -122,7 +139,11 @@ export default function RootLayout() {
       {{#if isBetterAuth}}
       </ConvexBetterAuthProvider>
       {{else}}
+      {{#if isClerkAuth}}
+      </ConvexProviderWithClerk>
+      {{else}}
       </ConvexProvider>
+      {{/if}}
       {{/if}}
       {{/if}}
     </ColorsProvider>

@@ -68,6 +68,10 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
       );
       output.log('- Set SITE_URL and BETTER_AUTH_SECRET only in the Convex deployment environment');
     }
+    if (result.generatedAppOptions.auth === 'clerk') {
+      output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+      output.log('- Set CLERK_FRONTEND_API_URL only in the Convex deployment environment');
+    }
     output.log(`- ${formatRunCommand(result.packageManager, 'convex:seed')}`);
     output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
   }
