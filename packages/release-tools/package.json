@@ -6,13 +6,16 @@
   "scripts": {
     "draft:build": "tsx scripts/build-draft-release-set.ts",
     "plan": "tsx scripts/plan-release.ts",
+    "pr1:readiness": "tsx scripts/verify-pr1-readiness.ts",
     "verify": "tsx scripts/verify-release.ts",
     "test": "pnpm -F @tenkit/types build && pnpm -F @tenkit/template-generator build && vitest run",
     "typecheck": "pnpm -F @tenkit/types build && pnpm -F @tenkit/template-generator build && tsc --noEmit --pretty false"
   },
   "devDependencies": {
     "@tenkit/template-generator": "workspace:*",
+    "@tenkit/types": "workspace:*",
     "@types/node": "^25.9.3",
+    "pathe": "^2.0.3",
     "tsx": "^4.22.4",
     "typescript": "~6.0.3",
     "vitest": "^4.1.9",
