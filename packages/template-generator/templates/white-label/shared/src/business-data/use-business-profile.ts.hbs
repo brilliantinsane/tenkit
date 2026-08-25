@@ -17,6 +17,7 @@ import { requestClerkBusinessProfile } from '@/auth/clerk-business-profile-clien
 {{/if}}
 {{#if isBetterAuth}}
 import { getBetterAuthCookie } from '@/auth/auth-client';
+import { Platform } from 'react-native';
 {{/if}}
 {{/if}}
 
@@ -132,7 +133,7 @@ export function useBusinessProfile(): BusinessProfileState {
         {{else}}
         const response = await fetch(requestUrl, {
           {{#if isBetterAuth}}
-          credentials: 'omit',
+          credentials: Platform.OS === 'web' ? 'include' : 'omit',
           headers: { Cookie: getBetterAuthCookie() },
           {{/if}}
           signal: controller.signal,

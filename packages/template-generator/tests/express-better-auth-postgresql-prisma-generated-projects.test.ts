@@ -48,6 +48,10 @@ test('generates the Express Better Auth PostgreSQL Prisma contract for every Set
     const databaseManifest = readVirtualManifest(tree, 'packages/db/package.json');
     const rootLayout = readVirtualText(tree, 'src/app/_layout.tsx');
     const authBoundary = readVirtualText(tree, 'src/auth/better-auth-boundary.tsx');
+    const businessProfileRequest = readVirtualText(
+      tree,
+      'src/business-data/use-business-profile.ts',
+    );
     const generatedText = tree
       .flatMap(({ contents }) => (typeof contents === 'string' ? [contents] : []))
       .join('\n');
@@ -116,6 +120,11 @@ test('generates the Express Better Auth PostgreSQL Prisma contract for every Set
     assert.match(readVirtualText(tree, 'src/auth/use-better-auth-form.ts'), /signUp\.email/);
     assert.match(readVirtualText(tree, 'src/auth/use-better-auth-form.ts'), /confirmPassword/);
     assert.match(readVirtualText(tree, 'src/auth/sign-out-button.tsx'), /signOut/);
+    assert.match(businessProfileRequest, /import \{ Platform \} from 'react-native';/);
+    assert.match(
+      businessProfileRequest,
+      /credentials: Platform\.OS === 'web' \? 'include' : 'omit'/,
+    );
 
     const expressApp = readVirtualText(tree, 'apps/server/src/app.ts');
     assert.match(expressApp, /toNodeHandler/);
