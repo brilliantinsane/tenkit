@@ -21,7 +21,7 @@ if (!appVariantSlug || typeof appVariantSlug !== 'string') {
   throw new Error('The active App Variant Slug is required for Auth storage isolation.');
 }
 
-function createCompatibleExpoClient(options: Parameters<typeof expoClient>[0]) {
+function createCompatibleExpoClient(options: Parameters<typeof expoClient>[0]): BetterAuthClientPlugin {
   const plugin = expoClient(options);
   return {
     ...plugin,
@@ -31,12 +31,14 @@ function createCompatibleExpoClient(options: Parameters<typeof expoClient>[0]) {
   } satisfies BetterAuthClientPlugin;
 }
 
+const convexAuthPlugins = [
+  createCompatibleExpoClient({ scheme, storagePrefix: `tenkit-${appVariantSlug}`, storage: SecureStore }),
+  convexClient(),
+] satisfies [ReturnType<typeof createCompatibleExpoClient>, ReturnType<typeof convexClient>];
+
 export const authClient = createAuthClient({
   baseURL: convexSiteUrl,
-  plugins: [
-    createCompatibleExpoClient({ scheme, storagePrefix: `tenkit-${appVariantSlug}`, storage: SecureStore }),
-    convexClient(),
-  ],
+  plugins: convexAuthPlugins,
 });
 
-export const convexBetterAuthClient = authClient as unknown as ConvexBetterAuthClient;
+export const convexBetterAuthClient: ConvexBetterAuthClient = authClient;

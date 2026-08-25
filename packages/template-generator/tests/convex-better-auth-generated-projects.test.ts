@@ -46,7 +46,14 @@ test('generates Convex-owned Better Auth for every Setup Type without SQL artifa
       assert.match(readVirtualText(tree, 'README.md'), /BETTER_AUTH_SECRET/);
       assert.match(readVirtualText(tree, 'apps/server/convex/auth.ts'), /authComponent\.adapter/);
       assert.match(readVirtualText(tree, 'apps/server/convex/businessProfiles.ts'), /getAuthUser/);
-      assert.match(readVirtualText(tree, 'src/auth/auth-client.ts'), /convexClient\(\)/);
+      const authBoundary = readVirtualText(tree, 'src/auth/better-auth-boundary.tsx');
+      const authClient = readVirtualText(tree, 'src/auth/auth-client.ts');
+      assert.match(authBoundary, /Stack\.Protected/);
+      assert.match(authBoundary, /name="\(auth\)"/);
+      assert.match(authBoundary, /name="index"/);
+      assert.match(authClient, /convexClient\(\)/);
+      assert.match(authClient, /convexBetterAuthClient: ConvexBetterAuthClient = authClient/);
+      assert.notMatch(authClient, /as unknown as/);
       assert.match(
         readVirtualText(tree, 'src/business-data/use-business-profile.ts'),
         /resolveProtectedConvexQueryState/,

@@ -6,9 +6,29 @@ import { resolveAuthSessionRouteState } from './auth-session-boundary';
 
 export function BetterAuthBoundary({ children }: PropsWithChildren) {
   const { data: session, isPending } = authClient.useSession();
-  if (resolveAuthSessionRouteState(isPending, session !== null) === 'loading') {
-    return <View style=\{{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
+  const sessionRouteState = resolveAuthSessionRouteState(isPending, session !== null);
+
+  if (sessionRouteState === 'loading') {
+    return (
+      <View style=\{{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
   }
-  if (session !== null) return children;
-  return <Stack screenOptions=\{{ headerShown: false }}><Stack.Screen name="(auth)" /></Stack>;
+
+  if (sessionRouteState === 'app') {
+    return children;
+  }
+
+  return (
+    <Stack screenOptions=\{{ headerShown: false }}>
+      <Stack.Protected guard={session === null}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+      <Stack.Protected guard={session !== null}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="{{#ifSetupType 'white-label-apps'}}explore{{else}}settings{{/ifSetupType}}" />
+      </Stack.Protected>
+    </Stack>
+  );
 }
