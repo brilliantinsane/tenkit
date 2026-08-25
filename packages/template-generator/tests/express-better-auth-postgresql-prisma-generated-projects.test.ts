@@ -85,6 +85,10 @@ test('generates the Express Better Auth PostgreSQL Prisma contract for every Set
       'vitest run src/auth/auth-session-boundary.test.ts',
     );
     assert.equal(
+      rootManifest.scripts.dev,
+      'concurrently -k "expo start" "pnpm --dir packages/auth run build && pnpm --dir apps/server run dev"',
+    );
+    assert.equal(
       rootManifest.scripts.build,
       'pnpm --dir packages/db run build && pnpm --dir packages/auth run build && pnpm --dir apps/server run build',
     );

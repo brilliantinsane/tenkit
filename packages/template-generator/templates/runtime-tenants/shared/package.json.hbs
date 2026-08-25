@@ -19,7 +19,7 @@
   "scripts": {
     "start": "expo start",
   {{#if isNodeBackend}}
-    "dev": "concurrently -k \"expo start\" \"{{packageManagerServerRunCommand}} dev\"",
+    "dev": "concurrently -k \"expo start\" \"{{#if hasAuthWorkspace}}{{packageManagerAuthRunCommand}} build && {{/if}}{{packageManagerServerRunCommand}} dev\"",
     "build": "{{#if hasDatabaseWorkspace}}{{packageManagerDatabaseRunCommand}} build && {{/if}}{{#if hasAuthWorkspace}}{{packageManagerAuthRunCommand}} build && {{/if}}{{packageManagerServerRunCommand}} build",
     "server:dev": "{{packageManagerServerRunCommand}} dev",
     "server:start:prod": "{{packageManagerServerRunCommand}} start:prod",
