@@ -32,11 +32,14 @@ test.each([
           {
             name: releasePackage.name,
             version: '0.2.0',
-            ...('internalDependency' in releasePackage
+            ...(releasePackage.internalDependencies.length > 0
               ? {
-                  dependencies: {
-                    [releasePackage.internalDependency]: 'workspace:*',
-                  },
+                  dependencies: Object.fromEntries(
+                    releasePackage.internalDependencies.map((dependencyName) => [
+                      dependencyName,
+                      'workspace:*',
+                    ]),
+                  ),
                 }
               : {}),
           },
@@ -59,10 +62,15 @@ test.each([
         await readFile(join(isolatedWorkspaceRoot, releasePackage.root, 'package.json'), 'utf8'),
       ) as Record<string, unknown>;
       expect(packageMetadata.version).toBe(plan.version);
-      if ('internalDependency' in releasePackage) {
-        expect(packageMetadata.dependencies).toEqual({
-          [releasePackage.internalDependency]: expectedVersion,
-        });
+      if (releasePackage.internalDependencies.length > 0) {
+        expect(packageMetadata.dependencies).toEqual(
+          Object.fromEntries(
+            releasePackage.internalDependencies.map((dependencyName) => [
+              dependencyName,
+              expectedVersion,
+            ]),
+          ),
+        );
       }
     }
   },

@@ -1,0 +1,301 @@
+import request from 'supertest';
+import { describe, expect, test } from 'vitest';
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
+
+import { createApp } from '../src/app.js';
+{{#if hasAuth}}
+import type { RequestAuthentication } from '../src/app.js';
+
+type TestAuthentication = RequestAuthentication & {
+  setAuthenticated(isAuthenticated: boolean): void;
+};
+
+function createTestAuthentication(initiallyAuthenticated: boolean): TestAuthentication {
+  let isAuthenticated = initiallyAuthenticated;
+  return {
+    middleware: (_request, _response, next) => next(),
+    hasSession: async () => isAuthenticated,
+    setAuthenticated: (nextIsAuthenticated) => {
+      isAuthenticated = nextIsAuthenticated;
+    },
+  };
+}
+{{/if}}
+
+{{#if hasDatabaseWorkspace}}
+function createTestBusinessDataRepository(): BusinessDataRepository {
+  return {
+    async findAppVariant(appVariantId) {
+{{#ifSetupType 'white-label-apps'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[0].displayNameStringLiteral}}},
+          profileDescription: 'The first white-label Business Data Example.',
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: null,
+          standaloneRuntimeTenantId: null,
+          profileName: {{{appVariants.[1].displayNameStringLiteral}}},
+          profileDescription: 'The second white-label Business Data Example.',
+        };
+      }
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'single-app',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+      if (appVariantId === {{appVariants.[0].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'generic',
+          standaloneRuntimeTenantId: null,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+      if (appVariantId === {{appVariants.[1].appVariantId}}) {
+        return {
+          appVariantId,
+          role: 'standalone',
+          standaloneRuntimeTenantId: 103,
+          profileName: null,
+          profileDescription: null,
+        };
+      }
+{{/ifSetupType}}
+      return null;
+    },
+    async hasRuntimeTenantAccess(appVariantId, runtimeTenantId) {
+      return (
+        appVariantId === {{appVariants.[0].appVariantId}} &&
+        [100, 101, 102].includes(runtimeTenantId)
+      );
+    },
+    async findRuntimeTenant(runtimeTenantId) {
+      const runtimeTenants = new Map<number, { name: string; description: string }>([
+{{#if isSingleAppRuntimeTenants}}
+        [100, { name: 'North Branch', description: 'The northern branch Business Data Example.' }],
+        [101, { name: 'South Branch', description: 'The southern branch Business Data Example.' }],
+        [102, { name: 'East Branch', description: 'The eastern branch Business Data Example.' }],
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+        [100, { name: 'North Studio', description: 'The North Studio Business Data Example.' }],
+        [101, { name: 'South Studio', description: 'The South Studio Business Data Example.' }],
+        [102, { name: 'East Studio', description: 'The East Studio Business Data Example.' }],
+        [103, { name: 'West Studio', description: 'The standalone West Studio Business Data Example.' }],
+{{/ifSetupType}}
+      ]);
+      const runtimeTenant = runtimeTenants.get(runtimeTenantId);
+      return runtimeTenant
+        ? {
+            runtimeTenantId,
+            profileName: runtimeTenant.name,
+            profileDescription: runtimeTenant.description,
+          }
+        : null;
+    },
+    async close() {},
+  };
+}
+{{/if}}
+
+const app = createApp(
+  'http://localhost:8081',
+  {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(),{{/if}}
+  {{#if hasAuth}}createTestAuthentication(true),{{/if}}
+);
+
+describe('Express Backend', () => {
+  test('exposes public health{{#unless isBetterAuth}} without an Auth route{{/unless}}', async () => {
+    await request(app).get('/health').expect(200, { status: 'ok' });
+    {{#unless isBetterAuth}}
+    await request(app).get('/api/auth/session').expect(404);
+    {{/unless}}
+    {{#if hasAuth}}
+    await request(createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}createTestAuthentication(false)))
+      .get('/api/business-profile')
+      .expect(401, { error: 'Authentication is required' });
+    {{/if}}
+  });
+
+  test('{{#if hasAuth}}authenticated {{/if}}requests validate context and return Setup Type-scoped Business Data', async () => {
+    await request(app).get('/api/business-profile').expect(400);
+
+{{#ifSetupType 'white-label-apps'}}
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(200, {
+        profile: {
+          name: {{{appVariants.[0].displayNameStringLiteral}}},
+          description: 'The first white-label Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: {{appVariants.[1].appVariantId}} })
+      .expect(200, {
+        profile: {
+          name: {{{appVariants.[1].displayNameStringLiteral}}},
+          description: 'The second white-label Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 100,
+      })
+      .expect(403);
+{{/ifSetupType}}
+{{#if isSingleAppRuntimeTenants}}
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 100,
+      })
+      .expect(200, {
+        profile: {
+          name: 'North Branch',
+          description: 'The northern branch Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 101,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 102,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 999,
+      })
+      .expect(403);
+{{/if}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 100,
+      })
+      .expect(200, {
+        profile: {
+          name: 'North Studio',
+          description: 'The North Studio Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 101,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 102,
+      })
+      .expect(200);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: 103,
+      })
+      .expect(403);
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[1].appVariantId}},
+        runtimeTenantId: 103,
+      })
+      .expect(200, {
+        profile: {
+          name: 'West Studio',
+          description: 'The standalone West Studio Business Data Example.',
+        },
+      });
+    await request(app)
+      .get('/api/business-profile')
+      .query({
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[1].appVariantId}},
+        runtimeTenantId: 100,
+      })
+      .expect(403);
+{{/ifSetupType}}
+
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 'invalid' })
+      .expect(400);
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: '{{setupType}}', appVariantId: 999_999 })
+      .expect(404);
+    await request(app)
+      .get('/api/business-profile')
+      .query({ setupType: 'wrong-setup-type', appVariantId: {{appVariants.[0].appVariantId}} })
+      .expect(400);
+  });
+
+  {{#if hasAuth}}
+  test('sign-out Auth state invalidates protected Business Data access', async () => {
+    const authentication = createTestAuthentication(true);
+    const lifecycleApp = createApp('http://localhost:8081', {{#if hasDatabaseWorkspace}}createTestBusinessDataRepository(), {{/if}}authentication);
+    const requestQuery = {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      {{#if isSingleAppRuntimeTenants}}runtimeTenantId: 100,{{/if}}
+      {{#ifSetupType 'generic-with-standalone-app-variants'}}runtimeTenantId: 100,{{/ifSetupType}}
+    };
+
+    await request(lifecycleApp).get('/api/business-profile').query(requestQuery).expect(200);
+    authentication.setAuthenticated(false);
+    await request(lifecycleApp)
+      .get('/api/business-profile')
+      .query(requestQuery)
+      .expect(401, { error: 'Authentication is required' });
+  });
+  {{/if}}
+});

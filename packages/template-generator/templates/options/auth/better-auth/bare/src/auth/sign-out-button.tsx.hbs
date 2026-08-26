@@ -1,0 +1,18 @@
+import { Pressable, StyleSheet } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/theme/ThemeContext';
+import { authClient } from './auth-client';
+
+export function SignOutButton() {
+  const { brand } = useTheme();
+  return (
+    <Pressable accessibilityRole="button" onPress={() => void authClient.signOut()} style={[styles.button, { backgroundColor: brand.primary }]}>
+      <ThemedText style=\{{ color: brand.onPrimary }}>Sign out</ThemedText>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 18 },
+});

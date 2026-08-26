@@ -1,0 +1,46 @@
+import { resolve } from 'node:path';
+
+import { z } from 'zod';
+
+const serverEnvironmentSchema = z.object({
+  {{#if isBetterAuth}}
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.string().url(),
+  {{/if}}
+  {{#if isClerkAuth}}
+  CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
+  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
+  {{/if}}
+  CLIENT_ORIGIN: z.string().url(),
+  {{#if hasDatabaseWorkspace}}
+  DATABASE_URL: z.string().refine((databaseUrl) => {
+    try {
+      const protocol = new URL(databaseUrl).protocol;
+      {{#if isMysqlDatabase}}
+      return protocol === 'mysql:';
+      {{else}}
+      return protocol === 'postgresql:' || protocol === 'postgres:';
+      {{/if}}
+    } catch {
+      return false;
+    }
+  }, 'DATABASE_URL must be a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} URL'),
+  {{/if}}
+  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  {{#if isBetterAuth}}
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  {{/if}}
+});
+
+export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+
+export const serverEnvironmentFile = resolve(import.meta.dirname, '../.env.local');
+
+export function validateServerEnvironment(environment: Record<string, unknown>): ServerEnvironment {
+  const parsedEnvironment = serverEnvironmentSchema.safeParse(environment);
+  if (!parsedEnvironment.success) {
+    throw new Error(`Invalid server environment: ${z.prettifyError(parsedEnvironment.error)}`);
+  }
+
+  return parsedEnvironment.data;
+}

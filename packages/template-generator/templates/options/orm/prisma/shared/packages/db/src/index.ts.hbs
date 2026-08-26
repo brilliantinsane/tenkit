@@ -1,0 +1,16 @@
+export {
+  createBusinessDataRepository,
+  {{#if isMysqlDatabase}}
+  createMysqlPrismaClient,
+  inspectMysqlTableNames,
+  validateMysqlDatabaseUrl,
+  {{else}}
+  createPostgresqlPrismaClient,
+  inspectPostgresqlTableNames,
+  validatePostgresqlDatabaseUrl,
+  {{/if}}
+  type AppVariantBusinessData,
+  type BusinessDataRepository,
+  type RuntimeTenantBusinessData,
+} from './repository.js';
+export { PrismaClient } from './generated/prisma/client.js';

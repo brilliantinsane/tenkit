@@ -1,0 +1,46 @@
+import { expoClient } from '@better-auth/expo/client';
+import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
+import type { BetterAuthClientPlugin } from 'better-auth';
+import { createAuthClient } from 'better-auth/react';
+
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL;
+const configuredScheme = Constants.expoConfig?.scheme;
+const scheme = Array.isArray(configuredScheme) ? configuredScheme[0] : configuredScheme;
+const appVariantSlug = Constants.expoConfig?.extra?.appVariant?.slug;
+
+if (!configuredApiUrl || !URL.canParse(configuredApiUrl)) {
+  throw new Error('EXPO_PUBLIC_API_URL must be a valid absolute Backend URL.');
+}
+if (!scheme || typeof scheme !== 'string') {
+  throw new Error('The active App Variant must define one trusted scheme.');
+}
+if (!appVariantSlug || typeof appVariantSlug !== 'string') {
+  throw new Error('The active App Variant Slug is required for Auth storage isolation.');
+}
+
+function createCompatibleExpoClient(options: Parameters<typeof expoClient>[0]) {
+  const plugin = expoClient(options);
+
+  return {
+    ...plugin,
+    getActions(fetch, store) {
+      return plugin.getActions(fetch as Parameters<typeof plugin.getActions>[0], store);
+    },
+  } satisfies BetterAuthClientPlugin;
+}
+
+export const authClient = createAuthClient({
+  baseURL: configuredApiUrl,
+  plugins: [
+    createCompatibleExpoClient({
+      scheme,
+      storagePrefix: `tenkit-${appVariantSlug}`,
+      storage: SecureStore,
+    }),
+  ],
+});
+
+export function getBetterAuthCookie(): string {
+  return authClient.getCookie();
+}

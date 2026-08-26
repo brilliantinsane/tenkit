@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -11,6 +11,7 @@ import { inspectReleaseArtifact } from '../src/release-artifacts';
 import type { ReleaseSetPlan } from '../src/release-plan';
 import { runReleaseVerificationCommand } from '../src/release-verification-command';
 import { RELEASE_SET_PACKAGES, type ReleaseSetPackageName } from '../src/release-set';
+import { normalizeArtifactTimes } from './release-artifact-fixture';
 
 const sourceSha = '041f79e50ff5e84f5883be026201bde10f77f93e';
 const previousStableSha = '1111111111111111111111111111111111111111';
@@ -86,11 +87,17 @@ async function writeReleaseArtifacts(
         {
           name: mutation?.name ?? releasePackage.name,
           version: mutation?.version ?? version,
-          ...('internalDependency' in releasePackage
+          ...(releasePackage.internalDependencies.length > 0
             ? {
                 [mutation?.internalDependencySection ?? 'dependencies']: {
-                  [releasePackage.internalDependency]:
-                    mutation?.internalDependencyVersion ?? version,
+                  ...Object.fromEntries(
+                    releasePackage.internalDependencies.map((dependencyName) => [
+                      dependencyName,
+                      dependencyName === '@tenkit/template-generator'
+                        ? (mutation?.internalDependencyVersion ?? version)
+                        : version,
+                    ]),
+                  ),
                 },
               }
             : {}),
@@ -103,20 +110,26 @@ async function writeReleaseArtifacts(
       join(packageRoot, 'README.md'),
       mutation?.content ?? `${releasePackage.name}\n`,
     );
+    for (const requiredArtifactPath of releasePackage.requiredArtifactPaths) {
+      const relativePath = requiredArtifactPath.replace(/^package\//, '');
+
+      if (relativePath === 'README.md' || relativePath === 'package.json') {
+        continue;
+      }
+
+      const requiredPath = join(packageRoot, relativePath);
+      await mkdir(dirname(requiredPath), { recursive: true });
+      await writeFile(requiredPath, releasePackage.name);
+    }
     if (releasePackage.name === '@tenkit/cli') {
-      await mkdir(join(packageRoot, 'dist'));
+      await mkdir(join(packageRoot, 'dist'), { recursive: true });
       await writeFile(
         join(packageRoot, 'dist/index.mjs'),
         `const CLI_VERSION = ${JSON.stringify(mutation?.embeddedCliVersion ?? version)};\n`,
       );
     }
     const fixedTime = new Date('2026-01-01T00:00:00.000Z');
-    await utimes(join(packageRoot, 'package.json'), fixedTime, fixedTime);
-    await utimes(join(packageRoot, 'README.md'), fixedTime, fixedTime);
-    if (releasePackage.name === '@tenkit/cli') {
-      await utimes(join(packageRoot, 'dist/index.mjs'), fixedTime, fixedTime);
-      await utimes(join(packageRoot, 'dist'), fixedTime, fixedTime);
-    }
+    await normalizeArtifactTimes(packageRoot, fixedTime);
     await utimes(packageRoot, fixedTime, fixedTime);
     const tarPath = join(packRoot, 'package.tar');
     execFileSync('tar', ['-cf', tarPath, 'package'], { cwd: packRoot });
@@ -153,6 +166,12 @@ function stageId(index: number): string {
 }
 
 type RegistryState = 'private' | 'public' | 'missing';
+type ReleaseSetRegistryStates = readonly [
+  RegistryState,
+  RegistryState,
+  RegistryState,
+  RegistryState,
+];
 type ReleasePublicationState = 'draft' | 'published';
 
 type VerificationHarnessOptions = {
@@ -188,7 +207,7 @@ type VerificationHarnessOptions = {
 };
 
 async function createVerificationHarness(
-  states: readonly [RegistryState, RegistryState, RegistryState],
+  states: ReleaseSetRegistryStates,
   options: VerificationHarnessOptions = {},
 ) {
   const version = options.version ?? '0.4.0';
@@ -294,8 +313,15 @@ async function createVerificationHarness(
             stdout: JSON.stringify({
               name: releasePackage.name,
               version,
-              ...('internalDependency' in releasePackage
-                ? { dependencies: { [releasePackage.internalDependency]: version } }
+              ...(releasePackage.internalDependencies.length > 0
+                ? {
+                    dependencies: Object.fromEntries(
+                      releasePackage.internalDependencies.map((dependencyName) => [
+                        dependencyName,
+                        version,
+                      ]),
+                    ),
+                  }
                 : {}),
               dist: {
                 integrity: registryDigests[index]!.integrity,
@@ -547,9 +573,12 @@ describe('release:verify command', () => {
   ] as const)(
     'derives the %s channel and verifies a fully private Release Set',
     async (channel, version, finalTag) => {
-      const harness = await createVerificationHarness(['private', 'private', 'private'], {
-        version,
-      });
+      const harness = await createVerificationHarness(
+        ['private', 'private', 'private', 'private'],
+        {
+          version,
+        },
+      );
 
       await expect(harness.execute()).resolves.toBe(0);
 
@@ -558,7 +587,7 @@ describe('release:verify command', () => {
       expect(output).toContain(`Final npm tag: ${finalTag}`);
       expect(output).toContain('State: fully private');
       expect(nextActions(output)).toEqual([
-        `Next action: Approve @tenkit/template-generator@${version} with npm 2FA, then rerun this command.`,
+        `Next action: Approve @tenkit/types@${version} with npm 2FA, then rerun this command.`,
       ]);
       expect(harness.reproduceReleaseSet).toHaveBeenCalledWith(
         expect.objectContaining({ sourceSha, version }),
@@ -574,7 +603,7 @@ describe('release:verify command', () => {
 
   test('rejects a private RC when Git plans a different version', async () => {
     const repository = await createReleasePlanningRepository();
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       version: '1.3.0-rc.9',
       sourceSha: repository.sourceSha,
       workspaceRoot: repository.repositoryRoot,
@@ -589,7 +618,7 @@ describe('release:verify command', () => {
 
   test('rejects a private Stable release when Git plans a different version', async () => {
     const repository = await createReleasePlanningRepository();
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       version: '9.0.0',
       sourceSha: repository.sourceSha,
       workspaceRoot: repository.repositoryRoot,
@@ -601,12 +630,14 @@ describe('release:verify command', () => {
   });
 
   test.each([
-    ['0.4.0', ['private', 'private', 'private'], '@tenkit/template-generator'],
-    ['0.4.0', ['public', 'private', 'private'], '@tenkit/cli'],
-    ['0.4.0', ['public', 'public', 'private'], 'create-tenkit'],
-    ['0.4.0-rc.3', ['private', 'private', 'private'], '@tenkit/template-generator'],
-    ['0.4.0-rc.3', ['public', 'private', 'private'], '@tenkit/cli'],
-    ['0.4.0-rc.3', ['public', 'public', 'private'], 'create-tenkit'],
+    ['0.4.0', ['private', 'private', 'private', 'private'], '@tenkit/types'],
+    ['0.4.0', ['public', 'private', 'private', 'private'], '@tenkit/template-generator'],
+    ['0.4.0', ['public', 'public', 'private', 'private'], '@tenkit/cli'],
+    ['0.4.0', ['public', 'public', 'public', 'private'], 'create-tenkit'],
+    ['0.4.0-rc.3', ['private', 'private', 'private', 'private'], '@tenkit/types'],
+    ['0.4.0-rc.3', ['public', 'private', 'private', 'private'], '@tenkit/template-generator'],
+    ['0.4.0-rc.3', ['public', 'public', 'private', 'private'], '@tenkit/cli'],
+    ['0.4.0-rc.3', ['public', 'public', 'public', 'private'], 'create-tenkit'],
   ] as const)(
     'accepts %s dependency prefix %j and names only %s',
     async (version, states, nextPackage) => {
@@ -625,7 +656,9 @@ describe('release:verify command', () => {
   ] as const)(
     'verifies complete public %s and points only to the matching GitHub draft',
     async (version, finalTag, prerelease) => {
-      const harness = await createVerificationHarness(['public', 'public', 'public'], { version });
+      const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
+        version,
+      });
 
       await expect(harness.execute()).resolves.toBe(0);
 
@@ -653,7 +686,7 @@ describe('release:verify command', () => {
   ] as const)(
     'verifies published %s npm and Git/GitHub identity',
     async (version, expectedNextAction) => {
-      const harness = await createVerificationHarness(['public', 'public', 'public'], {
+      const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
         version,
         publicationState: 'published',
       });
@@ -678,7 +711,7 @@ describe('release:verify command', () => {
   ] as const)(
     'verifies a published %s after Git advances its plan',
     async (_channel, version, plannedVersion, expectedNextAction) => {
-      const harness = await createVerificationHarness(['public', 'public', 'public'], {
+      const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
         version,
         plannedVersion,
         publicationState: 'published',
@@ -691,9 +724,10 @@ describe('release:verify command', () => {
   );
 
   test.each([
-    ['private', 'public', 'private'],
-    ['private', 'private', 'public'],
-    ['public', 'private', 'public'],
+    ['private', 'public', 'private', 'private'],
+    ['private', 'private', 'public', 'private'],
+    ['private', 'private', 'private', 'public'],
+    ['public', 'private', 'public', 'private'],
   ] as const)('rejects out-of-order public graph %j without approval advice', async (...states) => {
     const harness = await createVerificationHarness(states);
 
@@ -704,50 +738,50 @@ describe('release:verify command', () => {
   test.each([
     [
       'wrong final stage tag',
-      ['private', 'private', 'private'] as const,
+      ['private', 'private', 'private', 'private'] as const,
       { stageOverrides: { '@tenkit/template-generator': { tag: 'next' } } },
       /stage expected tag latest, found next/,
     ],
     [
       'mixed selected final tags',
-      ['public', 'public', 'public'] as const,
+      ['public', 'public', 'public', 'public'] as const,
       { distTagOverrides: { '@tenkit/cli': { latest: '0.3.0' } } },
       /@tenkit\/cli latest tag expected 0\.4\.0, found 0\.3\.0/,
     ],
     [
       'moved untouched channel',
-      ['public', 'public', 'public'] as const,
+      ['public', 'public', 'public', 'public'] as const,
       { distTagOverrides: { '@tenkit/cli': { next: '0.4.0-rc.1' } } },
       /@tenkit\/cli next tag expected 0\.4\.0-rc\.2, found 0\.4\.0-rc\.1/,
     ],
     [
       'Stable version under next',
-      ['public', 'public', 'public'] as const,
+      ['public', 'public', 'public', 'public'] as const,
       { distTagOverrides: { '@tenkit/template-generator': { next: '0.4.0' } } },
       /next tag must point to a genuine RC version/,
     ],
     [
       'next equal to latest',
-      ['public', 'public', 'public'] as const,
+      ['public', 'public', 'public', 'public'] as const,
       { distTagOverrides: { '@tenkit/template-generator': { next: '0.4.0' } } },
       /next tag must point to a genuine RC version|next and latest must differ/,
     ],
     [
       'unexpected stage actor',
-      ['private', 'private', 'private'] as const,
+      ['private', 'private', 'private', 'private'] as const,
       { stageOverrides: { '@tenkit/template-generator': { actor: 'other-automation' } } },
       /unexpected actor/,
     ],
     [
       'duplicate same-version stages',
-      ['private', 'private', 'private'] as const,
+      ['private', 'private', 'private', 'private'] as const,
       { duplicateStageFor: '@tenkit/template-generator' },
       /Found 2 private stages/,
     ],
     [
       'same-version stage beside a public package',
-      ['public', 'private', 'private'] as const,
-      { unexpectedPublicStageFor: '@tenkit/template-generator' },
+      ['public', 'private', 'private', 'private'] as const,
+      { unexpectedPublicStageFor: '@tenkit/types' },
       /Unexpected same-version npm stage/,
     ],
   ] as const)('stops on %s', async (_label, states, options, expectedMessage) => {
@@ -799,7 +833,12 @@ describe('release:verify command', () => {
       'changed public metadata dependency pin',
       {
         publicMetadataOverrides: {
-          '@tenkit/cli': { dependencies: { '@tenkit/template-generator': '0.4.1' } },
+          '@tenkit/cli': {
+            dependencies: {
+              '@tenkit/types': '0.4.0',
+              '@tenkit/template-generator': '0.4.1',
+            },
+          },
         },
       },
       /@tenkit\/template-generator expected 0\.4\.0/,
@@ -836,13 +875,16 @@ describe('release:verify command', () => {
       /public shasum mismatch/,
     ],
   ] as const)('stops on %s', async (_label, options, expectedMessage) => {
-    const harness = await createVerificationHarness(['public', 'public', 'public'], options);
+    const harness = await createVerificationHarness(
+      ['public', 'public', 'public', 'public'],
+      options,
+    );
 
     await expect(harness.execute()).rejects.toThrow(expectedMessage);
   });
 
   test('stops on a forged private-stage shasum', async () => {
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       stageOverrides: {
         '@tenkit/template-generator': { shasum: '0000000000000000000000000000000000000000' },
       },
@@ -868,11 +910,11 @@ describe('release:verify command', () => {
     [
       'published release before npm completion',
       { publicationState: 'published' },
-      ['public', 'private', 'private'] as const,
+      ['public', 'private', 'private', 'private'] as const,
     ],
   ] as const)('stops on mismatched GitHub state: %s', async (_label, options, states) => {
     const harness = await createVerificationHarness(
-      states ?? (['public', 'public', 'public'] as const),
+      states ?? (['public', 'public', 'public', 'public'] as const),
       options,
     );
 
@@ -881,7 +923,7 @@ describe('release:verify command', () => {
   });
 
   test('rejects an exact-version create entrypoint that reports another version', async () => {
-    const harness = await createVerificationHarness(['public', 'public', 'public'], {
+    const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
       createEntrypointVersion: '0.4.1',
     });
 
@@ -891,7 +933,7 @@ describe('release:verify command', () => {
   });
 
   test('retries a transient public-package visibility gap within the bounded read window', async () => {
-    const harness = await createVerificationHarness(['public', 'public', 'public'], {
+    const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
       transientMissingReads: { '@tenkit/template-generator': 1 },
     });
 
@@ -900,43 +942,43 @@ describe('release:verify command', () => {
   });
 
   test('retries a transient private-stage read before recommending approval', async () => {
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       transientStageViewReads: { '@tenkit/template-generator': 1 },
     });
 
     await expect(harness.execute()).resolves.toBe(0);
     expect(harness.wait).toHaveBeenCalledTimes(1);
     expect(nextActions(harness.getOutput())).toEqual([
-      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+      'Next action: Approve @tenkit/types@0.4.0 with npm 2FA, then rerun this command.',
     ]);
   });
 
   test('retries malformed npm dist-tag JSON before recommending approval', async () => {
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       transientMalformedDistTagReads: { '@tenkit/template-generator': 1 },
     });
 
     await expect(harness.execute()).resolves.toBe(0);
     expect(harness.wait).toHaveBeenCalledTimes(1);
     expect(nextActions(harness.getOutput())).toEqual([
-      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+      'Next action: Approve @tenkit/types@0.4.0 with npm 2FA, then rerun this command.',
     ]);
   });
 
   test('retries a transient missing GitHub draft before recommending approval', async () => {
-    const harness = await createVerificationHarness(['private', 'private', 'private'], {
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private'], {
       transientMissingGithubReads: 1,
     });
 
     await expect(harness.execute()).resolves.toBe(0);
     expect(harness.wait).toHaveBeenCalledTimes(1);
     expect(nextActions(harness.getOutput())).toEqual([
-      'Next action: Approve @tenkit/template-generator@0.4.0 with npm 2FA, then rerun this command.',
+      'Next action: Approve @tenkit/types@0.4.0 with npm 2FA, then rerun this command.',
     ]);
   });
 
   test('retries a transient remote Git tag read', async () => {
-    const harness = await createVerificationHarness(['public', 'public', 'public'], {
+    const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
       publicationState: 'published',
       transientRemoteTagReads: 1,
     });
@@ -949,7 +991,7 @@ describe('release:verify command', () => {
   test.each(['0.4.0', '0.4.0-rc.3'])(
     'retries when %s public metadata becomes visible before its final dist-tag',
     async (version) => {
-      const harness = await createVerificationHarness(['public', 'public', 'public'], {
+      const harness = await createVerificationHarness(['public', 'public', 'public', 'public'], {
         version,
         transientSelectedTagReads: { '@tenkit/template-generator': 1 },
       });
@@ -960,7 +1002,7 @@ describe('release:verify command', () => {
   );
 
   test('stops with recovery evidence after the bounded read window is exhausted', async () => {
-    const harness = await createVerificationHarness(['missing', 'private', 'private']);
+    const harness = await createVerificationHarness(['missing', 'private', 'private', 'private']);
 
     await expect(harness.execute()).rejects.toThrow(
       /after 4 read attempts over 6000ms.*Stop and inspect npm public, staged, and dist-tag state/i,
@@ -988,7 +1030,7 @@ describe('release:verify command', () => {
   });
 
   test('uses only read-only npm, GitHub, and Git commands', async () => {
-    const harness = await createVerificationHarness(['public', 'public', 'public']);
+    const harness = await createVerificationHarness(['public', 'public', 'public', 'public']);
 
     await expect(harness.execute()).resolves.toBe(0);
 
@@ -1010,7 +1052,7 @@ describe('release:verify command', () => {
   });
 
   test('queries npmjs regardless of inherited npm registry configuration', async () => {
-    const harness = await createVerificationHarness(['private', 'private', 'private']);
+    const harness = await createVerificationHarness(['private', 'private', 'private', 'private']);
 
     await expect(harness.execute()).resolves.toBe(0);
 

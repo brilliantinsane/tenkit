@@ -13,7 +13,10 @@
       ],
       "@/assets/*": [
         "./assets/*"
-      ]
+      ]{{#if isConvexBackend}},
+      "@server/*": [
+        "./apps/server/*"
+      ]{{/if}}
     }
   },
   "include": [
@@ -22,5 +25,8 @@
     "src/uniwind-env.d.ts"{{/if}},
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+  ]{{#if hasServerWorkspace}},
+  "exclude": [
+    "apps/server"
+  ]{{/if}}
 }

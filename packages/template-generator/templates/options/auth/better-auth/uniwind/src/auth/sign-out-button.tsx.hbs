@@ -1,0 +1,7 @@
+import { Pressable, Text } from 'react-native';
+
+import { authClient } from './auth-client';
+
+export function SignOutButton() {
+  return <Pressable className="min-h-11 items-center justify-center rounded-xl bg-accent px-5" onPress={() => void authClient.signOut()}><Text className="font-semibold text-white">Sign out</Text></Pressable>;
+}

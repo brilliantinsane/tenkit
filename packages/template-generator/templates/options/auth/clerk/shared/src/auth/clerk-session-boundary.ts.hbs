@@ -1,0 +1,12 @@
+export type ClerkSessionRouteState = 'loading' | 'auth' | 'app';
+
+export function resolveClerkSessionRouteState(
+  isLoaded: boolean,
+  isSignedIn: boolean | undefined,
+): ClerkSessionRouteState {
+  if (!isLoaded) {
+    return 'loading';
+  }
+
+  return isSignedIn === true ? 'app' : 'auth';
+}

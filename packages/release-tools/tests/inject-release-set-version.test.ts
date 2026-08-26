@@ -27,7 +27,12 @@ const stablePlan = {
   npmDistTag: 'latest',
   gitTag: 'v0.3.0',
   githubReleaseType: 'release',
-  dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+  dependencyApprovalOrder: [
+    '@tenkit/types',
+    '@tenkit/template-generator',
+    '@tenkit/cli',
+    'create-tenkit',
+  ],
   contributingCommits: [],
 } as const satisfies Extract<ReleaseSetPlan, { kind: 'release' }>;
 
@@ -44,11 +49,14 @@ async function createWorkspaceWithCliMetadata(cliMetadata: Record<string, unknow
         : {
             name: releasePackage.name,
             version: '0.2.0',
-            ...('internalDependency' in releasePackage
+            ...(releasePackage.internalDependencies.length > 0
               ? {
-                  dependencies: {
-                    [releasePackage.internalDependency]: 'workspace:*',
-                  },
+                  dependencies: Object.fromEntries(
+                    releasePackage.internalDependencies.map((dependencyName) => [
+                      dependencyName,
+                      'workspace:*',
+                    ]),
+                  ),
                 }
               : {}),
           };
@@ -81,12 +89,13 @@ describe('isolated Release Set version injection', () => {
       const workspaceRoot = await mkdtemp(join(tmpdir(), 'tenkit-release-version-'));
       tempRoots.push(workspaceRoot);
       const packages = [
-        ['template-generator', '@tenkit/template-generator'],
-        ['cli', '@tenkit/cli'],
-        ['create-tenkit', 'create-tenkit'],
+        ['types', '@tenkit/types', []],
+        ['template-generator', '@tenkit/template-generator', ['@tenkit/types']],
+        ['cli', '@tenkit/cli', ['@tenkit/types', '@tenkit/template-generator']],
+        ['create-tenkit', 'create-tenkit', ['@tenkit/cli']],
       ] as const;
 
-      for (const [folder, name] of packages) {
+      for (const [folder, name, internalDependencies] of packages) {
         const packageRoot = join(workspaceRoot, 'packages', folder);
         await mkdir(packageRoot, { recursive: true });
         await writeFile(
@@ -96,11 +105,13 @@ describe('isolated Release Set version injection', () => {
               name,
               version: '0.2.0',
               private: false,
-              ...(folder === 'cli'
-                ? { dependencies: { '@tenkit/template-generator': 'workspace:*' } }
-                : folder === 'create-tenkit'
-                  ? { dependencies: { '@tenkit/cli': 'workspace:*' } }
-                  : {}),
+              ...(internalDependencies.length > 0
+                ? {
+                    dependencies: Object.fromEntries(
+                      internalDependencies.map((dependencyName) => [dependencyName, 'workspace:*']),
+                    ),
+                  }
+                : {}),
             },
             null,
             2,
@@ -121,13 +132,18 @@ describe('isolated Release Set version injection', () => {
         npmDistTag,
         gitTag: `v${version}`,
         githubReleaseType,
-        dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+        dependencyApprovalOrder: [
+          '@tenkit/types',
+          '@tenkit/template-generator',
+          '@tenkit/cli',
+          'create-tenkit',
+        ],
         contributingCommits: [],
       } satisfies Extract<ReleaseSetPlan, { kind: 'release' }>;
 
       await injectReleaseSetVersion({ isolatedWorkspaceRoot: workspaceRoot, plan });
 
-      for (const [folder, name] of packages) {
+      for (const [folder, name, internalDependencies] of packages) {
         const packageMetadata = JSON.parse(
           await readFile(join(workspaceRoot, 'packages', folder, 'package.json'), 'utf8'),
         ) as Record<string, unknown>;
@@ -135,11 +151,13 @@ describe('isolated Release Set version injection', () => {
           name,
           version,
           private: false,
-          ...(folder === 'cli'
-            ? { dependencies: { '@tenkit/template-generator': version } }
-            : folder === 'create-tenkit'
-              ? { dependencies: { '@tenkit/cli': version } }
-              : {}),
+          ...(internalDependencies.length > 0
+            ? {
+                dependencies: Object.fromEntries(
+                  internalDependencies.map((dependencyName) => [dependencyName, version]),
+                ),
+              }
+            : {}),
         });
       }
     },
@@ -161,7 +179,12 @@ describe('isolated Release Set version injection', () => {
       npmDistTag: 'latest',
       gitTag: 'vnext',
       githubReleaseType: 'release',
-      dependencyApprovalOrder: ['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit'],
+      dependencyApprovalOrder: [
+        '@tenkit/types',
+        '@tenkit/template-generator',
+        '@tenkit/cli',
+        'create-tenkit',
+      ],
       contributingCommits: [],
     } as unknown as Extract<ReleaseSetPlan, { kind: 'release' }>;
 
@@ -176,26 +199,29 @@ describe('isolated Release Set version injection', () => {
       cliMetadata: {
         name: '@tenkit/cli',
         version: '0.2.0',
-        dependencies: {},
+        dependencies: { '@tenkit/types': 'workspace:*' },
       },
-      expectedError: /expected 1 internal Release Set dependencies, found 0/,
+      expectedError: /expected 2 internal Release Set dependencies, found 1/,
     },
     {
       label: 'duplicate edge',
       cliMetadata: {
         name: '@tenkit/cli',
         version: '0.2.0',
-        dependencies: { '@tenkit/template-generator': 'workspace:*' },
+        dependencies: {
+          '@tenkit/types': 'workspace:*',
+          '@tenkit/template-generator': 'workspace:*',
+        },
         peerDependencies: { '@tenkit/template-generator': 'workspace:*' },
       },
-      expectedError: /expected 1 internal Release Set dependencies, found 2/,
+      expectedError: /expected 2 internal Release Set dependencies, found 3/,
     },
     {
       label: 'non-string edge',
       cliMetadata: {
         name: '@tenkit/cli',
         version: '0.2.0',
-        dependencies: { '@tenkit/template-generator': 3 },
+        dependencies: { '@tenkit/types': 'workspace:*', '@tenkit/template-generator': 3 },
       },
       expectedError: /entry @tenkit\/template-generator must be a string/,
     },

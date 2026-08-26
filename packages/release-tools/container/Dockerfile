@@ -26,6 +26,7 @@ RUN set -eux; \
   test "$(pnpm --version)" = "${PNPM_VERSION}"
 
 COPY container/pack-release-set.sh /usr/local/bin/
+COPY container/canonical-publish-manifest.cjs /usr/local/lib/tenkit/
 
 RUN chmod 0555 /usr/local/bin/pack-release-set.sh \
   && useradd --create-home verifier

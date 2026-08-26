@@ -1,0 +1,44 @@
+import { convexClient } from '@convex-dev/better-auth/client/plugins';
+import type { AuthClient as ConvexBetterAuthClient } from '@convex-dev/better-auth/react';
+import { expoClient } from '@better-auth/expo/client';
+import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
+import type { BetterAuthClientPlugin } from 'better-auth';
+import { createAuthClient } from 'better-auth/react';
+
+const convexSiteUrl = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
+const configuredScheme = Constants.expoConfig?.scheme;
+const scheme = Array.isArray(configuredScheme) ? configuredScheme[0] : configuredScheme;
+const appVariantSlug = Constants.expoConfig?.extra?.appVariant?.slug;
+
+if (!convexSiteUrl || !URL.canParse(convexSiteUrl)) {
+  throw new Error('EXPO_PUBLIC_CONVEX_SITE_URL must be a valid absolute URL.');
+}
+if (!scheme || typeof scheme !== 'string') {
+  throw new Error('The active App Variant must define one trusted scheme.');
+}
+if (!appVariantSlug || typeof appVariantSlug !== 'string') {
+  throw new Error('The active App Variant Slug is required for Auth storage isolation.');
+}
+
+function createCompatibleExpoClient(options: Parameters<typeof expoClient>[0]): BetterAuthClientPlugin {
+  const plugin = expoClient(options);
+  return {
+    ...plugin,
+    getActions(fetch, store) {
+      return plugin.getActions(fetch as Parameters<typeof plugin.getActions>[0], store);
+    },
+  } satisfies BetterAuthClientPlugin;
+}
+
+const convexAuthPlugins = [
+  createCompatibleExpoClient({ scheme, storagePrefix: `tenkit-${appVariantSlug}`, storage: SecureStore }),
+  convexClient(),
+] satisfies [ReturnType<typeof createCompatibleExpoClient>, ReturnType<typeof convexClient>];
+
+export const authClient = createAuthClient({
+  baseURL: convexSiteUrl,
+  plugins: convexAuthPlugins,
+});
+
+export const convexBetterAuthClient: ConvexBetterAuthClient = authClient;

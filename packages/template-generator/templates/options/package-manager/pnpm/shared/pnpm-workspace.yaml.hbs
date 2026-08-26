@@ -1,5 +1,31 @@
 packages:
   - '.'
+{{#if hasServerWorkspace}}
+  - 'apps/server'
+{{/if}}
+{{#if hasDatabaseWorkspace}}
+  - 'packages/db'
+{{/if}}
+{{#if hasAuthWorkspace}}
+  - 'packages/auth'
+{{/if}}
 
 allowBuilds:
+{{#if isPrismaOrm}}
+  '@prisma/engines': true
+  prisma: true
+{{/if}}
+{{#if isClerkAuth}}
+  browser-tabs-lock: true
+  bufferutil: false
+  core-js: false
+{{/if}}
   esbuild: true
+{{#if isClerkAuth}}
+  utf-8-validate: false
+{{/if}}
+{{#if isBetterAuth}}
+
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260812.1'
+{{/if}}

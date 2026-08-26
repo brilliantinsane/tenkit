@@ -1,18 +1,26 @@
 import {
-  formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedSetupType,
-} from './generated-setup-types';
-import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
+  isGeneratedNodeBackend,
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptionIssue,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
 import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
   type GeneratedSetupTypeDefinition,
   validatePackageName,
-} from './generated-setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
 import {
   type GeneratedStylingChoice,
   normalizeGeneratedStylingChoice,
-} from './generated-styling-choices';
+} from '@tenkit/types/styling-definitions';
+
+import {
+  formatSupportedGeneratedSetupTypes,
+  normalizeGeneratedSetupType,
+} from './generated-setup-types';
+import { type GeneratedAccentColor, normalizeGeneratedAccentColor } from './generated-accent-color';
 import {
   GENERATED_PROJECT_PACKAGE_MANAGERS,
   readTemplateTree,
@@ -25,19 +33,8 @@ import { mergeVirtualFileTrees, type VirtualFileTree } from './virtual-file-tree
 export {
   formatSupportedGeneratedSetupTypes,
   normalizeGeneratedSetupType,
-  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  SUPPORTED_GENERATED_SETUP_TYPES,
-  SUPPORTED_PUBLIC_SETUP_SLUGS,
-  type GeneratedSetupType,
-  type GeneratedSetupTypeInput,
-  type PublicSetupSlug,
 } from './generated-setup-types';
 export { normalizeGeneratedAccentColor, type GeneratedAccentColor } from './generated-accent-color';
-export {
-  normalizeGeneratedStylingChoice,
-  SUPPORTED_GENERATED_STYLING_CHOICES,
-  type GeneratedStylingChoice,
-} from './generated-styling-choices';
 export { type GeneratedProjectPackageManager } from './template-reader';
 
 export type WhiteLabelAppsProjectConfig = {
@@ -48,6 +45,7 @@ export type WhiteLabelAppsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type SingleAppRuntimeTenantsProjectConfig = {
@@ -58,6 +56,7 @@ export type SingleAppRuntimeTenantsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type GenericWithStandaloneAppVariantsProjectConfig = {
@@ -68,6 +67,7 @@ export type GenericWithStandaloneAppVariantsProjectConfig = {
   packageName?: string;
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
+  generatedAppOptions?: RawGeneratedAppOptions;
 };
 
 export type GenerateProjectConfig =
@@ -78,6 +78,27 @@ export type GenerateProjectConfig =
 function normalizeName(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : fallback;
+}
+
+function formatGeneratedAppOptionIssue(issue: GeneratedAppOptionIssue): string {
+  if (issue.code === 'unsupported-value') {
+    return `${issue.option} ${JSON.stringify(issue.value)} is not a public value`;
+  }
+
+  return `Unsupported Generated App Option combination ${JSON.stringify(issue.selection)}`;
+}
+
+function resolveSupportedGeneratedAppOptions(
+  rawOptions: RawGeneratedAppOptions | undefined,
+): GeneratedAppOptions {
+  const resolution = resolveGeneratedAppOptions(rawOptions ?? {});
+  if (resolution.status === 'invalid') {
+    throw new Error(
+      `${resolution.issues.map(formatGeneratedAppOptionIssue).join('. ')}. Template source was not read.`,
+    );
+  }
+
+  return resolution.selection;
 }
 
 function normalizePackageName(value: string | undefined, fallback: string): string {
@@ -162,6 +183,7 @@ function normalizeTemplateContext({
   packageManager: rawPackageManager,
   stylingChoice: rawStylingChoice,
   setupTypeDefinition,
+  generatedAppOptions,
 }: {
   appVariantAccents?: readonly (string | undefined)[];
   appVariantNames?: readonly (string | undefined)[];
@@ -170,6 +192,7 @@ function normalizeTemplateContext({
   packageManager?: GeneratedProjectPackageManager;
   stylingChoice?: GeneratedStylingChoice;
   setupTypeDefinition: GeneratedSetupTypeDefinition;
+  generatedAppOptions: GeneratedAppOptions;
 }): TemplateContext {
   const projectName = normalizeName(rawProjectName, setupTypeDefinition.defaultProjectName);
   const packageManager = normalizePackageManager(rawPackageManager);
@@ -181,6 +204,22 @@ function normalizeTemplateContext({
       appVariantNames,
       setupTypeDefinition,
     }),
+    hasAuth: generatedAppOptions.auth !== 'none',
+    hasAuthWorkspace:
+      generatedAppOptions.auth === 'better-auth' &&
+      isGeneratedNodeBackend(generatedAppOptions.backend),
+    hasDatabaseWorkspace: generatedAppOptions.database !== 'none',
+    hasServerWorkspace: generatedAppOptions.backend !== 'none',
+    isBetterAuth: generatedAppOptions.auth === 'better-auth',
+    isClerkAuth: generatedAppOptions.auth === 'clerk',
+    isConvexBackend: generatedAppOptions.backend === 'convex',
+    isExpressBackend: generatedAppOptions.backend === 'express',
+    isNestjsBackend: generatedAppOptions.backend === 'nestjs',
+    isNodeBackend: isGeneratedNodeBackend(generatedAppOptions.backend),
+    isMysqlDatabase: generatedAppOptions.database === 'mysql',
+    isPostgresqlDatabase: generatedAppOptions.database === 'postgresql',
+    isDrizzleOrm: generatedAppOptions.orm === 'drizzle',
+    isPrismaOrm: generatedAppOptions.orm === 'prisma',
     isSingleAppRuntimeTenants: setupTypeDefinition.setupType === 'single-app-runtime-tenants',
     isBareStyling: stylingChoice === 'bare',
     isBunPackageManager: packageManager === 'bun',
@@ -192,10 +231,36 @@ function normalizeTemplateContext({
     packageName: normalizePackageName(rawPackageName, setupTypeDefinition.defaultPackageName),
     packageManager,
     packageManagerInstallCommand: `${packageManager} install`,
+    packageManagerDatabaseRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir packages/db run'
+        : packageManager === 'npm'
+          ? 'npm --prefix packages/db run'
+          : 'bun run --cwd packages/db',
+    packageManagerAuthRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir packages/auth run'
+        : packageManager === 'npm'
+          ? 'npm --prefix packages/auth run'
+          : 'bun run --cwd packages/auth',
     packageManagerRunCommand: `${packageManager} run`,
+    packageManagerServerRunCommand:
+      packageManager === 'pnpm'
+        ? 'pnpm --dir apps/server run'
+        : packageManager === 'npm'
+          ? 'npm --prefix apps/server run'
+          : 'bun run --cwd apps/server',
     packageManagerTenkitCommand:
       packageManager === 'npm' ? 'npm run tenkit --' : `${packageManager} run tenkit`,
+    workspaceDependencyVersion: packageManager === 'npm' ? '*' : 'workspace:*',
+    nodeBackendDisplayName:
+      generatedAppOptions.backend === 'express'
+        ? 'Express'
+        : generatedAppOptions.backend === 'nestjs'
+          ? 'NestJS'
+          : undefined,
     stylingChoice,
+    setupType: setupTypeDefinition.setupType,
   };
 }
 
@@ -216,6 +281,39 @@ function readProjectTemplateTree({
     context.packageManager === 'pnpm'
       ? readTemplateTree('options/package-manager/pnpm/shared', context)
       : [];
+  const authSharedTree = context.isClerkAuth
+    ? readTemplateTree('options/auth/clerk/shared', context)
+    : context.isBetterAuth && context.isNodeBackend
+      ? readTemplateTree('options/auth/better-auth/shared', context)
+      : context.isBetterAuth && context.isConvexBackend
+        ? readTemplateTree('options/auth/better-auth/convex', context)
+        : [];
+  const authStylingTree = context.isClerkAuth
+    ? readTemplateTree(`options/auth/clerk/${context.stylingChoice}`, context)
+    : context.isBetterAuth
+      ? readTemplateTree(`options/auth/better-auth/${context.stylingChoice}`, context)
+      : [];
+  const authBackendTree =
+    context.isClerkAuth && context.isConvexBackend
+      ? readTemplateTree('options/auth/clerk/convex', context)
+      : [];
+  const backendTree = context.isExpressBackend
+    ? readTemplateTree('options/backend/express/shared', context)
+    : context.isNestjsBackend
+      ? readTemplateTree('options/backend/nestjs/shared', context)
+      : context.isConvexBackend
+        ? readTemplateTree('options/backend/convex/shared', context)
+        : [];
+  const databaseTree = context.isPostgresqlDatabase
+    ? readTemplateTree('options/db/postgresql/shared', context)
+    : context.isMysqlDatabase
+      ? readTemplateTree('options/db/mysql/shared', context)
+      : [];
+  const ormTree = context.isPrismaOrm
+    ? readTemplateTree('options/orm/prisma/shared', context)
+    : context.isDrizzleOrm
+      ? readTemplateTree('options/orm/drizzle/shared', context)
+      : [];
   const assetTree = readTemplateTree('assets', context);
   const appVariantAssets = context.appVariants.flatMap(({ slug }) =>
     assetTree.map((file) => ({
@@ -229,6 +327,12 @@ function readProjectTemplateTree({
     setupTypeSharedTree,
     setupTypeStylingTree,
     packageManagerTree,
+    authSharedTree,
+    authStylingTree,
+    authBackendTree,
+    backendTree,
+    databaseTree,
+    ormTree,
     appVariantAssets,
   );
 }
@@ -236,6 +340,8 @@ function readProjectTemplateTree({
 export function generateWhiteLabelAppsProject(
   config: WhiteLabelAppsProjectConfig = { setupType: 'white-label-apps' },
 ): VirtualFileTree {
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'white-label-apps') {
     throw new Error('The Template generator currently supports only White Label Apps output.');
   }
@@ -249,6 +355,7 @@ export function generateWhiteLabelAppsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({
@@ -260,6 +367,8 @@ export function generateWhiteLabelAppsProject(
 export function generateSingleAppRuntimeTenantsProject(
   config: SingleAppRuntimeTenantsProjectConfig = { setupType: 'single-app-runtime-tenants' },
 ): VirtualFileTree {
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'single-app-runtime-tenants') {
     throw new Error('The Template generator expected Single App Runtime Tenants output.');
   }
@@ -273,6 +382,7 @@ export function generateSingleAppRuntimeTenantsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({
@@ -286,6 +396,8 @@ export function generateGenericWithStandaloneAppVariantsProject(
     setupType: 'generic-with-standalone-app-variants',
   },
 ): VirtualFileTree {
+  const generatedAppOptions = resolveSupportedGeneratedAppOptions(config.generatedAppOptions);
+
   if (normalizeGeneratedSetupType(config.setupType) !== 'generic-with-standalone-app-variants') {
     throw new Error('The Template generator expected Generic With Standalone App Variants output.');
   }
@@ -301,6 +413,7 @@ export function generateGenericWithStandaloneAppVariantsProject(
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
     setupTypeDefinition,
+    generatedAppOptions,
   });
 
   return readProjectTemplateTree({
@@ -318,6 +431,7 @@ export function generateProject(config: GenerateProjectConfig): VirtualFileTree 
     packageName: config.packageName,
     packageManager: config.packageManager,
     stylingChoice: config.stylingChoice,
+    generatedAppOptions: config.generatedAppOptions,
   };
 
   switch (setupType) {

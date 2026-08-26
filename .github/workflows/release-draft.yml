@@ -33,9 +33,11 @@ jobs:
       git-tag: ${{ steps.plan.outputs.git-tag }}
       github-release-type: ${{ steps.plan.outputs.github-release-type }}
       package-order: ${{ steps.plan.outputs.package-order }}
+      types-shasum: ${{ steps.pack.outputs.types-shasum }}
       template-shasum: ${{ steps.pack.outputs.template-shasum }}
       cli-shasum: ${{ steps.pack.outputs.cli-shasum }}
       create-shasum: ${{ steps.pack.outputs.create-shasum }}
+      types-integrity: ${{ steps.pack.outputs.types-integrity }}
       template-integrity: ${{ steps.pack.outputs.template-integrity }}
       cli-integrity: ${{ steps.pack.outputs.cli-integrity }}
       create-integrity: ${{ steps.pack.outputs.create-integrity }}
@@ -115,7 +117,7 @@ jobs:
           printf '%s' "$NPM_DIST_TAG" | grep -Eq '^(latest|next)$'
           printf '%s' "$GIT_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$'
           printf '%s' "$GITHUB_RELEASE_TYPE" | grep -Eq '^(release|prerelease)$'
-          test "$PACKAGE_ORDER" = '["@tenkit/template-generator","@tenkit/cli","create-tenkit"]'
+          test "$PACKAGE_ORDER" = '["@tenkit/types","@tenkit/template-generator","@tenkit/cli","create-tenkit"]'
           {
             echo "channel=$PLANNED_CHANNEL"
             echo "source-sha=$PLANNED_SOURCE_SHA"
@@ -140,31 +142,35 @@ jobs:
           printf '%s' "$BUILD_JSON" | jq -e \
             --arg sourceSha "$SOURCE_SHA" \
             --arg version "$VERSION" \
-            '.sourceSha == $sourceSha and .version == $version and (.packages | length == 3)' >/dev/null
+            '.sourceSha == $sourceSha and .version == $version and (.packages | length == 4)' >/dev/null
 
           diagnostic() {
             printf '%s' "$BUILD_JSON" | jq -r --arg package "$1" --arg field "$2" \
               '.packages[] | select(.name == $package) | .[$field]'
           }
 
+          TYPES_SHASUM=$(diagnostic '@tenkit/types' shasum)
           TEMPLATE_SHASUM=$(diagnostic '@tenkit/template-generator' shasum)
           CLI_SHASUM=$(diagnostic '@tenkit/cli' shasum)
           CREATE_SHASUM=$(diagnostic 'create-tenkit' shasum)
+          TYPES_INTEGRITY=$(diagnostic '@tenkit/types' integrity)
           TEMPLATE_INTEGRITY=$(diagnostic '@tenkit/template-generator' integrity)
           CLI_INTEGRITY=$(diagnostic '@tenkit/cli' integrity)
           CREATE_INTEGRITY=$(diagnostic 'create-tenkit' integrity)
 
-          for shasum in "$TEMPLATE_SHASUM" "$CLI_SHASUM" "$CREATE_SHASUM"; do
+          for shasum in "$TYPES_SHASUM" "$TEMPLATE_SHASUM" "$CLI_SHASUM" "$CREATE_SHASUM"; do
             printf '%s' "$shasum" | grep -Eq '^[0-9a-f]{40}$'
           done
-          for integrity in "$TEMPLATE_INTEGRITY" "$CLI_INTEGRITY" "$CREATE_INTEGRITY"; do
+          for integrity in "$TYPES_INTEGRITY" "$TEMPLATE_INTEGRITY" "$CLI_INTEGRITY" "$CREATE_INTEGRITY"; do
             printf '%s' "$integrity" | grep -Eq '^sha512-[A-Za-z0-9+/]+={0,2}$'
           done
 
           {
+            echo "types-shasum=$TYPES_SHASUM"
             echo "template-shasum=$TEMPLATE_SHASUM"
             echo "cli-shasum=$CLI_SHASUM"
             echo "create-shasum=$CREATE_SHASUM"
+            echo "types-integrity=$TYPES_INTEGRITY"
             echo "template-integrity=$TEMPLATE_INTEGRITY"
             echo "cli-integrity=$CLI_INTEGRITY"
             echo "create-integrity=$CREATE_INTEGRITY"
@@ -195,6 +201,7 @@ jobs:
       GITHUB_RELEASE_TYPE: ${{ needs.build.outputs.github-release-type }}
       PACKAGE_ORDER: ${{ needs.build.outputs.package-order }}
     outputs:
+      types-stage-id: ${{ steps.stage-release-set.outputs.types-stage-id }}
       template-stage-id: ${{ steps.stage-release-set.outputs.template-stage-id }}
       cli-stage-id: ${{ steps.stage-release-set.outputs.cli-stage-id }}
       create-stage-id: ${{ steps.stage-release-set.outputs.create-stage-id }}
@@ -228,9 +235,11 @@ jobs:
       - name: Stage Release Set in dependency order
         id: stage-release-set
         env:
+          TYPES_ARTIFACT: ./release-artifacts/tenkit-types-${{ needs.build.outputs.version }}.tgz
           TEMPLATE_ARTIFACT: ./release-artifacts/tenkit-template-generator-${{ needs.build.outputs.version }}.tgz
           CLI_ARTIFACT: ./release-artifacts/tenkit-cli-${{ needs.build.outputs.version }}.tgz
           CREATE_ARTIFACT: ./release-artifacts/create-tenkit-${{ needs.build.outputs.version }}.tgz
+          TYPES_SHASUM: ${{ needs.build.outputs.types-shasum }}
           TEMPLATE_SHASUM: ${{ needs.build.outputs.template-shasum }}
           CLI_SHASUM: ${{ needs.build.outputs.cli-shasum }}
           CREATE_SHASUM: ${{ needs.build.outputs.create-shasum }}
@@ -266,6 +275,7 @@ jobs:
             echo "$OUTPUT_NAME=$STAGE_ID" >> "$GITHUB_OUTPUT"
           }
 
+          stage_package '@tenkit/types' "$TYPES_ARTIFACT" "$TYPES_SHASUM" types-stage-id
           stage_package '@tenkit/template-generator' "$TEMPLATE_ARTIFACT" "$TEMPLATE_SHASUM" template-stage-id
           stage_package '@tenkit/cli' "$CLI_ARTIFACT" "$CLI_SHASUM" cli-stage-id
           stage_package 'create-tenkit' "$CREATE_ARTIFACT" "$CREATE_SHASUM" create-stage-id

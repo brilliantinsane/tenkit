@@ -1,0 +1,30 @@
+import { useClerk } from '@clerk/expo';
+import { Pressable, StyleSheet } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/theme/ThemeContext';
+
+export function SignOutButton() {
+  const { signOut } = useClerk();
+  const { brand } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => void signOut()}
+      style={[styles.button, { backgroundColor: brand.primary }]}
+    >
+      <ThemedText style=\{{ color: brand.onPrimary }}>Sign out</ThemedText>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+  },
+});

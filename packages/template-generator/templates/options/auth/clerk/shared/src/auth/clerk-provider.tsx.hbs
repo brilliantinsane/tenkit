@@ -1,0 +1,25 @@
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+import type { PropsWithChildren } from 'react';
+
+function readClerkPublishableKey(): string {
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey?.startsWith('pk_')) {
+    throw new Error(
+      'EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is required and must be a Clerk Publishable Key.',
+    );
+  }
+
+  return publishableKey;
+}
+
+const clerkPublishableKey = readClerkPublishableKey();
+
+export function ClerkAppProvider({ children }: PropsWithChildren) {
+  return (
+    <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+      {children}
+    </ClerkProvider>
+  );
+}

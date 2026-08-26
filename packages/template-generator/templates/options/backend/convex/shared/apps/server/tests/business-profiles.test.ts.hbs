@@ -1,0 +1,170 @@
+import { convexTest } from 'convex-test';
+import { expect, test } from 'vitest';
+
+import { api, internal } from '../convex/_generated/api';
+import schema from '../convex/schema';
+
+declare global {
+  interface ImportMeta {
+    glob(pattern: string): Record<string, () => Promise<unknown>>;
+  }
+}
+
+const modules = import.meta.glob('../convex/**/*.ts');
+
+test('seeds Convex-owned Starter Data and enforces {{setupType}} access', async () => {
+{{#if isClerkAuth}}
+  process.env.CLERK_FRONTEND_API_URL = 'https://tenkit-test.clerk.accounts.dev';
+{{/if}}
+  const backend = convexTest(schema, modules);
+  const counts = await backend.mutation(internal.starterData.seed, {});
+  await expect(backend.query(api.health.check, {})).resolves.toEqual({ status: 'ok' });
+
+{{#if hasAuth}}
+  await expect(
+    backend.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    }),
+  ).rejects.toThrow(/{{#if isClerkAuth}}UNAUTHENTICATED{{else}}Unauthenticated{{/if}}/);
+{{/if}}
+{{#unless isBetterAuth}}
+  const convex = {{#if isClerkAuth}}backend.withIdentity({ subject: 'clerk-test-user' }){{else}}backend{{/if}};
+
+{{#ifSetupType 'white-label-apps'}}
+  expect(counts).toEqual({ appVariants: 2, runtimeTenants: 0, runtimeTenantAccessGrants: 0 });
+  for (const [appVariantId, name] of [
+    [{{appVariants.[0].appVariantId}}, {{{appVariants.[0].displayNameStringLiteral}}}],
+    [{{appVariants.[1].appVariantId}}, {{{appVariants.[1].displayNameStringLiteral}}}],
+  ] as const) {
+    await expect(
+      convex.query(api.businessProfiles.get, {
+        setupType: '{{setupType}}',
+        appVariantId,
+      }),
+    ).resolves.toEqual({
+      name,
+      description: 'Convex-managed Business Data for this App Variant.',
+    });
+  }
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      runtimeTenantId: 100,
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_NOT_ALLOWED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: 999,
+    }),
+  ).rejects.toThrow(/UNKNOWN_APP_VARIANT/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: 1.5,
+    }),
+  ).rejects.toThrow(/INVALID_CONTEXT/);
+{{/ifSetupType}}
+{{#ifSetupType 'single-app-runtime-tenants'}}
+  expect(counts).toEqual({ appVariants: 1, runtimeTenants: 3, runtimeTenantAccessGrants: 3 });
+  for (const [runtimeTenantId, name] of [
+    [100, 'North Branch'],
+    [101, 'South Branch'],
+    [102, 'East Branch'],
+  ] as const) {
+    await expect(
+      convex.query(api.businessProfiles.get, {
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId,
+      }),
+    ).resolves.toMatchObject({ name });
+  }
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_REQUIRED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      runtimeTenantId: 999,
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_NOT_ALLOWED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      runtimeTenantId: 1.5,
+    }),
+  ).rejects.toThrow(/INVALID_CONTEXT/);
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+  expect(counts).toEqual({ appVariants: 2, runtimeTenants: 4, runtimeTenantAccessGrants: 3 });
+  for (const [runtimeTenantId, name] of [
+    [100, 'North Studio'],
+    [101, 'South Studio'],
+    [102, 'East Studio'],
+  ] as const) {
+    await expect(
+      convex.query(api.businessProfiles.get, {
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId,
+      }),
+    ).resolves.toMatchObject({ name });
+  }
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      runtimeTenantId: 103,
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_NOT_ALLOWED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[1].appVariantId}},
+      runtimeTenantId: 103,
+    }),
+  ).resolves.toMatchObject({ name: 'West Studio' });
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[1].appVariantId}},
+      runtimeTenantId: 100,
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_NOT_ALLOWED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[1].appVariantId}},
+    }),
+  ).rejects.toThrow(/RUNTIME_TENANT_NOT_ALLOWED/);
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      runtimeTenantId: 1.5,
+    }),
+  ).rejects.toThrow(/INVALID_CONTEXT/);
+{{/ifSetupType}}
+
+  await convex.mutation(internal.starterData.clear, {});
+  await expect(
+    convex.query(api.businessProfiles.get, {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    }),
+  ).rejects.toThrow(/UNKNOWN_APP_VARIANT/);
+  await convex.run(async (ctx) => {
+    for (const table of ['appVariants', 'runtimeTenants', 'runtimeTenantAccess'] as const) {
+      await expect(ctx.db.query(table).collect()).resolves.toEqual([]);
+    }
+  });
+{{/unless}}
+});

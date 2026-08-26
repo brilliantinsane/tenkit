@@ -1,0 +1,26 @@
+import type { AuthConfig } from 'convex/server';
+
+const clerkFrontendApiUrl = process.env.CLERK_FRONTEND_API_URL;
+if (!clerkFrontendApiUrl) {
+  throw new Error('CLERK_FRONTEND_API_URL is required in the Convex deployment environment.');
+}
+
+let clerkIssuerUrl: URL;
+try {
+  clerkIssuerUrl = new URL(clerkFrontendApiUrl);
+} catch {
+  throw new Error('CLERK_FRONTEND_API_URL must be a valid HTTPS origin.');
+}
+
+if (clerkIssuerUrl.protocol !== 'https:' || clerkIssuerUrl.origin !== clerkFrontendApiUrl) {
+  throw new Error('CLERK_FRONTEND_API_URL must be a valid HTTPS origin.');
+}
+
+export default {
+  providers: [
+    {
+      domain: clerkFrontendApiUrl,
+      applicationID: 'convex',
+    },
+  ],
+} satisfies AuthConfig;

@@ -1,0 +1,76 @@
+import { expect, test, vi } from 'vitest';
+
+import {
+  requestClerkBusinessProfile,
+  type ClerkBusinessProfileRequest,
+} from './clerk-business-profile-client';
+
+test('forwards the Clerk bearer token and validates Business Data', async () => {
+  const request = vi.fn<ClerkBusinessProfileRequest>(async (_requestUrl, options) => {
+    expect(options.headers).toEqual({ Authorization: 'Bearer session-token' });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ profile: { name: 'North', description: 'North profile' } }),
+    };
+  });
+
+  await expect(
+    requestClerkBusinessProfile({
+      requestUrl: new URL('https://api.example.test/api/business-profile'),
+      signal: new AbortController().signal,
+      getToken: async () => 'session-token',
+      request,
+    }),
+  ).resolves.toEqual({ name: 'North', description: 'North profile' });
+  expect(request).toHaveBeenCalledOnce();
+});
+
+test('rejects unavailable sessions, non-success responses, and malformed bodies', async () => {
+  const requestUrl = new URL('https://api.example.test/api/business-profile');
+  const signal = new AbortController().signal;
+
+  await expect(
+    requestClerkBusinessProfile({ requestUrl, signal, getToken: async () => null }),
+  ).rejects.toThrow(/session token is unavailable/);
+  await expect(
+    requestClerkBusinessProfile({
+      requestUrl,
+      signal,
+      getToken: async () => 'session-token',
+      request: async () => ({ ok: false, status: 403, json: async () => ({}) }),
+    }),
+  ).rejects.toThrow(/HTTP 403/);
+  await expect(
+    requestClerkBusinessProfile({
+      requestUrl,
+      signal,
+      getToken: async () => 'session-token',
+      request: async () => ({ ok: true, status: 200, json: async () => ({ profile: null }) }),
+    }),
+  ).rejects.toThrow(/invalid Business Data Example data/);
+});
+
+test('forwards cancellation to the request boundary', async () => {
+  const controller = new AbortController();
+  const request: ClerkBusinessProfileRequest = async (_requestUrl, options) =>
+    new Promise((_resolve, reject) => {
+      if (options.signal.aborted) {
+        reject(new DOMException('Cancelled', 'AbortError'));
+        return;
+      }
+      options.signal.addEventListener('abort', () => {
+        reject(new DOMException('Cancelled', 'AbortError'));
+      });
+    });
+  const pendingRequest = requestClerkBusinessProfile({
+    requestUrl: new URL('https://api.example.test/api/business-profile'),
+    signal: controller.signal,
+    getToken: async () => 'session-token',
+    request,
+  });
+
+  controller.abort();
+
+  await expect(pendingRequest).rejects.toMatchObject({ name: 'AbortError' });
+});

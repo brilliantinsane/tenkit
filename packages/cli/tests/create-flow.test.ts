@@ -5,10 +5,7 @@ import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import {
-  derivePackageName,
-  validatePackageName,
-} from '@tenkit/template-generator/setup-type-definitions';
+import { derivePackageName, validatePackageName } from '@tenkit/types/setup-type-definitions';
 
 import { isDirectCliRun } from '../src/adapters/workspace';
 import { createProgram } from '../src/commands/create';
@@ -760,9 +757,11 @@ describe('interactive prompts', () => {
       const selectedValue =
         options.message === 'Setup Type'
           ? 'generic-standalone'
-          : options.message === 'Styling Choice'
-            ? 'uniwind'
-            : 'npm';
+          : options.message === 'Backend'
+            ? 'none'
+            : options.message === 'Styling Choice'
+              ? 'uniwind'
+              : 'npm';
       const selectedOption = options.options.find((option) => option.value === selectedValue);
 
       if (!selectedOption) {
@@ -813,6 +812,7 @@ describe('interactive prompts', () => {
       'App Variant Accent: Atlas Network',
       'App Variant name: West Studio',
       'App Variant Accent: West Studio',
+      'Backend',
       'Styling Choice',
       'Package manager',
       'Initialize Git?',
@@ -872,7 +872,11 @@ describe('interactive prompts', () => {
       promptOrder.push(options.message);
       selectCalls(options);
       const requestedValue =
-        options.message === 'Styling Choice' ? 'uniwind' : 'generic-standalone';
+        options.message === 'Styling Choice'
+          ? 'uniwind'
+          : options.message === 'Backend'
+            ? 'none'
+            : 'generic-standalone';
       const selectedOption = options.options.find((option) => option.value === requestedValue);
 
       if (!selectedOption) {
@@ -906,6 +910,7 @@ describe('interactive prompts', () => {
       'Project name',
       'Setup Type',
       'Customize App Variant names and Accent colors?',
+      'Backend',
       'Styling Choice',
     ]);
     expect(textPrompt).toHaveBeenCalledTimes(1);
@@ -916,7 +921,7 @@ describe('interactive prompts', () => {
         placeholder: DEFAULT_PROJECT_NAME,
       }),
     );
-    expect(selectCalls).toHaveBeenCalledTimes(2);
+    expect(selectCalls).toHaveBeenCalledTimes(3);
     expect(selectCalls).toHaveBeenNthCalledWith(1, {
       initialValue: 'white-label',
       message: 'Setup Type',
@@ -927,6 +932,16 @@ describe('interactive prompts', () => {
       ],
     });
     expect(selectCalls).toHaveBeenNthCalledWith(2, {
+      initialValue: 'none',
+      message: 'Backend',
+      options: [
+        { label: 'None', value: 'none' },
+        { label: 'Express', value: 'express' },
+        { label: 'NestJS', value: 'nestjs' },
+        { label: 'Convex', value: 'convex' },
+      ],
+    });
+    expect(selectCalls).toHaveBeenNthCalledWith(3, {
       initialValue: 'bare',
       message: 'Styling Choice',
       options: [
@@ -950,10 +965,11 @@ describe('interactive prompts', () => {
       options: PromptSelectOptions<Value>,
     ): Promise<Value> => {
       selectCalls(options);
-      const selectedOption = options.options.find((option) => option.value === 'uniwind');
+      const requestedValue = options.message === 'Backend' ? 'none' : 'uniwind';
+      const selectedOption = options.options.find((option) => option.value === requestedValue);
 
       if (!selectedOption) {
-        throw new Error('Missing test prompt option uniwind.');
+        throw new Error(`Missing test prompt option ${requestedValue}.`);
       }
 
       return selectedOption.value;
@@ -980,8 +996,18 @@ describe('interactive prompts', () => {
     expect(result.setupType).toBe('single-app-runtime-tenants');
     expect(result.stylingChoice).toBe('uniwind');
     expect(textPrompt).toHaveBeenCalledTimes(1);
-    expect(selectCalls).toHaveBeenCalledTimes(1);
-    expect(selectCalls).toHaveBeenCalledWith({
+    expect(selectCalls).toHaveBeenCalledTimes(2);
+    expect(selectCalls).toHaveBeenNthCalledWith(1, {
+      initialValue: 'none',
+      message: 'Backend',
+      options: [
+        { label: 'None', value: 'none' },
+        { label: 'Express', value: 'express' },
+        { label: 'NestJS', value: 'nestjs' },
+        { label: 'Convex', value: 'convex' },
+      ],
+    });
+    expect(selectCalls).toHaveBeenNthCalledWith(2, {
       initialValue: 'bare',
       message: 'Styling Choice',
       options: [
@@ -1014,7 +1040,13 @@ describe('interactive prompts', () => {
 
     await expect(
       runCreateFlow(
-        { name: 'cancelled-styling', setup: 'white-label', install: false, git: false },
+        {
+          name: 'cancelled-styling',
+          setup: 'white-label',
+          backend: 'none',
+          install: false,
+          git: false,
+        },
         createEnv({
           isInteractive: true,
           prompts: createPrompts({

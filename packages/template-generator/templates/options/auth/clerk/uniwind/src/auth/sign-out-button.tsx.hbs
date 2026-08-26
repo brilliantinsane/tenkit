@@ -1,0 +1,17 @@
+import { useClerk } from '@clerk/expo';
+import { Pressable, Text } from 'react-native';
+
+
+export function SignOutButton() {
+  const { signOut } = useClerk();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="min-h-11 items-center justify-center rounded-2xl bg-accent px-5"
+      onPress={() => void signOut()}
+    >
+      <Text className="font-semibold text-background">Sign out</Text>
+    </Pressable>
+  );
+}

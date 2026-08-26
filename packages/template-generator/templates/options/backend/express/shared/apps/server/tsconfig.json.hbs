@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "module": "{{#if isClerkAuth}}ESNext{{else}}NodeNext{{/if}}",
+    "moduleResolution": "{{#if isClerkAuth}}Bundler{{else}}NodeNext{{/if}}",
+    "outDir": "dist",
+    "rootDir": ".",
+    {{#if isDrizzleOrm}}
+    "skipLibCheck": true,
+    {{/if}}
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node"{{#if isBetterAuth}}, "bun"{{/if}}]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

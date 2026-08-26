@@ -1,12 +1,10 @@
 import fs from 'fs-extra';
 import { join } from 'pathe';
 import { assert } from 'vitest';
+import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
+import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
-import {
-  getGeneratedSetupTypeMetadata,
-  type GeneratedSetupType,
-} from '../src/generated-setup-types';
-import { type GeneratedStylingChoice } from '../src/generated-styling-choices';
+import { getGeneratedSetupTypeMetadata } from '../src/generated-setup-types';
 
 type PackageJson = {
   name?: string;

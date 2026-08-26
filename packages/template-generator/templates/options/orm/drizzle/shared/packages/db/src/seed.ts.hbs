@@ -1,0 +1,43 @@
+import { config } from 'dotenv';
+
+import { {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}} } from './repository.js';
+import {
+  appVariantRuntimeTenantAccess,
+  appVariants,
+  runtimeTenants,
+} from './schema.js';
+import {
+  appVariantStarterData,
+  runtimeTenantAccessStarterData,
+  runtimeTenantStarterData,
+} from './starter-data.js';
+
+config({ path: '../../apps/server/.env.local', quiet: true });
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to seed {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} Starter Data.');
+}
+
+const database = {{#if isMysqlDatabase}}createMysqlDrizzleDatabase{{else}}createPostgresqlDrizzleDatabase{{/if}}(databaseUrl);
+
+try {
+  await database.transaction(async (transaction) => {
+    await transaction.delete(appVariantRuntimeTenantAccess);
+    await transaction.delete(runtimeTenants);
+    await transaction.delete(appVariants);
+    if (appVariantStarterData.length > 0) {
+      await transaction.insert(appVariants).values([...appVariantStarterData]);
+    }
+    if (runtimeTenantStarterData.length > 0) {
+      await transaction.insert(runtimeTenants).values([...runtimeTenantStarterData]);
+    }
+    if (runtimeTenantAccessStarterData.length > 0) {
+      await transaction
+        .insert(appVariantRuntimeTenantAccess)
+        .values([...runtimeTenantAccessStarterData]);
+    }
+  });
+} finally {
+  await database.$client.end();
+}

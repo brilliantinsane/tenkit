@@ -4,7 +4,7 @@ import type { Graph } from "schema-dts"
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from "@tenkit/template-generator/styling-definitions"
+} from "@tenkit/types/styling-definitions"
 
 import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"

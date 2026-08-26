@@ -1,0 +1,39 @@
+import { useState } from 'react';
+import { authClient } from './auth-client';
+
+export type AuthFormMode = 'sign-in' | 'sign-up';
+
+export function useBetterAuthForm(mode: AuthFormMode) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignUp = mode === 'sign-up';
+
+  async function submitCredentials(): Promise<void> {
+    setErrorMessage(null);
+    if (isSignUp && name.trim().length === 0) {
+      setErrorMessage('Name is required.');
+      return;
+    }
+    if (isSignUp && password !== confirmPassword) {
+      setErrorMessage('Passwords must match.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = isSignUp
+        ? await authClient.signUp.email({ name: name.trim(), email, password })
+        : await authClient.signIn.email({ email, password });
+      setErrorMessage(result.error?.message ?? null);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Authentication failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return { confirmPassword, email, errorMessage, isSignUp, isSubmitting, name, password, setConfirmPassword, setEmail, setName, setPassword, submitCredentials };
+}

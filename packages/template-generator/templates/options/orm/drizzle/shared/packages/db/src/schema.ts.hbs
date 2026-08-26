@@ -1,0 +1,240 @@
+{{#if isMysqlDatabase}}
+import { sql } from 'drizzle-orm';
+import {
+  boolean,
+  datetime,
+  foreignKey,
+  index,
+  int,
+  mysqlTable,
+  primaryKey,
+  uniqueIndex,
+  varchar,
+} from 'drizzle-orm/mysql-core';
+
+{{#if isBetterAuth}}
+const authText = (name: string) => varchar(name, { length: 191 });
+const authDate = (name: string) => datetime(name, { mode: 'date', fsp: 3 });
+
+export const user = mysqlTable(
+  'user',
+  {
+    id: authText('id').primaryKey(),
+    name: authText('name').notNull(),
+    email: authText('email').notNull(),
+    emailVerified: boolean('emailVerified').default(false).notNull(),
+    image: authText('image'),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [uniqueIndex('user_email_key').on(table.email)],
+);
+
+export const session = mysqlTable(
+  'session',
+  {
+    id: authText('id').primaryKey(),
+    expiresAt: authDate('expiresAt').notNull(),
+    token: authText('token').notNull(),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    ipAddress: authText('ipAddress'),
+    userAgent: authText('userAgent'),
+    userId: authText('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    uniqueIndex('session_token_key').on(table.token),
+    index('session_userId_idx').on(table.userId),
+  ],
+);
+
+export const account = mysqlTable(
+  'account',
+  {
+    id: authText('id').primaryKey(),
+    accountId: authText('accountId').notNull(),
+    providerId: authText('providerId').notNull(),
+    userId: authText('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: authText('accessToken'),
+    refreshToken: authText('refreshToken'),
+    idToken: authText('idToken'),
+    accessTokenExpiresAt: authDate('accessTokenExpiresAt'),
+    refreshTokenExpiresAt: authDate('refreshTokenExpiresAt'),
+    scope: authText('scope'),
+    password: authText('password'),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [index('account_userId_idx').on(table.userId)],
+);
+
+export const verification = mysqlTable(
+  'verification',
+  {
+    id: authText('id').primaryKey(),
+    identifier: authText('identifier').notNull(),
+    value: authText('value').notNull(),
+    expiresAt: authDate('expiresAt').notNull(),
+    createdAt: authDate('createdAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+    updatedAt: authDate('updatedAt').default(sql`CURRENT_TIMESTAMP(3)`).notNull(),
+  },
+  (table) => [index('verification_identifier_idx').on(table.identifier)],
+);
+{{/if}}
+
+export const appVariants = mysqlTable('app_variant', {
+  appVariantId: int('appVariantId').primaryKey(),
+  role: varchar('role', { length: 191 }),
+  standaloneRuntimeTenantId: int('standaloneRuntimeTenantId'),
+  profileName: varchar('profileName', { length: 191 }),
+  profileDescription: varchar('profileDescription', { length: 191 }),
+});
+
+export const runtimeTenants = mysqlTable('runtime_tenant', {
+  runtimeTenantId: int('runtimeTenantId').primaryKey(),
+  profileName: varchar('profileName', { length: 191 }).notNull(),
+  profileDescription: varchar('profileDescription', { length: 191 }).notNull(),
+});
+
+export const appVariantRuntimeTenantAccess = mysqlTable(
+  'app_variant_runtime_tenant_access',
+  {
+    appVariantId: int('appVariantId').notNull(),
+    runtimeTenantId: int('runtimeTenantId').notNull(),
+    isDefault: boolean('isDefault').default(false).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'app_variant_access_pk',
+      columns: [table.appVariantId, table.runtimeTenantId],
+    }),
+    foreignKey({
+      name: 'app_variant_access_app_variant_fk',
+      columns: [table.appVariantId],
+      foreignColumns: [appVariants.appVariantId],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'app_variant_access_runtime_tenant_fk',
+      columns: [table.runtimeTenantId],
+      foreignColumns: [runtimeTenants.runtimeTenantId],
+    }).onDelete('cascade'),
+  ],
+);
+{{else}}
+import {
+  boolean,
+  foreignKey,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
+
+{{#if isBetterAuth}}
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    emailVerified: boolean('emailVerified').default(false).notNull(),
+    image: text('image'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('user_email_key').on(table.email)],
+);
+
+export const session = pgTable(
+  'session',
+  {
+    id: text('id').primaryKey(),
+    expiresAt: timestamp('expiresAt').notNull(),
+    token: text('token').notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+    ipAddress: text('ipAddress'),
+    userAgent: text('userAgent'),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    uniqueIndex('session_token_key').on(table.token),
+    index('session_userId_idx').on(table.userId),
+  ],
+);
+
+export const account = pgTable(
+  'account',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('accountId').notNull(),
+    providerId: text('providerId').notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: text('accessToken'),
+    refreshToken: text('refreshToken'),
+    idToken: text('idToken'),
+    accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
+    refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  },
+  (table) => [index('account_userId_idx').on(table.userId)],
+);
+
+export const verification = pgTable(
+  'verification',
+  {
+    id: text('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expiresAt').notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  },
+  (table) => [index('verification_identifier_idx').on(table.identifier)],
+);
+{{/if}}
+
+export const appVariants = pgTable('app_variant', {
+  appVariantId: integer('appVariantId').primaryKey(),
+  role: text('role'),
+  standaloneRuntimeTenantId: integer('standaloneRuntimeTenantId'),
+  profileName: text('profileName'),
+  profileDescription: text('profileDescription'),
+});
+
+export const runtimeTenants = pgTable('runtime_tenant', {
+  runtimeTenantId: integer('runtimeTenantId').primaryKey(),
+  profileName: text('profileName').notNull(),
+  profileDescription: text('profileDescription').notNull(),
+});
+
+export const appVariantRuntimeTenantAccess = pgTable(
+  'app_variant_runtime_tenant_access',
+  {
+    appVariantId: integer('appVariantId').notNull(),
+    runtimeTenantId: integer('runtimeTenantId').notNull(),
+    isDefault: boolean('isDefault').default(false).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.appVariantId, table.runtimeTenantId] }),
+    foreignKey({
+      columns: [table.appVariantId],
+      foreignColumns: [appVariants.appVariantId],
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.runtimeTenantId],
+      foreignColumns: [runtimeTenants.runtimeTenantId],
+    }).onDelete('cascade'),
+  ],
+);
+{{/if}}

@@ -1,0 +1,43 @@
+{
+  "name": "@tenkit/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      {{#if isNestjsBackend}}
+      "development": "./src/index.ts",
+      {{/if}}
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "seed": "tsx src/seed.ts",
+    "setup": "drizzle-kit migrate && tsx src/seed.ts && tsc -p tsconfig.json",
+    "test": "vitest run tests/repository.test.ts",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "dotenv": "^17.4.2",
+    {{#if isMysqlDatabase}}
+    "mysql2": "3.20.0"
+    {{else}}
+    "pg": "8.16.3"
+    {{/if}}
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    {{#unless isMysqlDatabase}}
+    "@types/pg": "8.16.0",
+    {{/unless}}
+    "drizzle-kit": "0.31.10",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

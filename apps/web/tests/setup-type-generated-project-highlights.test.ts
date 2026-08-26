@@ -1,8 +1,8 @@
+import { generateProject } from "@tenkit/template-generator"
 import {
-  generateProject,
   SUPPORTED_GENERATED_SETUP_TYPES,
   type GeneratedSetupType,
-} from "@tenkit/template-generator"
+} from "@tenkit/types/setup-type-definitions"
 import { describe, expect, test } from "vitest"
 
 import { SETUP_TYPE_GENERATED_PROJECT_HIGHLIGHTS } from "@/lib/setup-type-generated-project-highlights"

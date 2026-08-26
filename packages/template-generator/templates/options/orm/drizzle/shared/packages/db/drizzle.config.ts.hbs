@@ -1,0 +1,13 @@
+import { config } from 'dotenv';
+import { defineConfig } from 'drizzle-kit';
+
+config({ path: '../../apps/server/.env.local', quiet: true });
+
+const databaseUrl = process.env.DATABASE_URL;
+
+export default defineConfig({
+  dialect: '{{#if isMysqlDatabase}}mysql{{else}}postgresql{{/if}}',
+  schema: './src/schema.ts',
+  out: './drizzle',
+  ...(databaseUrl ? { dbCredentials: { url: databaseUrl } } : {}),
+});

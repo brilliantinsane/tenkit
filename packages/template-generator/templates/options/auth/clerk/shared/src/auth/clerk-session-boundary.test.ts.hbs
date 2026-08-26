@@ -1,0 +1,9 @@
+import { expect, test } from 'vitest';
+
+import { resolveClerkSessionRouteState } from './clerk-session-boundary';
+
+test('restored Clerk session state gates protected app routes', () => {
+  expect(resolveClerkSessionRouteState(false, false)).toBe('loading');
+  expect(resolveClerkSessionRouteState(true, false)).toBe('auth');
+  expect(resolveClerkSessionRouteState(true, true)).toBe('app');
+});

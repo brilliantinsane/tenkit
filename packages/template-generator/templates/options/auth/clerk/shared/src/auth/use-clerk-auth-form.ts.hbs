@@ -1,0 +1,186 @@
+import { useSignIn, useSignUp } from '@clerk/expo';
+import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+
+import {
+  navigateAfterClerkFinalization,
+  readClerkErrorMessage,
+  readClerkResultError,
+} from './clerk-post-auth-navigation';
+
+export type AuthFormMode = 'sign-in' | 'sign-up';
+
+type VerificationStep = 'sign-up' | 'client-trust' | null;
+
+export function useClerkAuthForm(mode: AuthFormMode) {
+  const router = useRouter();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState<VerificationStep>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignUp = mode === 'sign-up';
+
+  async function finalizeSignUp(): Promise<void> {
+    const finalization = await signUp.finalize({
+      navigate: (navigation) =>
+        navigateAfterClerkFinalization(navigation, {
+          openExternalUrl: Linking.openURL,
+          replaceWithAppRoute: () => router.replace('/'),
+        }),
+    });
+    setErrorMessage(readClerkResultError(finalization));
+  }
+
+  async function finalizeSignIn(): Promise<void> {
+    const finalization = await signIn.finalize({
+      navigate: (navigation) =>
+        navigateAfterClerkFinalization(navigation, {
+          openExternalUrl: Linking.openURL,
+          replaceWithAppRoute: () => router.replace('/'),
+        }),
+    });
+    setErrorMessage(readClerkResultError(finalization));
+  }
+
+  async function submitCredentials(): Promise<void> {
+    setErrorMessage(null);
+
+    if (isSignUp && name.trim().length === 0) {
+      setErrorMessage('Name is required.');
+      return;
+    }
+
+    if (isSignUp && password !== confirmPassword) {
+      setErrorMessage('Passwords must match.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (isSignUp) {
+        const { error } = await signUp.password({
+          emailAddress: email,
+          firstName: name.trim(),
+          password,
+        });
+        if (error) {
+          setErrorMessage(readClerkErrorMessage(error));
+          return;
+        }
+
+        const { error: verificationError } = await signUp.verifications.sendEmailCode();
+        if (verificationError) {
+          setErrorMessage(readClerkErrorMessage(verificationError));
+          return;
+        }
+
+        setVerificationStep('sign-up');
+        return;
+      }
+
+      const { error } = await signIn.password({ emailAddress: email, password });
+      if (error) {
+        setErrorMessage(readClerkErrorMessage(error));
+        return;
+      }
+
+      if (signIn.status === 'complete') {
+        await finalizeSignIn();
+        return;
+      }
+
+      if (signIn.status === 'needs_client_trust') {
+        const supportsEmailCode = signIn.supportedSecondFactors.some(
+          (factor) => factor.strategy === 'email_code',
+        );
+        if (!supportsEmailCode) {
+          setErrorMessage('This Clerk application does not offer Email Device Trust verification.');
+          return;
+        }
+
+        const { error: verificationError } = await signIn.mfa.sendEmailCode();
+        if (verificationError) {
+          setErrorMessage(readClerkErrorMessage(verificationError));
+          return;
+        }
+
+        setVerificationStep('client-trust');
+        return;
+      }
+
+      setErrorMessage(`Clerk sign-in status is not supported: ${signIn.status}`);
+    } catch (error: unknown) {
+      setErrorMessage(readClerkErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function submitVerificationCode(): Promise<void> {
+    setErrorMessage(null);
+    setIsSubmitting(true);
+    try {
+      if (verificationStep === 'sign-up') {
+        const { error } = await signUp.verifications.verifyEmailCode({ code: verificationCode });
+        if (error) {
+          setErrorMessage(readClerkErrorMessage(error));
+          return;
+        }
+        if (signUp.status !== 'complete') {
+          setErrorMessage(`Clerk sign-up status is not complete: ${signUp.status}`);
+          return;
+        }
+
+        await finalizeSignUp();
+        return;
+      }
+
+      if (verificationStep !== 'client-trust') {
+        setErrorMessage('Start an Email verification challenge first.');
+        return;
+      }
+
+      const { error } = await signIn.mfa.verifyEmailCode({ code: verificationCode });
+      if (error) {
+        setErrorMessage(readClerkErrorMessage(error));
+        return;
+      }
+      if (signIn.status !== 'complete') {
+        setErrorMessage(`Clerk sign-in status is not complete: ${signIn.status}`);
+        return;
+      }
+
+      await finalizeSignIn();
+    } catch (error: unknown) {
+      setErrorMessage(readClerkErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return {
+    confirmPassword,
+    email,
+    errorMessage,
+    isSignUp,
+    isSubmitting,
+    name,
+    password,
+    setConfirmPassword,
+    setEmail,
+    setName,
+    setPassword,
+    setVerificationCode,
+    submitCredentials,
+    submitVerificationCode,
+    verificationCode,
+    verificationStep,
+  };
+}

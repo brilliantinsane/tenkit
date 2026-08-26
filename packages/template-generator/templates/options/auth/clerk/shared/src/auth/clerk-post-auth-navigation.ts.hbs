@@ -1,0 +1,76 @@
+type ClerkFinalizationNavigation = {
+  decorateUrl: (destination: string) => string;
+  session?: {
+    currentTask?: {
+      key: string;
+    } | null;
+  } | null;
+};
+
+type PostAuthNavigationActions = {
+  openExternalUrl: (url: string) => Promise<unknown>;
+  replaceWithAppRoute: () => void;
+};
+
+type ClerkPostAuthDestination =
+  | { kind: 'app' }
+  | { kind: 'external'; url: string };
+
+export function readClerkErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'longMessage' in error) {
+    const longMessage = error.longMessage;
+    if (typeof longMessage === 'string' && longMessage.length > 0) {
+      return longMessage;
+    }
+  }
+
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+
+  return 'Authentication failed.';
+}
+
+export function readClerkResultError(result: { error?: unknown }): string | null {
+  return result.error ? readClerkErrorMessage(result.error) : null;
+}
+
+export function resolveClerkPostAuthDestination(decoratedUrl: unknown): ClerkPostAuthDestination {
+  if (decoratedUrl === '/') {
+    return { kind: 'app' };
+  }
+
+  if (typeof decoratedUrl === 'string') {
+    try {
+      const externalUrl = new URL(decoratedUrl);
+      if (
+        externalUrl.protocol === 'https:' &&
+        externalUrl.username.length === 0 &&
+        externalUrl.password.length === 0
+      ) {
+        return { kind: 'external', url: externalUrl.toString() };
+      }
+    } catch {
+      // The actionable error below covers malformed and unsupported destinations.
+    }
+  }
+
+  throw new Error('Clerk returned an unsafe post-auth destination.');
+}
+
+export async function navigateAfterClerkFinalization(
+  navigation: ClerkFinalizationNavigation,
+  actions: PostAuthNavigationActions,
+): Promise<void> {
+  if (navigation.session?.currentTask) {
+    throw new Error(`Clerk session task is not supported: ${navigation.session.currentTask.key}`);
+  }
+
+  const destination = resolveClerkPostAuthDestination(navigation.decorateUrl('/'));
+  if (destination.kind === 'app') {
+    actions.replaceWithAppRoute();
+    return;
+  }
+
+  await actions.openExternalUrl(destination.url);
+}

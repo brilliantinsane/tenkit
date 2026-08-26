@@ -5,14 +5,31 @@ import Handlebars from 'handlebars';
 import isBinaryPath from 'is-binary-path';
 import { join, relative, resolve } from 'pathe';
 import { globSync } from 'tinyglobby';
+import {
+  type GeneratedAppVariantRole,
+  type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
+import { type GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
 
 import { type GeneratedAccentColor } from './generated-accent-color';
-import { type GeneratedAppVariantRole } from './generated-setup-type-definitions';
-import { type GeneratedStylingChoice } from './generated-styling-choices';
 import { sortVirtualFileTree, type VirtualFileTree } from './virtual-file-tree';
 
 export type TemplateContext = {
   appVariants: readonly TemplateAppVariantContext[];
+  hasDatabaseWorkspace: boolean;
+  hasAuth: boolean;
+  hasAuthWorkspace: boolean;
+  hasServerWorkspace: boolean;
+  isBetterAuth: boolean;
+  isConvexBackend: boolean;
+  isClerkAuth: boolean;
+  isExpressBackend: boolean;
+  isNestjsBackend: boolean;
+  isNodeBackend: boolean;
+  isMysqlDatabase: boolean;
+  isPostgresqlDatabase: boolean;
+  isDrizzleOrm: boolean;
+  isPrismaOrm: boolean;
   isSingleAppRuntimeTenants: boolean;
   isBareStyling: boolean;
   isBunPackageManager: boolean;
@@ -22,11 +39,17 @@ export type TemplateContext = {
   packageName: string;
   packageManager: GeneratedProjectPackageManager;
   packageManagerInstallCommand: string;
+  packageManagerDatabaseRunCommand: string;
+  packageManagerAuthRunCommand: string;
   packageManagerRunCommand: string;
+  packageManagerServerRunCommand: string;
   packageManagerTenkitCommand: string;
+  workspaceDependencyVersion: string;
+  nodeBackendDisplayName?: 'Express' | 'NestJS';
   projectName: string;
   projectNameStringLiteral: string;
   stylingChoice: GeneratedStylingChoice;
+  setupType: GeneratedSetupType;
 };
 
 export type TemplateAppVariantContext = {
@@ -48,6 +71,17 @@ export type GeneratedProjectPackageManager = (typeof GENERATED_PROJECT_PACKAGE_M
 
 const templatesRoot = resolve(fileURLToPath(new URL('../templates', import.meta.url)));
 const handlebars = Handlebars.create();
+
+handlebars.registerHelper(
+  'ifSetupType',
+  function (
+    this: TemplateContext,
+    expectedSetupType: GeneratedSetupType,
+    options: Handlebars.HelperOptions,
+  ) {
+    return this.setupType === expectedSetupType ? options.fn(this) : options.inverse(this);
+  },
+);
 
 function toVirtualPath(path: string): string {
   return path.split('\\').join('/');

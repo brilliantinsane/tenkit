@@ -1,0 +1,143 @@
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useTheme } from '@/theme/ThemeContext';
+import { type AuthFormMode, useClerkAuthForm } from './use-clerk-auth-form';
+
+export function AuthForm({ mode }: { mode: AuthFormMode }) {
+  const { brand, colors } = useTheme();
+  const form = useClerkAuthForm(mode);
+  const inputStyle = [
+    styles.input,
+    {
+      color: colors.text,
+      backgroundColor: colors.secondaryBackground,
+      borderColor: colors.separator,
+    },
+  ];
+
+  if (form.verificationStep) {
+    return (
+      <ThemedView style={styles.screen}>
+        <ThemedText type="title">Check your Email</ThemedText>
+        <ThemedText themeColor="secondaryText">
+          Enter the verification code Clerk sent to {form.email}.
+        </ThemedText>
+        <TextInput
+          accessibilityLabel="Verification code"
+          autoComplete="one-time-code"
+          keyboardType="number-pad"
+          onChangeText={form.setVerificationCode}
+          placeholder="Verification code"
+          placeholderTextColor={colors.secondaryText}
+          style={inputStyle}
+          value={form.verificationCode}
+        />
+        {form.errorMessage ? <ThemedText>{form.errorMessage}</ThemedText> : null}
+        <Pressable
+          accessibilityRole="button"
+          disabled={form.isSubmitting}
+          onPress={() => void form.submitVerificationCode()}
+          style={[styles.button, { backgroundColor: brand.primary }]}
+        >
+          <ThemedText style=\{{ color: brand.onPrimary }}>
+            {form.isSubmitting ? 'Verifying...' : 'Verify'}
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
+  }
+
+  return (
+    <ThemedView style={styles.screen}>
+      <ThemedText type="title">{form.isSignUp ? 'Create account' : 'Sign in'}</ThemedText>
+      <ThemedText themeColor="secondaryText">
+        {form.isSignUp
+          ? 'Clerk will verify your Email before opening the app.'
+          : 'Continue to your Business Data Example.'}
+      </ThemedText>
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Name"
+          autoCapitalize="words"
+          autoComplete="name"
+          onChangeText={form.setName}
+          placeholder="Name"
+          placeholderTextColor={colors.secondaryText}
+          style={inputStyle}
+          value={form.name}
+        />
+      ) : null}
+      <TextInput
+        accessibilityLabel="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        onChangeText={form.setEmail}
+        placeholder="Email"
+        placeholderTextColor={colors.secondaryText}
+        style={inputStyle}
+        value={form.email}
+      />
+      <TextInput
+        accessibilityLabel="Password"
+        autoCapitalize="none"
+        autoComplete={form.isSignUp ? 'new-password' : 'current-password'}
+        onChangeText={form.setPassword}
+        placeholder="Password"
+        placeholderTextColor={colors.secondaryText}
+        secureTextEntry
+        style={inputStyle}
+        value={form.password}
+      />
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Confirm Password"
+          autoCapitalize="none"
+          autoComplete="new-password"
+          onChangeText={form.setConfirmPassword}
+          placeholder="Confirm Password"
+          placeholderTextColor={colors.secondaryText}
+          secureTextEntry
+          style={inputStyle}
+          value={form.confirmPassword}
+        />
+      ) : null}
+      {form.errorMessage ? <ThemedText>{form.errorMessage}</ThemedText> : null}
+      <Pressable
+        accessibilityRole="button"
+        disabled={form.isSubmitting}
+        onPress={() => void form.submitCredentials()}
+        style={[styles.button, { backgroundColor: brand.primary }]}
+      >
+        <ThemedText style=\{{ color: brand.onPrimary }}>
+          {form.isSubmitting ? 'Working...' : form.isSignUp ? 'Create account' : 'Sign in'}
+        </ThemedText>
+      </Pressable>
+      {form.isSignUp ? <View nativeID="clerk-captcha" /> : null}
+      <Link href={form.isSignUp ? '/sign-in' : '/sign-up'}>
+        <ThemedText type="linkPrimary">
+          {form.isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register'}
+        </ThemedText>
+      </Link>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, justifyContent: 'center', gap: 14, padding: 24 },
+  input: {
+    minHeight: 48,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+  },
+  button: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+});

@@ -1,18 +1,29 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
+import { useBusinessProfile } from '@/business-data/use-business-profile';
+{{#if hasAuth}}
+import { SignOutButton } from '@/auth/sign-out-button';
+{{/if}}
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 export default function HomeScreen() {
   const { appVariant } = useAppVariantConfig();
   const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+  const { profile, error, isLoading } = useBusinessProfile();
 
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>Tenkit</Text>
       <Text style={styles.title}>Generic App Variant</Text>
       <View style={styles.details}>
+        <Text selectable style={styles.code}>
+          Business Data: {isLoading ? 'Loading' : (profile?.name ?? 'Unavailable')}
+        </Text>
+        {profile ? <Text style={styles.description}>{profile.description}</Text> : null}
+        {error ? <Text style={styles.description}>{error}</Text> : null}
+        <Text style={styles.code}>Auth: {{#if isClerkAuth}}clerk{{else}}{{#if isBetterAuth}}better-auth{{else}}none{{/if}}{{/if}}</Text>
         <Text selectable style={styles.code}>
           App Variant: {appVariant.slug}
         </Text>
@@ -23,6 +34,7 @@ export default function HomeScreen() {
           Active Runtime Tenant ID: {activeRuntimeTenantId}
         </Text>
       </View>
+      {{#if hasAuth}}<SignOutButton />{{/if}}
       <Text style={styles.description}>
         { {{{appVariants.[0].displayNameStringLiteral}}} } can select North, South, and East Studio. { {{{appVariants.[1].displayNameStringLiteral}}} } opens West Studio directly.
       </Text>

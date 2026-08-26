@@ -60,9 +60,10 @@ test.each([
       `${JSON.stringify(releaseCliMetadata, null, 2)}\n`,
     );
 
-    for (const [folder, name] of [
-      ['template-generator', '@tenkit/template-generator'],
-      ['create-tenkit', 'create-tenkit'],
+    for (const [folder, name, internalDependencies] of [
+      ['types', '@tenkit/types', []],
+      ['template-generator', '@tenkit/template-generator', ['@tenkit/types']],
+      ['create-tenkit', 'create-tenkit', ['@tenkit/cli']],
     ] as const) {
       const packageRoot = join(releasePackagesRoot, folder);
       await mkdir(packageRoot, { recursive: true });
@@ -72,8 +73,12 @@ test.each([
           {
             name,
             version: '0.2.0',
-            ...(folder === 'create-tenkit'
-              ? { dependencies: { '@tenkit/cli': 'workspace:*' } }
+            ...(internalDependencies.length > 0
+              ? {
+                  dependencies: Object.fromEntries(
+                    internalDependencies.map((dependencyName) => [dependencyName, 'workspace:*']),
+                  ),
+                }
               : {}),
           },
           null,

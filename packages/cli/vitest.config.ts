@@ -5,18 +5,19 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@tenkit/template-generator/setup-type-definitions',
+        find: '@tenkit/types/generated-app-option-definitions',
         replacement: resolve(
           import.meta.dirname,
-          '../template-generator/src/generated-setup-type-definitions.ts',
+          '../types/src/generated-app-option-definitions.ts',
         ),
       },
       {
-        find: '@tenkit/template-generator/styling-definitions',
-        replacement: resolve(
-          import.meta.dirname,
-          '../template-generator/src/generated-styling-choices.ts',
-        ),
+        find: '@tenkit/types/setup-type-definitions',
+        replacement: resolve(import.meta.dirname, '../types/src/setup-type-definitions.ts'),
+      },
+      {
+        find: '@tenkit/types/styling-definitions',
+        replacement: resolve(import.meta.dirname, '../types/src/styling-definitions.ts'),
       },
       {
         find: '@tenkit/template-generator',

@@ -1,16 +1,28 @@
 import fs from 'fs-extra';
 import { resolve } from 'pathe';
-import { normalizeGeneratedSetupType, type GeneratedSetupType } from '@tenkit/template-generator';
+import { normalizeGeneratedSetupType } from '@tenkit/template-generator';
+import {
+  DEFAULT_GENERATED_APP_OPTIONS,
+  getGeneratedAppOptionChoiceState,
+  type GeneratedAppOptionChoice,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
 import {
   derivePackageName,
   getGeneratedSetupTypeDefinition,
+  type GeneratedSetupType,
   validatePackageName,
-} from '@tenkit/template-generator/setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
 
 import {
   DEFAULT_PROJECT_NAME,
   DEFAULT_PUBLIC_SETUP_SLUG,
   DEFAULT_STYLING_CHOICE,
+  AUTH_PROMPT_CHOICES,
+  BACKEND_PROMPT_CHOICES,
+  DATABASE_PROMPT_CHOICES,
+  ORM_PROMPT_CHOICES,
   PROMPT_CANCELLED,
   SETUP_PROMPT_CHOICES,
   STYLING_PROMPT_CHOICES,
@@ -20,6 +32,8 @@ import {
   normalizeAppVariantCustomization,
   normalizeAppVariantAccentInput,
   normalizeAppVariantNameInput,
+  invalidGeneratedAppOptionsError,
+  normalizeGeneratedAppOptionsInput,
   normalizeSetupInput,
   normalizeStylingInput,
   validateProjectName,
@@ -176,6 +190,90 @@ async function readStylingChoice(options: CreateCommandOptions, env: CreateFlowE
   return normalizeStylingInput(answer);
 }
 
+function availableGeneratedAppOptionChoiceState(selection: RawGeneratedAppOptions) {
+  const choiceState = getGeneratedAppOptionChoiceState(selection);
+  if (choiceState.status === 'invalid') {
+    throw invalidGeneratedAppOptionsError(choiceState.issues);
+  }
+
+  return choiceState;
+}
+
+async function readGeneratedAppOption<Value extends string>(
+  choice: GeneratedAppOptionChoice<Value>,
+  defaultValue: Value,
+  prompt: { message: string; choices: readonly { value: Value; label: string }[] },
+  env: CreateFlowEnvironment,
+): Promise<Value> {
+  if (choice.status === 'selected' || choice.status === 'resolved') {
+    if (choice.value === undefined) {
+      throw new Error(`Missing resolved Generated App Option ${prompt.message}.`);
+    }
+
+    return choice.value;
+  }
+
+  const initialValue = choice.values.includes(defaultValue) ? defaultValue : choice.values[0];
+  if (initialValue === undefined) {
+    throw new Error(`Missing available Generated App Option ${prompt.message}.`);
+  }
+  const promptChoices = prompt.choices.filter(({ value }) => choice.values.includes(value));
+  const answer = await env.prompts.select({
+    message: prompt.message,
+    initialValue,
+    options: promptChoices,
+  });
+
+  if (answer === PROMPT_CANCELLED) {
+    throw new CreateFlowCancelledError();
+  }
+
+  return answer;
+}
+
+async function readGeneratedAppOptions(
+  options: CreateCommandOptions,
+  env: CreateFlowEnvironment,
+): Promise<GeneratedAppOptions> {
+  const selection: RawGeneratedAppOptions = {
+    backend: options.backend,
+    auth: options.auth,
+    database: options.database,
+    orm: options.orm,
+  };
+
+  if (options.yes || !env.isInteractive) {
+    return normalizeGeneratedAppOptionsInput(selection);
+  }
+
+  selection.backend = await readGeneratedAppOption(
+    availableGeneratedAppOptionChoiceState(selection).backend,
+    DEFAULT_GENERATED_APP_OPTIONS.backend,
+    { message: 'Backend', choices: BACKEND_PROMPT_CHOICES },
+    env,
+  );
+  selection.auth = await readGeneratedAppOption(
+    availableGeneratedAppOptionChoiceState(selection).auth,
+    DEFAULT_GENERATED_APP_OPTIONS.auth,
+    { message: 'Auth', choices: AUTH_PROMPT_CHOICES },
+    env,
+  );
+  selection.database = await readGeneratedAppOption(
+    availableGeneratedAppOptionChoiceState(selection).database,
+    DEFAULT_GENERATED_APP_OPTIONS.database,
+    { message: 'Database', choices: DATABASE_PROMPT_CHOICES },
+    env,
+  );
+  selection.orm = await readGeneratedAppOption(
+    availableGeneratedAppOptionChoiceState(selection).orm,
+    DEFAULT_GENERATED_APP_OPTIONS.orm,
+    { message: 'ORM', choices: ORM_PROMPT_CHOICES },
+    env,
+  );
+
+  return normalizeGeneratedAppOptionsInput(selection);
+}
+
 async function readSetupType(
   options: CreateCommandOptions,
   env: CreateFlowEnvironment,
@@ -298,6 +396,7 @@ export async function resolveCreateOptions(
     options,
     env,
   );
+  const generatedAppOptions = await readGeneratedAppOptions(options, env);
   const stylingChoice = await readStylingChoice(options, env);
   const packageName =
     options.packageName !== undefined
@@ -324,6 +423,7 @@ export async function resolveCreateOptions(
     projectName,
     packageName,
     setupType,
+    generatedAppOptions,
     stylingChoice,
     appVariantNames,
     appVariantAccents,

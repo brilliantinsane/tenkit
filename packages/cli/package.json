@@ -47,6 +47,7 @@
   "dependencies": {
     "@clack/prompts": "^1.6.0",
     "@tenkit/template-generator": "workspace:*",
+    "@tenkit/types": "workspace:*",
     "commander": "^15.0.0",
     "fs-extra": "^11.3.5",
     "pathe": "^2.0.3"

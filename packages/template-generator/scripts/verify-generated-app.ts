@@ -1,31 +1,42 @@
+import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { resolve } from 'pathe';
-
 import {
-  formatSupportedGeneratedSetupTypes,
-  normalizeGeneratedStylingChoice,
-  normalizeGeneratedSetupType,
-  SUPPORTED_GENERATED_STYLING_CHOICES,
+  isGeneratedNodeBackend,
+  resolveGeneratedAppOptions,
+  type GeneratedAppOptions,
+  type RawGeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
+import {
   SUPPORTED_PUBLIC_SETUP_SLUGS,
   type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
+import {
+  normalizeGeneratedStylingChoice,
+  SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from '../src/generator';
+} from '@tenkit/types/styling-definitions';
+
+import { formatSupportedGeneratedSetupTypes, normalizeGeneratedSetupType } from '../src/generator';
 import { verifyGeneratedApp } from '../src/generated-app-verification';
+import { createGeneratedAppCommandEnvironment } from '../src/generated-app-command-runner';
 
 type ParsedArgs = {
   appVariantAccents?: string[];
   appVariantNames?: string[];
+  generatedAppOptions: RawGeneratedAppOptions;
   setupType?: GeneratedSetupType;
   stylingChoice: GeneratedStylingChoice;
 };
 
-type ResolvedArgs = Omit<ParsedArgs, 'setupType'> & {
+type ResolvedArgs = Omit<ParsedArgs, 'generatedAppOptions' | 'setupType'> & {
+  generatedAppOptions: GeneratedAppOptions;
   setupType: GeneratedSetupType;
 };
 
 function usage(): string {
-  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
+  return `Usage: pnpm -F @tenkit/template-generator verify -- --setup-type <${SUPPORTED_PUBLIC_SETUP_SLUGS.join('|')}> [--backend <none|express|nestjs|convex>] [--auth <none|better-auth|clerk>] [--database <none|postgresql|mysql>] [--orm <none|prisma|drizzle>] [--styling <${SUPPORTED_GENERATED_STYLING_CHOICES.join('|')}>] [--variant-names <name,...>] [--variant-accents <#RRGGBB,...>]`;
 }
 
 function readValue(args: string[], index: number, flag: string): string {
@@ -64,6 +75,7 @@ function parseOrderedValues(value: string): string[] {
 
 function parseArgs(args: string[]): ResolvedArgs {
   const parsed: ParsedArgs = {
+    generatedAppOptions: {},
     stylingChoice: 'bare',
   };
 
@@ -76,6 +88,18 @@ function parseArgs(args: string[]): ResolvedArgs {
 
     if (arg === '--setup-type') {
       parsed.setupType = parseSetupType(readValue(args, index, arg));
+      index += 1;
+    } else if (arg === '--backend') {
+      parsed.generatedAppOptions.backend = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--auth') {
+      parsed.generatedAppOptions.auth = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--database') {
+      parsed.generatedAppOptions.database = readValue(args, index, arg);
+      index += 1;
+    } else if (arg === '--orm') {
+      parsed.generatedAppOptions.orm = readValue(args, index, arg);
       index += 1;
     } else if (arg === '--styling') {
       parsed.stylingChoice = parseStylingChoice(readValue(args, index, arg));
@@ -95,24 +119,105 @@ function parseArgs(args: string[]): ResolvedArgs {
     throw new Error(`Missing --setup-type.\n${usage()}`);
   }
 
+  const generatedAppOptionsResolution = resolveGeneratedAppOptions(parsed.generatedAppOptions);
+  if (generatedAppOptionsResolution.status === 'invalid') {
+    throw new Error('Unsupported Generated App Option combination.');
+  }
+
   return {
     ...parsed,
+    generatedAppOptions: generatedAppOptionsResolution.selection,
     setupType: parsed.setupType,
   };
+}
+
+function acquireAvailablePort(): Promise<number> {
+  return new Promise((resolvePort, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close();
+        reject(new Error('Could not allocate a local verification port.'));
+        return;
+      }
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolvePort(address.port);
+      });
+    });
+  });
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const packageRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
   const workspaceRoot = resolve(packageRoot, '..', '..');
+  const isNodeBackend = isGeneratedNodeBackend(args.generatedAppOptions.backend);
+  const hasSqlDatabase = args.generatedAppOptions.database !== 'none';
+  const databaseUrl = hasSqlDatabase ? process.env.DATABASE_URL : undefined;
+  if (hasSqlDatabase && !databaseUrl) {
+    throw new Error(
+      `${args.generatedAppOptions.database === 'mysql' ? 'MySQL' : 'PostgreSQL'} generated-app verification requires DATABASE_URL.`,
+    );
+  }
+  const port = isNodeBackend ? await acquireAvailablePort() : undefined;
+  const environment = createGeneratedAppCommandEnvironment(
+    port === undefined
+      ? {}
+      : {
+          PORT: String(port),
+          CLIENT_ORIGIN: 'http://localhost:8081',
+          ...(databaseUrl === undefined ? {} : { DATABASE_URL: databaseUrl }),
+          ...(args.generatedAppOptions.auth === 'clerk'
+            ? {
+                CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k',
+                CLERK_SECRET_KEY: 'sk_test_replace_me',
+                EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k',
+              }
+            : {}),
+          ...(args.generatedAppOptions.auth === 'better-auth'
+            ? {
+                BETTER_AUTH_URL: `http://127.0.0.1:${port}`,
+                BETTER_AUTH_SECRET: 'tenkit-generated-verification-secret',
+              }
+            : {}),
+        },
+  );
 
-  await verifyGeneratedApp({
+  const evidence = await verifyGeneratedApp({
     setupType: args.setupType,
     appVariantAccents: args.appVariantAccents,
     appVariantNames: args.appVariantNames,
+    generatedAppOptions: args.generatedAppOptions,
     stylingChoice: args.stylingChoice,
     workspaceRoot,
+    environment,
+    profile:
+      args.generatedAppOptions.backend === 'convex'
+        ? 'convex'
+        : isNodeBackend
+          ? 'node-server'
+          : 'deterministic',
   });
+
+  if (evidence.status === 'failed') {
+    const firstFailure = evidence.failures[0];
+    const retainedTarget = evidence.retainedTargetName
+      ? ` Failed target retained in the system temporary directory as ${evidence.retainedTargetName}.`
+      : '';
+    throw new Error(
+      firstFailure
+        ? `Generated app verification failed during ${firstFailure.phase}: ${firstFailure.message}${retainedTarget}`
+        : `Generated app verification failed without structured failure evidence.${retainedTarget}`,
+    );
+  }
+
+  console.log(`Verified generated ${args.setupType} Expo app with ${args.stylingChoice} Styling.`);
 }
 
 main().catch((error: unknown) => {

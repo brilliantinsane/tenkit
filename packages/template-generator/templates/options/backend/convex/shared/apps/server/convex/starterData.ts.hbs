@@ -1,0 +1,130 @@
+import type { MutationCtx } from './_generated/server';
+import { internalMutation } from './_generated/server';
+
+async function clearStarterData(ctx: MutationCtx) {
+  for (const table of ['runtimeTenantAccess', 'runtimeTenants', 'appVariants'] as const) {
+    for (const document of await ctx.db.query(table).collect()) {
+      await ctx.db.delete(document._id);
+    }
+  }
+}
+
+export const clear = internalMutation({
+  args: {},
+  handler: clearStarterData,
+});
+
+export const seed = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await clearStarterData(ctx);
+
+{{#ifSetupType 'white-label-apps'}}
+    for (const appVariant of [
+      {
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        profileName: {{{appVariants.[0].displayNameStringLiteral}}},
+        profileDescription: 'Convex-managed Business Data for this App Variant.',
+      },
+      {
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[1].appVariantId}},
+        profileName: {{{appVariants.[1].displayNameStringLiteral}}},
+        profileDescription: 'Convex-managed Business Data for this App Variant.',
+      },
+    ] as const) {
+      await ctx.db.insert('appVariants', appVariant);
+    }
+
+    return { appVariants: 2, runtimeTenants: 0, runtimeTenantAccessGrants: 0 };
+{{/ifSetupType}}
+{{#ifSetupType 'single-app-runtime-tenants'}}
+    await ctx.db.insert('appVariants', {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+    });
+
+    for (const runtimeTenant of [
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 100,
+        profileName: 'North Branch',
+        profileDescription: 'The North Branch Convex Business Data Example.',
+      },
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 101,
+        profileName: 'South Branch',
+        profileDescription: 'The South Branch Convex Business Data Example.',
+      },
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 102,
+        profileName: 'East Branch',
+        profileDescription: 'The East Branch Convex Business Data Example.',
+      },
+    ] as const) {
+      await ctx.db.insert('runtimeTenants', runtimeTenant);
+      await ctx.db.insert('runtimeTenantAccess', {
+        setupType: '{{setupType}}',
+        appVariantId: {{appVariants.[0].appVariantId}},
+        runtimeTenantId: runtimeTenant.runtimeTenantId,
+      });
+    }
+
+    return { appVariants: 1, runtimeTenants: 3, runtimeTenantAccessGrants: 3 };
+{{/ifSetupType}}
+{{#ifSetupType 'generic-with-standalone-app-variants'}}
+    await ctx.db.insert('appVariants', {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[0].appVariantId}},
+      role: 'generic',
+    });
+    await ctx.db.insert('appVariants', {
+      setupType: '{{setupType}}',
+      appVariantId: {{appVariants.[1].appVariantId}},
+      role: 'standalone',
+      standaloneRuntimeTenantId: 103,
+    });
+
+    for (const runtimeTenant of [
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 100,
+        profileName: 'North Studio',
+        profileDescription: 'The North Studio Convex Business Data Example.',
+      },
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 101,
+        profileName: 'South Studio',
+        profileDescription: 'The South Studio Convex Business Data Example.',
+      },
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 102,
+        profileName: 'East Studio',
+        profileDescription: 'The East Studio Convex Business Data Example.',
+      },
+      {
+        setupType: '{{setupType}}',
+        runtimeTenantId: 103,
+        profileName: 'West Studio',
+        profileDescription: 'The West Studio Convex Business Data Example.',
+      },
+    ] as const) {
+      await ctx.db.insert('runtimeTenants', runtimeTenant);
+      if (runtimeTenant.runtimeTenantId !== 103) {
+        await ctx.db.insert('runtimeTenantAccess', {
+          setupType: '{{setupType}}',
+          appVariantId: {{appVariants.[0].appVariantId}},
+          runtimeTenantId: runtimeTenant.runtimeTenantId,
+        });
+      }
+    }
+
+    return { appVariants: 2, runtimeTenants: 4, runtimeTenantAccessGrants: 3 };
+{{/ifSetupType}}
+  },
+});

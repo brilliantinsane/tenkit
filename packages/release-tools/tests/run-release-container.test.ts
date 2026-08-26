@@ -30,6 +30,7 @@ describe('Release Set container', () => {
     const dockerignore = await readFile(join(releaseToolsRoot, '.dockerignore'), 'utf8');
     const containerFiles = await readdir(join(releaseToolsRoot, 'container'));
 
+    expect(dockerignore.split(/\r?\n/)).toContain('!container/canonical-publish-manifest.cjs');
     expect(dockerignore.split(/\r?\n/)).toContain('!container/pack-release-set.sh');
     expect(containerFiles.filter((file) => /\.(?:mjs|ts)$/.test(file))).toEqual([]);
   });

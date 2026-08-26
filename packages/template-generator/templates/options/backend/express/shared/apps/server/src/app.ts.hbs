@@ -1,0 +1,131 @@
+import cors from 'cors';
+import express, { type Express{{#if hasAuth}}, type Request, type RequestHandler{{/if}} } from 'express';
+import { z } from 'zod';
+{{#if hasDatabaseWorkspace}}
+import type { BusinessDataRepository } from '@tenkit/db';
+{{/if}}
+{{#if isBetterAuth}}
+import type { TenkitAuth } from '@tenkit/auth';
+import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
+{{/if}}
+{{#if isClerkAuth}}
+import { clerkMiddleware, getAuth } from '@clerk/express';
+{{/if}}
+
+{{#if isClerkAuth}}
+declare global {
+  interface ClerkAppearanceRegistry {
+    theme?: unknown;
+  }
+}
+{{/if}}
+
+import {
+  BusinessProfileRequestError,
+  resolveBusinessProfile,
+} from './business-profile.js';
+
+const positiveIntegerQueryValue = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .transform((value) => Number(value));
+
+const businessProfileRequestSchema = z
+  .object({
+    appVariantId: positiveIntegerQueryValue,
+    runtimeTenantId: positiveIntegerQueryValue.optional(),
+    setupType: z.string(),
+  })
+  .strict();
+
+{{#if hasAuth}}
+export type RequestAuthentication = {
+  middleware: RequestHandler;
+  hasSession(request: Request): Promise<boolean>;
+};
+{{/if}}
+
+{{#if isClerkAuth}}
+function createClerkRequestAuthentication(): RequestAuthentication {
+  return {
+    middleware: clerkMiddleware(),
+    hasSession: async (request) => getAuth(request).isAuthenticated,
+  };
+}
+{{/if}}
+{{#if isBetterAuth}}
+export function createBetterAuthRequestAuthentication(
+  auth: TenkitAuth,
+): RequestAuthentication {
+  return {
+    middleware: toNodeHandler(auth),
+    hasSession: async (request) =>
+      (await auth.api.getSession({ headers: fromNodeHeaders(request.headers) })) !== null,
+  };
+}
+{{/if}}
+
+export function createApp(
+  clientOrigin: string,
+  {{#if hasDatabaseWorkspace}}businessDataRepository: BusinessDataRepository,{{/if}}
+  {{#if isBetterAuth}}authentication: RequestAuthentication,{{/if}}
+  {{#if isClerkAuth}}authentication: RequestAuthentication = createClerkRequestAuthentication(),{{/if}}
+): Express {
+  const app = express();
+
+  app.disable('x-powered-by');
+  {{#if isClerkAuth}}
+  app.use(authentication.middleware);
+  {{/if}}
+  app.use(
+    cors({
+      origin: clientOrigin,
+      methods: [{{#if isBetterAuth}}'GET', 'POST'{{else}}'GET'{{/if}}],
+      allowedHeaders: [{{#if isBetterAuth}}'Content-Type', 'Cookie'{{else}}'Authorization', 'Content-Type'{{/if}}],
+      {{#if isBetterAuth}}
+      credentials: true,
+      {{/if}}
+    }),
+  );
+
+  app.get('/health', (_request, response) => {
+    response.json({ status: 'ok' });
+  });
+
+  {{#if isBetterAuth}}
+  app.all('/api/auth/*splat', authentication.middleware);
+  app.use(express.json());
+  {{/if}}
+
+  app.get('/api/business-profile', async (request, response) => {
+    {{#if hasAuth}}
+    if (!(await authentication.hasSession(request))) {
+      response.status(401).json({ error: 'Authentication is required' });
+      return;
+    }
+    {{/if}}
+    const parsedRequest = businessProfileRequestSchema.safeParse(request.query);
+    if (!parsedRequest.success) {
+      response.status(400).json({ error: 'Invalid Business Data Example context' });
+      return;
+    }
+
+    try {
+      response.json({
+        profile: await resolveBusinessProfile(
+          {{#if hasDatabaseWorkspace}}businessDataRepository,{{/if}}
+          parsedRequest.data,
+        ),
+      });
+    } catch (error) {
+      if (error instanceof BusinessProfileRequestError) {
+        response.status(error.status).json({ error: error.message });
+        return;
+      }
+
+      throw error;
+    }
+  });
+
+  return app;
+}

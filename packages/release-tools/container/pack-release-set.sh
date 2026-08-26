@@ -5,8 +5,8 @@ set -euo pipefail
 workspace_root=/workspace
 artifact_root=/artifacts
 # The reviewed source commit owns this graph; never accept package roots from the host checkout.
-package_names=('@tenkit/template-generator' '@tenkit/cli' 'create-tenkit')
-package_roots=('packages/template-generator' 'packages/cli' 'packages/create-tenkit')
+package_names=('@tenkit/types' '@tenkit/template-generator' '@tenkit/cli' 'create-tenkit')
+package_roots=('packages/types' 'packages/template-generator' 'packages/cli' 'packages/create-tenkit')
 
 export CI=true
 export INIT_CWD="$workspace_root"
@@ -132,5 +132,9 @@ for index in "${!package_names[@]}"; do
 done
 
 for package_name in "${package_names[@]}"; do
-  run_quietly pnpm --filter "$package_name" pack --pack-destination "$artifact_root"
+  run_quietly pnpm \
+    --config.pnpmfile=/usr/local/lib/tenkit/canonical-publish-manifest.cjs \
+    --filter "$package_name" \
+    pack \
+    --pack-destination "$artifact_root"
 done

@@ -1,0 +1,50 @@
+import { z } from 'zod';
+
+const serverEnvironmentSchema = z.object({
+  {{#if isBetterAuth}}
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.string().url(),
+  {{/if}}
+  {{#if isClerkAuth}}
+  CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
+  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
+  {{/if}}
+  CLIENT_ORIGIN: z.string().url().refine((origin) => {
+    const protocol = new URL(origin).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  }, 'CLIENT_ORIGIN must use http or https'),
+  {{#if hasDatabaseWorkspace}}
+  DATABASE_URL: z.string().refine((databaseUrl) => {
+    try {
+      const protocol = new URL(databaseUrl).protocol;
+      {{#if isMysqlDatabase}}
+      return protocol === 'mysql:';
+      {{else}}
+      return protocol === 'postgresql:' || protocol === 'postgres:';
+      {{/if}}
+    } catch {
+      return false;
+    }
+  }, 'DATABASE_URL must be a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} URL'),
+  {{/if}}
+  PORT: z.coerce.number().int().min(1).max(65_535),
+  {{#if isBetterAuth}}
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  {{/if}}
+});
+
+export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+
+export function readServerEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+): ServerEnvironment {
+  const parsedEnvironment = serverEnvironmentSchema.safeParse(environment);
+
+  if (!parsedEnvironment.success) {
+    throw new Error(
+      'Express requires valid PORT and CLIENT_ORIGIN environment values{{#if hasDatabaseWorkspace}}, plus a {{#if isMysqlDatabase}}MySQL{{else}}PostgreSQL{{/if}} DATABASE_URL{{/if}}{{#if isClerkAuth}}, plus Clerk Publishable and Secret Keys{{/if}}{{#if isBetterAuth}}, plus BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET{{/if}}.',
+    );
+  }
+
+  return parsedEnvironment.data;
+}

@@ -1,10 +1,11 @@
 import type {
   GeneratedAccentColor,
-  GeneratedSetupType,
   VirtualFileTree,
   WriteProjectResult,
 } from '@tenkit/template-generator';
-import type { GeneratedStylingChoice } from '@tenkit/template-generator/styling-definitions';
+import type { GeneratedSetupType } from '@tenkit/types/setup-type-definitions';
+import type { GeneratedStylingChoice } from '@tenkit/types/styling-definitions';
+import type { GeneratedAppOptions } from '@tenkit/types/generated-app-option-definitions';
 
 import { PROMPT_CANCELLED, type PromptChoice } from '../constants';
 import type { PublicCliPackageManager } from './package-manager';
@@ -14,6 +15,10 @@ export type CreateCommandOptions = {
   packageName?: string;
   setup?: string;
   setupType?: string;
+  backend?: string;
+  auth?: string;
+  database?: string;
+  orm?: string;
   styling?: string;
   appVariantNamesInput?: string;
   appVariantAccentsInput?: string;
@@ -79,6 +84,7 @@ export type CreateFlowEnvironment = {
   runCommand?: RunCommand;
   generate?: (config: {
     setupType: GeneratedSetupType;
+    generatedAppOptions: GeneratedAppOptions;
     stylingChoice: GeneratedStylingChoice;
     appVariantAccents?: readonly GeneratedAccentColor[];
     appVariantNames?: readonly string[];
@@ -99,6 +105,7 @@ export type CreateFlowResult = {
   projectName: string;
   packageName: string;
   setupType: GeneratedSetupType;
+  generatedAppOptions: GeneratedAppOptions;
   stylingChoice: GeneratedStylingChoice;
   appVariantAccents: readonly GeneratedAccentColor[];
   appVariantNames: readonly string[];
@@ -115,6 +122,7 @@ export type ResolvedCreateOptions = {
   projectName: string;
   packageName: string;
   setupType: GeneratedSetupType;
+  generatedAppOptions: GeneratedAppOptions;
   stylingChoice: GeneratedStylingChoice;
   appVariantAccents: readonly GeneratedAccentColor[];
   appVariantNames: readonly string[];

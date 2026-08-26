@@ -1,0 +1,20 @@
+import { expect, test } from 'vitest';
+
+import { createTrustedOrigins } from '../src/trusted-origins.js';
+
+test('trusts the client and App Variant schemes without production development wildcards', () => {
+  expect(createTrustedOrigins('https://app.example.test', false)).toEqual([
+    'https://app.example.test',
+    {{#each appVariants}}
+    '{{scheme}}://',
+    {{/each}}
+  ]);
+  expect(createTrustedOrigins('http://localhost:8081', true)).toEqual([
+    'http://localhost:8081',
+    {{#each appVariants}}
+    '{{scheme}}://',
+    {{/each}}
+    'exp://',
+    'exp://**',
+  ]);
+});

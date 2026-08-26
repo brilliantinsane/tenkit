@@ -1,0 +1,142 @@
+import { Link } from 'expo-router';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+import { type AuthFormMode, useClerkAuthForm } from './use-clerk-auth-form';
+
+export function AuthForm({ mode }: { mode: AuthFormMode }) {
+  const form = useClerkAuthForm(mode);
+
+  if (form.verificationStep) {
+    return (
+      <View style={styles.screen}>
+        <Text style={styles.title}>Check your Email</Text>
+        <Text style={styles.description}>
+          Enter the verification code Clerk sent to {form.email}.
+        </Text>
+        <TextInput
+          accessibilityLabel="Verification code"
+          autoComplete="one-time-code"
+          keyboardType="number-pad"
+          onChangeText={form.setVerificationCode}
+          placeholder="Verification code"
+          style={styles.input}
+          value={form.verificationCode}
+        />
+        {form.errorMessage ? <Text style={styles.description}>{form.errorMessage}</Text> : null}
+        <Pressable
+          accessibilityRole="button"
+          disabled={form.isSubmitting}
+          onPress={() => void form.submitVerificationCode()}
+          style={styles.button}
+        >
+          <Text style={styles.buttonLabel}>
+            {form.isSubmitting ? 'Verifying...' : 'Verify'}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>{form.isSignUp ? 'Create account' : 'Sign in'}</Text>
+      <Text style={styles.description}>
+        {form.isSignUp
+          ? 'Clerk will verify your Email before opening the app.'
+          : 'Continue to your Business Data Example.'}
+      </Text>
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Name"
+          autoCapitalize="words"
+          autoComplete="name"
+          onChangeText={form.setName}
+          placeholder="Name"
+          style={styles.input}
+          value={form.name}
+        />
+      ) : null}
+      <TextInput
+        accessibilityLabel="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        onChangeText={form.setEmail}
+        placeholder="Email"
+        style={styles.input}
+        value={form.email}
+      />
+      <TextInput
+        accessibilityLabel="Password"
+        autoCapitalize="none"
+        autoComplete={form.isSignUp ? 'new-password' : 'current-password'}
+        onChangeText={form.setPassword}
+        placeholder="Password"
+        secureTextEntry
+        style={styles.input}
+        value={form.password}
+      />
+      {form.isSignUp ? (
+        <TextInput
+          accessibilityLabel="Confirm Password"
+          autoCapitalize="none"
+          autoComplete="new-password"
+          onChangeText={form.setConfirmPassword}
+          placeholder="Confirm Password"
+          secureTextEntry
+          style={styles.input}
+          value={form.confirmPassword}
+        />
+      ) : null}
+      {form.errorMessage ? <Text style={styles.description}>{form.errorMessage}</Text> : null}
+      <Pressable
+        accessibilityRole="button"
+        disabled={form.isSubmitting}
+        onPress={() => void form.submitCredentials()}
+        style={styles.button}
+      >
+        <Text style={styles.buttonLabel}>
+          {form.isSubmitting ? 'Working...' : form.isSignUp ? 'Create account' : 'Sign in'}
+        </Text>
+      </Pressable>
+      {form.isSignUp ? <View nativeID="clerk-captcha" /> : null}
+      <Link href={form.isSignUp ? '/sign-in' : '/sign-up'}>
+        <Text style={styles.link}>
+          {form.isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register'}
+        </Text>
+      </Link>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create((theme) => ({
+  screen: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  title: { ...theme.typography.hero, color: theme.colors.foreground },
+  description: { ...theme.typography.body, color: theme.colors.muted },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: theme.colors.muted,
+    borderRadius: theme.radii.md,
+    paddingHorizontal: theme.spacing.md,
+    color: theme.colors.foreground,
+    backgroundColor: theme.colors.surface,
+  },
+  button: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radii.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.accent,
+  },
+  buttonLabel: { ...theme.typography.label, color: theme.colors.background },
+  link: { ...theme.typography.label, color: theme.colors.accent },
+}));

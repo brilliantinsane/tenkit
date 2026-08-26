@@ -1,0 +1,204 @@
+{{#if isMysqlDatabase}}
+{{#if isBetterAuth}}
+CREATE TABLE `user` (
+  `id` VARCHAR(191) NOT NULL,
+  `name` VARCHAR(191) NOT NULL,
+  `email` VARCHAR(191) NOT NULL,
+  `emailVerified` BOOLEAN NOT NULL DEFAULT false,
+  `image` VARCHAR(191) NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  UNIQUE INDEX `user_email_key` (`email`),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `session` (
+  `id` VARCHAR(191) NOT NULL,
+  `expiresAt` DATETIME(3) NOT NULL,
+  `token` VARCHAR(191) NOT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  `ipAddress` VARCHAR(191) NULL,
+  `userAgent` VARCHAR(191) NULL,
+  `userId` VARCHAR(191) NOT NULL,
+  UNIQUE INDEX `session_token_key` (`token`),
+  INDEX `session_userId_idx` (`userId`),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `account` (
+  `id` VARCHAR(191) NOT NULL,
+  `accountId` VARCHAR(191) NOT NULL,
+  `providerId` VARCHAR(191) NOT NULL,
+  `userId` VARCHAR(191) NOT NULL,
+  `accessToken` TEXT NULL,
+  `refreshToken` TEXT NULL,
+  `idToken` TEXT NULL,
+  `accessTokenExpiresAt` DATETIME(3) NULL,
+  `refreshTokenExpiresAt` DATETIME(3) NULL,
+  `scope` VARCHAR(191) NULL,
+  `password` TEXT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  INDEX `account_userId_idx` (`userId`),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `verification` (
+  `id` VARCHAR(191) NOT NULL,
+  `identifier` VARCHAR(191) NOT NULL,
+  `value` TEXT NOT NULL,
+  `expiresAt` DATETIME(3) NOT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  INDEX `verification_identifier_idx` (`identifier`),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `session`
+  ADD CONSTRAINT `session_userId_fkey`
+  FOREIGN KEY (`userId`)
+  REFERENCES `user` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `account`
+  ADD CONSTRAINT `account_userId_fkey`
+  FOREIGN KEY (`userId`)
+  REFERENCES `user` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+{{/if}}
+
+CREATE TABLE `app_variant` (
+  `appVariantId` INTEGER NOT NULL,
+  `role` VARCHAR(191) NULL,
+  `standaloneRuntimeTenantId` INTEGER NULL,
+  `profileName` VARCHAR(191) NULL,
+  `profileDescription` VARCHAR(191) NULL,
+  PRIMARY KEY (`appVariantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `runtime_tenant` (
+  `runtimeTenantId` INTEGER NOT NULL,
+  `profileName` VARCHAR(191) NOT NULL,
+  `profileDescription` VARCHAR(191) NOT NULL,
+  PRIMARY KEY (`runtimeTenantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `app_variant_runtime_tenant_access` (
+  `appVariantId` INTEGER NOT NULL,
+  `runtimeTenantId` INTEGER NOT NULL,
+  `isDefault` BOOLEAN NOT NULL DEFAULT false,
+  PRIMARY KEY (`appVariantId`, `runtimeTenantId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `app_variant_runtime_tenant_access`
+  ADD CONSTRAINT `avrt_access_app_variant_fkey`
+  FOREIGN KEY (`appVariantId`)
+  REFERENCES `app_variant` (`appVariantId`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `app_variant_runtime_tenant_access`
+  ADD CONSTRAINT `avrt_access_runtime_tenant_fkey`
+  FOREIGN KEY (`runtimeTenantId`)
+  REFERENCES `runtime_tenant` (`runtimeTenantId`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+{{else}}
+{{#if isBetterAuth}}
+CREATE TABLE "user" (
+  "id" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "email" TEXT NOT NULL,
+  "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+  "image" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "user_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
+
+CREATE TABLE "session" (
+  "id" TEXT NOT NULL,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "token" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  "ipAddress" TEXT,
+  "userAgent" TEXT,
+  "userId" TEXT NOT NULL,
+  CONSTRAINT "session_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
+CREATE INDEX "session_userId_idx" ON "session"("userId");
+
+CREATE TABLE "account" (
+  "id" TEXT NOT NULL,
+  "accountId" TEXT NOT NULL,
+  "providerId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "accessToken" TEXT,
+  "refreshToken" TEXT,
+  "idToken" TEXT,
+  "accessTokenExpiresAt" TIMESTAMP(3),
+  "refreshTokenExpiresAt" TIMESTAMP(3),
+  "scope" TEXT,
+  "password" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "account_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "account_userId_idx" ON "account"("userId");
+
+CREATE TABLE "verification" (
+  "id" TEXT NOT NULL,
+  "identifier" TEXT NOT NULL,
+  "value" TEXT NOT NULL,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
+
+ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+{{/if}}
+
+CREATE TABLE "app_variant" (
+  "appVariantId" INTEGER NOT NULL,
+  "role" TEXT,
+  "standaloneRuntimeTenantId" INTEGER,
+  "profileName" TEXT,
+  "profileDescription" TEXT,
+  CONSTRAINT "app_variant_pkey" PRIMARY KEY ("appVariantId")
+);
+
+CREATE TABLE "runtime_tenant" (
+  "runtimeTenantId" INTEGER NOT NULL,
+  "profileName" TEXT NOT NULL,
+  "profileDescription" TEXT NOT NULL,
+  CONSTRAINT "runtime_tenant_pkey" PRIMARY KEY ("runtimeTenantId")
+);
+
+CREATE TABLE "app_variant_runtime_tenant_access" (
+  "appVariantId" INTEGER NOT NULL,
+  "runtimeTenantId" INTEGER NOT NULL,
+  "isDefault" BOOLEAN NOT NULL DEFAULT false,
+  CONSTRAINT "app_variant_runtime_tenant_access_pkey" PRIMARY KEY ("appVariantId", "runtimeTenantId")
+);
+
+ALTER TABLE "app_variant_runtime_tenant_access"
+  ADD CONSTRAINT "app_variant_runtime_tenant_access_app_variant_fkey"
+  FOREIGN KEY ("appVariantId")
+  REFERENCES "app_variant" ("appVariantId")
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "app_variant_runtime_tenant_access"
+  ADD CONSTRAINT "app_variant_runtime_tenant_access_runtime_tenant_fkey"
+  FOREIGN KEY ("runtimeTenantId")
+  REFERENCES "runtime_tenant" ("runtimeTenantId")
+  ON DELETE CASCADE ON UPDATE CASCADE;
+{{/if}}

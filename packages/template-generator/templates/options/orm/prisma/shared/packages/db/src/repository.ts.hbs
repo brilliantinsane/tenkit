@@ -1,0 +1,141 @@
+{{#if isMysqlDatabase}}
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+{{else}}
+import { PrismaPg } from '@prisma/adapter-pg';
+{{/if}}
+
+import { PrismaClient } from './generated/prisma/client.js';
+
+export type AppVariantBusinessData = {
+  appVariantId: number;
+  role: string | null;
+  standaloneRuntimeTenantId: number | null;
+  profileName: string | null;
+  profileDescription: string | null;
+};
+
+export type RuntimeTenantBusinessData = {
+  runtimeTenantId: number;
+  profileName: string;
+  profileDescription: string;
+};
+
+export type BusinessDataRepository = {
+  findAppVariant(appVariantId: number): Promise<AppVariantBusinessData | null>;
+  hasRuntimeTenantAccess(appVariantId: number, runtimeTenantId: number): Promise<boolean>;
+  findRuntimeTenant(runtimeTenantId: number): Promise<RuntimeTenantBusinessData | null>;
+  close(): Promise<void>;
+};
+
+{{#if isMysqlDatabase}}
+export function validateMysqlDatabaseUrl(databaseUrl: string): string {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(databaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid MySQL URL.');
+  }
+
+  if (parsedUrl.protocol !== 'mysql:') {
+    throw new Error('DATABASE_URL must use the mysql protocol.');
+  }
+
+  if (!parsedUrl.hostname || parsedUrl.pathname === '/' || parsedUrl.pathname.length === 0) {
+    throw new Error('DATABASE_URL must identify a MySQL host and database.');
+  }
+
+  return databaseUrl;
+}
+
+export function createMysqlPrismaClient(databaseUrl: string): PrismaClient {
+  return new PrismaClient({ adapter: new PrismaMariaDb(validateMysqlDatabaseUrl(databaseUrl)) });
+}
+{{else}}
+export function validatePostgresqlDatabaseUrl(databaseUrl: string): string {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(databaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL URL.');
+  }
+
+  if (parsedUrl.protocol !== 'postgresql:' && parsedUrl.protocol !== 'postgres:') {
+    throw new Error('DATABASE_URL must use the postgresql or postgres protocol.');
+  }
+
+  if (!parsedUrl.hostname || parsedUrl.pathname === '/' || parsedUrl.pathname.length === 0) {
+    throw new Error('DATABASE_URL must identify a PostgreSQL host and database.');
+  }
+
+  return databaseUrl;
+}
+
+export function createPostgresqlPrismaClient(databaseUrl: string): PrismaClient {
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString: validatePostgresqlDatabaseUrl(databaseUrl) }),
+  });
+}
+{{/if}}
+
+export function createBusinessDataRepository(databaseUrl: string): BusinessDataRepository {
+  {{#if isMysqlDatabase}}
+  const database = createMysqlPrismaClient(databaseUrl);
+  {{else}}
+  const database = createPostgresqlPrismaClient(databaseUrl);
+  {{/if}}
+
+  return {
+    async findAppVariant(appVariantId) {
+      return database.appVariant.findUnique({ where: { appVariantId } });
+    },
+    async hasRuntimeTenantAccess(appVariantId, runtimeTenantId) {
+      const access = await database.appVariantRuntimeTenantAccess.findUnique({
+        where: { appVariantId_runtimeTenantId: { appVariantId, runtimeTenantId } },
+        select: { runtimeTenantId: true },
+      });
+      return access !== null;
+    },
+    async findRuntimeTenant(runtimeTenantId) {
+      return database.runtimeTenant.findUnique({ where: { runtimeTenantId } });
+    },
+    async close() {
+      await database.$disconnect();
+    },
+  };
+}
+
+{{#if isMysqlDatabase}}
+export async function inspectMysqlTableNames(databaseUrl: string): Promise<string[]> {
+  const database = createMysqlPrismaClient(databaseUrl);
+
+  try {
+    const tables = await database.$queryRaw<{ tableName: string }[]>`
+      SELECT table_name AS tableName
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+      ORDER BY table_name
+    `;
+    return tables.map(({ tableName }) => tableName);
+  } finally {
+    await database.$disconnect();
+  }
+}
+{{else}}
+export async function inspectPostgresqlTableNames(databaseUrl: string): Promise<string[]> {
+  const database = createPostgresqlPrismaClient(databaseUrl);
+
+  try {
+    const tables = await database.$queryRaw<{ table_name: string }[]>`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `;
+    return tables.map(({ table_name: tableName }) => tableName);
+  } finally {
+    await database.$disconnect();
+  }
+}
+{{/if}}

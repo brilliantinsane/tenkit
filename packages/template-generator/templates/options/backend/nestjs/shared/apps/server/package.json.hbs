@@ -1,0 +1,49 @@
+{
+  "name": "@tenkit/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "test": "vitest run tests/app.test.ts",
+    "test:integration": "vitest run tests/integration.test.ts",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    {{#if hasDatabaseWorkspace}}
+    "@tenkit/db": "{{workspaceDependencyVersion}}",
+    {{/if}}
+    {{#if isClerkAuth}}
+    "@clerk/express": "2.1.50",
+    {{/if}}
+    {{#if isBetterAuth}}
+    "@tenkit/auth": "{{workspaceDependencyVersion}}",
+    "@thallesp/nestjs-better-auth": "2.7.0",
+    "better-auth": "1.6.25",
+    {{/if}}
+    "@nestjs/common": "11.1.28",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
+    "@nestjs/terminus": "11.1.1",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.24",
+    "@nestjs/testing": "11.1.28",
+    {{#if isClerkAuth}}
+    "@types/express": "^5.0.6",
+    {{/if}}
+    "@types/node": "^25.9.3",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.2.2",
+    "typescript": "{{#if isClerkAuth}}~5.9.3{{else}}~6.0.3{{/if}}",
+    "vitest": "^4.1.9"
+  }
+}

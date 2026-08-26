@@ -72,8 +72,7 @@ export function readCanonicalInternalReleaseSetDependencies(
     }
   }
 
-  const expectedDependencyNames =
-    'internalDependency' in releasePackage ? [releasePackage.internalDependency] : [];
+  const expectedDependencyNames = releasePackage.internalDependencies;
 
   if (actualDependencies.length !== expectedDependencyNames.length) {
     throw new Error(
@@ -82,17 +81,21 @@ export function readCanonicalInternalReleaseSetDependencies(
   }
 
   for (const expectedDependencyName of expectedDependencyNames) {
-    const actualDependency = actualDependencies[0];
+    const actualDependency = actualDependencies.find(
+      (dependency) => dependency.name === expectedDependencyName,
+    );
 
     if (
       actualDependency?.section !== 'dependencies' ||
       actualDependency.name !== expectedDependencyName
     ) {
-      throw new Error(
-        `${packageName} must declare one direct dependency ${expectedDependencyName}.`,
-      );
+      throw new Error(`${packageName} must declare a direct dependency ${expectedDependencyName}.`);
     }
   }
 
-  return actualDependencies.map(({ name, version }) => ({ name, version }));
+  return expectedDependencyNames.map((dependencyName) => {
+    const dependency = actualDependencies.find(({ name }) => name === dependencyName)!;
+
+    return { name: dependency.name, version: dependency.version };
+  });
 }

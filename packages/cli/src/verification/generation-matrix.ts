@@ -4,20 +4,22 @@ import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 
+import { generateProject, type VirtualFileTree } from '@tenkit/template-generator';
 import {
-  generateProject,
-  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  type GeneratedSetupType,
-  type VirtualFileTree,
-} from '@tenkit/template-generator';
+  DEFAULT_GENERATED_APP_OPTIONS,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+  type GeneratedAppOptions,
+} from '@tenkit/types/generated-app-option-definitions';
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from '@tenkit/template-generator/styling-definitions';
+} from '@tenkit/types/styling-definitions';
 import {
   deriveAppVariantIdentities,
   getGeneratedSetupTypeDefinition,
-} from '@tenkit/template-generator/setup-type-definitions';
+  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
+  type GeneratedSetupType,
+} from '@tenkit/types/setup-type-definitions';
 import fs from 'fs-extra';
 import { basename, join, relative, resolve, sep } from 'pathe';
 
@@ -38,7 +40,6 @@ const MATRIX_GIT_ENV = {
   GIT_COMMITTER_NAME: 'Tenkit Matrix',
   GIT_COMMITTER_EMAIL: 'matrix@tenkit.dev',
 } as const;
-
 export const GENERATION_MATRIX_ROOT = '/tmp/tenkit-test';
 
 type ValueProfile = (typeof VALUE_PROFILES)[number];
@@ -69,6 +70,7 @@ export type GenerationMatrixCase = {
   setupType: GeneratedSetupType;
   publicSetupSlug: string;
   stylingChoice: GeneratedStylingChoice;
+  generatedAppOptions: GeneratedAppOptions;
   packageManager: PublicCliPackageManager;
   valueProfile: ValueProfile;
   appVariantNames: readonly string[];
@@ -105,6 +107,7 @@ type RunGenerationMatrixOptions = {
 
 type ExternalVerificationOperation =
   | 'Git commit check'
+  | 'generated app Prisma client generation'
   | 'generated app typecheck'
   | 'generated app Expo config'
   | 'generated app Expo config for non-default App Variant'
@@ -131,12 +134,22 @@ function matrixCaseId({
   stylingChoice,
   packageManager,
   valueProfile,
+  generatedAppOptions,
 }: Pick<
   GenerationMatrixCase,
-  'phase' | 'publicSetupSlug' | 'stylingChoice' | 'packageManager' | 'valueProfile'
+  | 'phase'
+  | 'publicSetupSlug'
+  | 'stylingChoice'
+  | 'packageManager'
+  | 'valueProfile'
+  | 'generatedAppOptions'
 >): string {
   const prefix = phase === 'installed' ? 'installed-' : '';
-  return `${prefix}${publicSetupSlug}-${stylingChoice}-${packageManager}-${valueProfile}`;
+  const generatedAppOptionsSuffix =
+    generatedAppOptions.backend === 'none'
+      ? ''
+      : `-${generatedAppOptions.backend}-${generatedAppOptions.auth}-${generatedAppOptions.database}-${generatedAppOptions.orm}`;
+  return `${prefix}${publicSetupSlug}-${stylingChoice}-${packageManager}-${valueProfile}${generatedAppOptionsSuffix}`;
 }
 
 function createMatrixCase({
@@ -147,10 +160,13 @@ function createMatrixCase({
   valueProfile,
   install,
   git,
+  generatedAppOptions = DEFAULT_GENERATED_APP_OPTIONS,
 }: Pick<
   GenerationMatrixCase,
   'phase' | 'setupType' | 'stylingChoice' | 'packageManager' | 'valueProfile' | 'install' | 'git'
->): GenerationMatrixCase {
+> & {
+  generatedAppOptions?: GeneratedAppOptions;
+}): GenerationMatrixCase {
   const definition = getGeneratedSetupTypeDefinition(setupType);
 
   const appVariantValues =
@@ -172,6 +188,7 @@ function createMatrixCase({
     appVariantAccents: [...appVariantValues.accents],
     install,
     git,
+    generatedAppOptions,
   } as const;
 
   return {
@@ -286,12 +303,33 @@ export function createInstalledVerificationCases(): readonly GenerationMatrixCas
   ];
 }
 
+export function createSupportedStackInstalledVerificationCases(): readonly GenerationMatrixCase[] {
+  return SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.filter(
+    ({ backend }) => backend !== 'none',
+  ).flatMap((generatedAppOptions) =>
+    SUPPORTED_GENERATED_SETUP_TYPE_IDS.map((setupType) =>
+      createMatrixCase({
+        phase: 'installed',
+        setupType,
+        stylingChoice: 'bare',
+        packageManager: 'pnpm',
+        valueProfile: 'default',
+        install: true,
+        git: true,
+        generatedAppOptions,
+      }),
+    ),
+  );
+}
+
 async function listProjectFiles({
   rootDir,
   ignoredTopLevelDirectories,
+  ignoredDirectories,
 }: {
   rootDir: string;
   ignoredTopLevelDirectories: ReadonlySet<string>;
+  ignoredDirectories: ReadonlySet<string>;
 }): Promise<string[]> {
   const files: string[] = [];
 
@@ -304,6 +342,10 @@ async function listProjectFiles({
       const topLevelName = relativePath.split('/')[0];
 
       if (topLevelName && ignoredTopLevelDirectories.has(topLevelName)) {
+        continue;
+      }
+
+      if (entry.isDirectory() && ignoredDirectories.has(entry.name)) {
         continue;
       }
 
@@ -328,11 +370,13 @@ export async function assertGeneratedProjectMatches({
   tree,
   allowedUnexpectedFiles = [],
   ignoredTopLevelDirectories = [],
+  ignoredDirectories = [],
 }: {
   targetDir: string;
   tree: VirtualFileTree;
   allowedUnexpectedFiles?: readonly string[];
   ignoredTopLevelDirectories?: readonly string[];
+  ignoredDirectories?: readonly string[];
 }): Promise<void> {
   const expectedPaths = new Set(tree.map(({ path }) => path));
   const allowedPaths = new Set(allowedUnexpectedFiles);
@@ -354,6 +398,7 @@ export async function assertGeneratedProjectMatches({
   const actualPaths = await listProjectFiles({
     rootDir: targetDir,
     ignoredTopLevelDirectories: new Set(ignoredTopLevelDirectories),
+    ignoredDirectories: new Set(ignoredDirectories),
   });
 
   for (const path of actualPaths) {
@@ -530,16 +575,28 @@ export function planInstalledProjectVerificationCommands({
   packageManager,
   targetDir,
   appVariantNames,
+  generatedAppOptions = DEFAULT_GENERATED_APP_OPTIONS,
 }: {
   packageManager: PublicCliPackageManager;
   targetDir: string;
   appVariantNames: readonly string[];
+  generatedAppOptions?: GeneratedAppOptions;
 }): readonly ExternalVerificationCommand[] {
   const remainingAppVariantSlugs = deriveAppVariantIdentities(appVariantNames)
     .slice(1)
     .map(({ slug }) => slug);
 
   return [
+    ...(generatedAppOptions.orm === 'prisma'
+      ? [
+          {
+            command: packageManager,
+            args: ['run', 'db:generate'],
+            cwd: targetDir,
+            operation: 'generated app Prisma client generation' as const,
+          },
+        ]
+      : []),
     {
       command: packageManager,
       args: ['run', 'typecheck'],
@@ -552,15 +609,13 @@ export function planInstalledProjectVerificationCommands({
       cwd: targetDir,
       operation: 'generated app Expo config',
     },
-    ...remainingAppVariantSlugs.map(
-      (appVariantSlug): ExternalVerificationCommand => ({
-        command: packageManager,
-        args: ['run', 'expo:config'],
-        cwd: targetDir,
-        env: { APP_VARIANT_SLUG: appVariantSlug },
-        operation: 'generated app Expo config for non-default App Variant',
-      }),
-    ),
+    ...remainingAppVariantSlugs.map((appVariantSlug): ExternalVerificationCommand => ({
+      command: packageManager,
+      args: ['run', 'expo:config'],
+      cwd: targetDir,
+      env: { APP_VARIANT_SLUG: appVariantSlug },
+      operation: 'generated app Expo config for non-default App Variant',
+    })),
   ];
 }
 
@@ -573,6 +628,7 @@ async function verifyInstalledProject(
     packageManager: matrixCase.packageManager,
     targetDir,
     appVariantNames,
+    generatedAppOptions: matrixCase.generatedAppOptions,
   });
 
   for (const command of commands) {
@@ -591,6 +647,10 @@ async function verifyMatrixCase(
       setup: matrixCase.publicSetupSlug,
       styling: matrixCase.stylingChoice,
       packageManager: matrixCase.packageManager,
+      backend: matrixCase.generatedAppOptions.backend,
+      auth: matrixCase.generatedAppOptions.auth,
+      database: matrixCase.generatedAppOptions.database,
+      orm: matrixCase.generatedAppOptions.orm,
       appVariantNamesInput:
         matrixCase.valueProfile === 'custom' ? matrixCase.appVariantNames.join(',') : undefined,
       appVariantAccentsInput:
@@ -612,6 +672,7 @@ async function verifyMatrixCase(
     result.setupType !== matrixCase.setupType ||
     result.stylingChoice !== matrixCase.stylingChoice ||
     result.packageManager !== matrixCase.packageManager ||
+    JSON.stringify(result.generatedAppOptions) !== JSON.stringify(matrixCase.generatedAppOptions) ||
     JSON.stringify(result.appVariantNames) !== JSON.stringify(matrixCase.appVariantNames) ||
     JSON.stringify(result.appVariantAccents) !== JSON.stringify(matrixCase.appVariantAccents)
   ) {
@@ -634,6 +695,7 @@ async function verifyMatrixCase(
     projectName: matrixCase.id,
     packageName: matrixCase.id,
     packageManager: matrixCase.packageManager,
+    generatedAppOptions: matrixCase.generatedAppOptions,
   });
   const allowedUnexpectedFiles = matrixCase.install
     ? [selectedLockfile(matrixCase.packageManager)]
@@ -643,7 +705,8 @@ async function verifyMatrixCase(
     targetDir: result.targetDir,
     tree: expectedTree,
     allowedUnexpectedFiles,
-    ignoredTopLevelDirectories: ['node_modules', '.git'],
+    ignoredTopLevelDirectories: ['.git'],
+    ignoredDirectories: ['node_modules'],
   });
   await assertInstallArtifacts(matrixCase, result.targetDir);
   await assertGitArtifacts(matrixCase, result.targetDir);
@@ -703,7 +766,11 @@ export async function runGenerationMatrix({
     return report;
   }
 
-  const cases = [...createExhaustiveGenerationCases(), ...createInstalledVerificationCases()];
+  const cases = [
+    ...createExhaustiveGenerationCases(),
+    ...createInstalledVerificationCases(),
+    ...createSupportedStackInstalledVerificationCases(),
+  ];
 
   for (const matrixCase of cases) {
     process.stdout.write(`Verifying ${matrixCase.id}...\n`);

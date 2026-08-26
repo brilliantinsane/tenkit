@@ -8,12 +8,11 @@
     "noEmit": true,
     "paths": {
       "@tenkit/template-generator": ["../template-generator/src/index.ts"],
-      "@tenkit/template-generator/setup-type-definitions": [
-        "../template-generator/src/generated-setup-type-definitions.ts"
+      "@tenkit/types/generated-app-option-definitions": [
+        "../types/src/generated-app-option-definitions.ts"
       ],
-      "@tenkit/template-generator/styling-definitions": [
-        "../template-generator/src/generated-styling-choices.ts"
-      ]
+      "@tenkit/types/setup-type-definitions": ["../types/src/setup-type-definitions.ts"],
+      "@tenkit/types/styling-definitions": ["../types/src/styling-definitions.ts"]
     },
     "types": ["node"],
     "skipLibCheck": true

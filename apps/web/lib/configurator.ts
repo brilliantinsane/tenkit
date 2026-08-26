@@ -6,13 +6,14 @@ import {
   derivePackageName,
   getGeneratedSetupTypeDefinitionByPublicSlug,
   normalizeProjectName,
+  SUPPORTED_PUBLIC_SETUP_SLUGS,
   type AppVariantIdentity,
   type PublicSetupSlug,
-} from "@tenkit/template-generator/setup-type-definitions"
+} from "@tenkit/types/setup-type-definitions"
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
-} from "@tenkit/template-generator/styling-definitions"
+} from "@tenkit/types/styling-definitions"
 
 const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
 const RANDOM_APP_VARIANT_NAMES = [
@@ -27,27 +28,27 @@ const RANDOM_APP_VARIANT_NAMES = [
 export const DEFAULT_CONFIGURATOR_PROJECT_NAME = "tenkit-app"
 export const DEFAULT_CONFIGURATOR_SETUP_TYPE: PublicSetupSlug = "white-label"
 
-export const CONFIGURATOR_SETUP_TYPE_OPTIONS = [
-  {
-    value: "white-label",
+const CONFIGURATOR_SETUP_TYPE_PRESENTATION = {
+  "white-label": {
     label: "White label",
     detail: "Branded App Variants",
   },
-  {
-    value: "runtime-tenants",
+  "runtime-tenants": {
     label: "Runtime",
     detail: "One shared App Variant",
   },
-  {
-    value: "generic-standalone",
+  "generic-standalone": {
     label: "Generic",
     detail: "Generic + standalone",
   },
-] as const satisfies readonly {
-  value: PublicSetupSlug
-  label: string
-  detail: string
-}[]
+} satisfies Record<PublicSetupSlug, { label: string; detail: string }>
+
+export const CONFIGURATOR_SETUP_TYPE_OPTIONS = SUPPORTED_PUBLIC_SETUP_SLUGS.map(
+  (value) => ({
+    value,
+    ...CONFIGURATOR_SETUP_TYPE_PRESENTATION[value],
+  })
+)
 
 export const CONFIGURATOR_SETUP_TYPE_VALUES =
   CONFIGURATOR_SETUP_TYPE_OPTIONS.map(({ value }) => value)

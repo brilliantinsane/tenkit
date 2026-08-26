@@ -56,6 +56,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...extra,
     },
     plugins: [
+      {{#if isClerkAuth}}
+      '@clerk/expo',
+      'expo-secure-store',
+      {{/if}}
+      {{#if isBetterAuth}}
+      'expo-secure-store',
+      {{/if}}
       'expo-system-ui',
       'expo-router',
       [

@@ -1,5 +1,27 @@
-import type { CreateFlowOutput, CreateFlowResult } from './types';
+import { isGeneratedNodeBackend } from '@tenkit/types/generated-app-option-definitions';
+
+import type { CreateFlowOutput, CreateFlowResult, ResolvedCreateOptions } from './types';
 import { formatInstallCommand, formatRunCommand } from './package-manager';
+
+export function logCreateSummary(options: ResolvedCreateOptions, output: CreateFlowOutput): void {
+  output.log('Configuration:');
+  output.log(`- Project: ${options.projectName}`);
+  output.log(`- Setup Type: ${options.setupType}`);
+  output.log(`- App Variants: ${options.appVariantNames.join(', ')}`);
+  output.log(`- Backend: ${options.generatedAppOptions.backend}`);
+  output.log(`- Auth: ${options.generatedAppOptions.auth}`);
+  output.log(
+    `- Database: ${options.generatedAppOptions.backend === 'convex' ? 'Convex-managed' : options.generatedAppOptions.database}`,
+  );
+  output.log(
+    `- ORM: ${options.generatedAppOptions.backend === 'convex' ? 'not applicable' : options.generatedAppOptions.orm}`,
+  );
+  output.log(`- Styling: ${options.stylingChoice}`);
+  output.log(`- Package Manager: ${options.packageManager}`);
+  output.log(`- Git: ${options.git ? 'initialize' : 'skip'}`);
+  output.log(`- Install: ${options.install ? 'install dependencies' : 'skip'}`);
+  output.log('');
+}
 
 export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutput): void {
   const projectShellArg = formatShellArg(result.projectName);
@@ -14,6 +36,44 @@ export function logFinalOutput(result: CreateFlowResult, output: CreateFlowOutpu
 
   if (result.installFailed || !result.installed) {
     output.log(`- ${formatInstallCommand(result.packageManager)}`);
+  }
+
+  if (isGeneratedNodeBackend(result.generatedAppOptions.backend)) {
+    output.log('- cp .env.example .env.local');
+    output.log('- cp apps/server/.env.example apps/server/.env.local');
+    if (result.generatedAppOptions.auth === 'clerk') {
+      output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+      output.log('- Set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in apps/server/.env.local');
+    }
+    if (result.generatedAppOptions.auth === 'better-auth') {
+      output.log(
+        '- Set BETTER_AUTH_URL and a 32-character BETTER_AUTH_SECRET in apps/server/.env.local',
+      );
+    }
+    if (result.generatedAppOptions.database !== 'none') {
+      const databaseName = result.generatedAppOptions.database === 'mysql' ? 'MySQL' : 'PostgreSQL';
+      output.log(`- Set DATABASE_URL in apps/server/.env.local to your ${databaseName} database`);
+      output.log(`- ${formatRunCommand(result.packageManager, 'db:setup')}`);
+    }
+    output.log('- Set EXPO_PUBLIC_API_URL in .env.local to a Backend URL reachable by your target');
+    output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
+  } else if (result.generatedAppOptions.backend === 'convex') {
+    output.log('- cp .env.example .env.local');
+    output.log('- cp apps/server/.env.example apps/server/.env.local');
+    output.log(`- ${formatRunCommand(result.packageManager, 'convex:sync')}`);
+    output.log('- Set EXPO_PUBLIC_CONVEX_URL in .env.local to the synced deployment HTTPS URL');
+    if (result.generatedAppOptions.auth === 'better-auth') {
+      output.log(
+        '- Set EXPO_PUBLIC_CONVEX_SITE_URL in .env.local to the synced deployment site URL',
+      );
+      output.log('- Set SITE_URL and BETTER_AUTH_SECRET only in the Convex deployment environment');
+    }
+    if (result.generatedAppOptions.auth === 'clerk') {
+      output.log('- Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local');
+      output.log('- Set CLERK_FRONTEND_API_URL only in the Convex deployment environment');
+    }
+    output.log(`- ${formatRunCommand(result.packageManager, 'convex:seed')}`);
+    output.log(`- ${formatRunCommand(result.packageManager, 'dev')}`);
   }
 
   output.log(`- ${formatRunCommand(result.packageManager, 'android')}`);

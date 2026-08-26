@@ -7,16 +7,7 @@ import {
   type GeneratedSetupType,
   type GeneratedSetupTypeDefinition as SharedGeneratedSetupTypeDefinition,
   type PublicSetupSlug,
-} from './generated-setup-type-definitions';
-
-export {
-  SUPPORTED_GENERATED_SETUP_TYPE_IDS,
-  SUPPORTED_GENERATED_SETUP_TYPES,
-  SUPPORTED_PUBLIC_SETUP_SLUGS,
-  type GeneratedSetupType,
-  type GeneratedSetupTypeInput,
-  type PublicSetupSlug,
-} from './generated-setup-type-definitions';
+} from '@tenkit/types/setup-type-definitions';
 
 export type GeneratedSetupTypeDefinition = SharedGeneratedSetupTypeDefinition & {
   appVariantSlugs: readonly string[];

@@ -1,0 +1,6 @@
+import { query } from './_generated/server';
+
+export const check = query({
+  args: {},
+  handler: () => ({ status: 'ok' as const }),
+});

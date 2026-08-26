@@ -1,11 +1,16 @@
 import { Text, View } from 'react-native';
 
+import { useBusinessProfile } from '@/business-data/use-business-profile';
+{{#if hasAuth}}
+import { SignOutButton } from '@/auth/sign-out-button';
+{{/if}}
 import { useActiveRuntimeTenant } from '@/hooks/use-active-runtime-tenant';
 import { useAppVariantConfig } from '@/hooks/use-app-variant-config';
 
 export default function HomeScreen() {
   const { appVariant } = useAppVariantConfig();
   const { activeRuntimeTenant, activeRuntimeTenantId } = useActiveRuntimeTenant();
+  const { profile, error, isLoading } = useBusinessProfile();
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
@@ -17,6 +22,12 @@ export default function HomeScreen() {
       </Text>
       <View className="min-w-56 gap-1">
         <Text selectable className="font-mono text-sm text-foreground">
+          Business Data: {isLoading ? 'Loading' : (profile?.name ?? 'Unavailable')}
+        </Text>
+        {profile ? <Text className="text-base text-muted">{profile.description}</Text> : null}
+        {error ? <Text className="text-base text-muted">{error}</Text> : null}
+        <Text className="font-mono text-sm text-foreground">Auth: {{#if isClerkAuth}}clerk{{else}}{{#if isBetterAuth}}better-auth{{else}}none{{/if}}{{/if}}</Text>
+        <Text selectable className="font-mono text-sm text-foreground">
           App Variant: {appVariant.slug}
         </Text>
         <Text selectable className="font-mono text-sm text-foreground">
@@ -26,6 +37,7 @@ export default function HomeScreen() {
           Active Runtime Tenant ID: {activeRuntimeTenantId}
         </Text>
       </View>
+      {{#if hasAuth}}<SignOutButton />{{/if}}
       <Text className="max-w-sm text-center text-base text-muted">
         A generated Expo SDK 57 app with one native App Variant and selectable Runtime Tenants.
       </Text>

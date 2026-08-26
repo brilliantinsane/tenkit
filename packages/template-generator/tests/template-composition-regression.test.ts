@@ -39,7 +39,7 @@ test('Template source paths use ADR 0009 owners', () => {
       return false;
     }
 
-    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind|unistyles)\//.test(path);
+    return !/^options\/[^/]+\/[^/]+\/(?:shared|bare|uniwind|unistyles|convex)\//.test(path);
   });
 
   assert.deepEqual(unexpectedPaths, []);
@@ -54,8 +54,96 @@ test('Template source paths use ADR 0009 owners', () => {
 
   assert.deepEqual(
     paths.filter((path) => path.endsWith('package.json.hbs')),
-    setupTypeTemplatePaths.map((setupType) => `${setupType}/shared/package.json.hbs`).sort(),
+    [
+      'generic-standalone/shared/package.json.hbs',
+      'options/auth/better-auth/shared/packages/auth/package.json.hbs',
+      'options/backend/convex/shared/apps/server/package.json.hbs',
+      'options/backend/express/shared/apps/server/package.json.hbs',
+      'options/backend/nestjs/shared/apps/server/package.json.hbs',
+      'options/orm/drizzle/shared/packages/db/package.json.hbs',
+      'options/orm/prisma/shared/packages/db/package.json.hbs',
+      'runtime-tenants/shared/package.json.hbs',
+      'white-label/shared/package.json.hbs',
+    ],
   );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/better-auth/convex/'))
+      .map((path) => path.replace('options/auth/better-auth/convex/', ''))
+      .filter(
+        (path) =>
+          !path.startsWith('apps/server/convex/') &&
+          !path.startsWith('src/app/(auth)/') &&
+          !path.startsWith('src/auth/'),
+      ),
+    [],
+  );
+
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/backend/convex/'))
+      .map((path) => path.replace('options/backend/convex/shared/', ''))
+      .filter((path) => !path.startsWith('apps/server/')),
+    [],
+  );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/backend/express/'))
+      .map((path) => path.replace('options/backend/express/shared/', ''))
+      .filter((path) => !path.startsWith('apps/server/')),
+    [],
+  );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/backend/nestjs/'))
+      .map((path) => path.replace('options/backend/nestjs/shared/', ''))
+      .filter((path) => !path.startsWith('apps/server/')),
+    [],
+  );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/clerk/shared/'))
+      .map((path) => path.replace('options/auth/clerk/shared/', ''))
+      .filter((path) => !path.startsWith('src/app/(auth)/') && !path.startsWith('src/auth/')),
+    [],
+  );
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/clerk/convex/'))
+      .map((path) => path.replace('options/auth/clerk/convex/', ''))
+      .filter((path) => !path.startsWith('apps/server/convex/')),
+    [],
+  );
+  for (const stylingChoice of stylingTemplatePaths) {
+    assert.deepEqual(
+      paths
+        .filter((path) => path.startsWith(`options/auth/clerk/${stylingChoice}/`))
+        .map((path) => path.replace(`options/auth/clerk/${stylingChoice}/`, ''))
+        .filter((path) => !path.startsWith('src/auth/')),
+      [],
+    );
+  }
+  assert.deepEqual(
+    paths
+      .filter((path) => path.startsWith('options/auth/better-auth/shared/'))
+      .map((path) => path.replace('options/auth/better-auth/shared/', ''))
+      .filter(
+        (path) =>
+          !path.startsWith('packages/auth/') &&
+          !path.startsWith('src/app/(auth)/') &&
+          !path.startsWith('src/auth/'),
+      ),
+    [],
+  );
+  for (const stylingChoice of stylingTemplatePaths) {
+    assert.deepEqual(
+      paths
+        .filter((path) => path.startsWith(`options/auth/better-auth/${stylingChoice}/`))
+        .map((path) => path.replace(`options/auth/better-auth/${stylingChoice}/`, ''))
+        .filter((path) => !path.startsWith('src/auth/')),
+      [],
+    );
+  }
 
   const appShellPaths = paths.filter(
     (path) =>
@@ -63,9 +151,13 @@ test('Template source paths use ADR 0009 owners', () => {
   );
 
   for (const path of appShellPaths) {
-    assert.match(
-      path,
-      /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//,
+    assert.ok(
+      /^(?:white-label|runtime-tenants|generic-standalone)\/(?:bare|uniwind|unistyles)\//.test(
+        path,
+      ) ||
+        path.startsWith('options/auth/clerk/shared/src/app/(auth)/') ||
+        path.startsWith('options/auth/better-auth/shared/src/app/(auth)/') ||
+        path.startsWith('options/auth/better-auth/convex/src/app/(auth)/'),
     );
   }
 });

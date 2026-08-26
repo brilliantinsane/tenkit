@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "pnpm -F @tenkit/template-generator build",
+    "prebuild": "pnpm -F @tenkit/types build",
     "build": "next build",
     "start": "next start",
     "pretest": "pnpm -F @tenkit/template-generator build",
@@ -18,7 +18,7 @@
   "dependencies": {
     "@ark-ui/react": "^5.37.2",
     "@databuddy/sdk": "^2.6.0",
-    "@tenkit/template-generator": "workspace:*",
+    "@tenkit/types": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tenkit/template-generator": "workspace:*",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",

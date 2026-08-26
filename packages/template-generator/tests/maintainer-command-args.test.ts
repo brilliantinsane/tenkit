@@ -102,6 +102,83 @@ test('proof accepts ordered per-App-Variant names and Accents', async () => {
   assert.match(appVariants, /accent: "#445566"/);
 });
 
+test('proof accepts the Express Backend with all other options at none', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--backend',
+    'express',
+    '--auth',
+    'none',
+    '--database',
+    'none',
+    '--orm',
+    'none',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'apps/server/package.json')), true);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/auth')), false);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/db')), false);
+});
+
+test('proof accepts NestJS and reports the combined Expo and Backend command', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  const { stdout } = await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--backend',
+    'nestjs',
+    '--auth',
+    'none',
+    '--database',
+    'none',
+    '--orm',
+    'none',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'apps/server/nest-cli.json')), true);
+  assert.match(stdout, /pnpm run dev/);
+});
+
+test('proof accepts NestJS with PostgreSQL and Prisma without Auth', async () => {
+  const tempRoot = await fs.mkdtemp(join(tmpdir(), 'tenkit-proof-args-'));
+  const targetDir = join(tempRoot, 'app');
+  tempRoots.push(tempRoot);
+
+  await runScript(proofScript, [
+    '--setup-type',
+    'white-label',
+    '--backend',
+    'nestjs',
+    '--auth',
+    'none',
+    '--database',
+    'postgresql',
+    '--orm',
+    'prisma',
+    '--target',
+    targetDir,
+    '--no-install',
+  ]);
+
+  assert.equal(await fs.pathExists(join(targetDir, 'apps/server/nest-cli.json')), true);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/db/prisma/schema.prisma')), true);
+  assert.equal(await fs.pathExists(join(targetDir, 'packages/auth')), false);
+});
+
 test('verify accepts --styling before validating the Setup Type', async () => {
   await expectScriptFailure(
     verifyScript,
@@ -124,4 +201,26 @@ test('maintainer commands reject the superseded global --accent flag', async () 
   for (const script of [proofScript, verifyScript]) {
     await expectScriptFailure(script, ['--accent', '#123ABC'], /Unknown argument --accent/);
   }
+});
+
+test('maintainer commands reject unsupported Generated App Option combinations', async () => {
+  await expectScriptFailure(
+    proofScript,
+    [
+      '--setup-type',
+      'white-label',
+      '--target',
+      'unused',
+      '--backend',
+      'express',
+      '--auth',
+      'better-auth',
+    ],
+    /Unsupported Generated App Option combination/,
+  );
+  await expectScriptFailure(
+    verifyScript,
+    ['--setup-type', 'white-label', '--backend', 'express', '--auth', 'better-auth'],
+    /Unsupported Generated App Option combination/,
+  );
 });

@@ -121,6 +121,7 @@ async function createDraftRehearsal(channel: DraftRehearsalChannel = 'stable') {
   await mkdir(fakeBin);
   await mkdir(artifactRoot);
   const artifacts = [
+    `tenkit-types-${version}.tgz`,
     `tenkit-template-generator-${version}.tgz`,
     `tenkit-cli-${version}.tgz`,
     `create-tenkit-${version}.tgz`,
@@ -144,6 +145,7 @@ artifact=$3
 if [[ "$artifact" != ./* ]]; then exit 69; fi
 printf 'RAW_NPM_RESPONSE_SENTINEL package-auth-details\\n'
 case "$artifact" in
+  *tenkit-types*) stage_id='00000000-0000-0000-0000-000000000000' ;;
   *tenkit-template-generator*) stage_id='11111111-1111-1111-1111-111111111111' ;;
   *tenkit-cli*) stage_id='22222222-2222-2222-2222-222222222222' ;;
   *create-tenkit*) stage_id='33333333-3333-3333-3333-333333333333' ;;
@@ -196,12 +198,14 @@ exit 66
       EXISTING_GITHUB_RELEASES: '[[]]',
     },
     artifactEnv: {
-      TEMPLATE_ARTIFACT: `./release-artifacts/${artifacts[0]}`,
-      CLI_ARTIFACT: `./release-artifacts/${artifacts[1]}`,
-      CREATE_ARTIFACT: `./release-artifacts/${artifacts[2]}`,
-      TEMPLATE_SHASUM: shasums[0]!,
-      CLI_SHASUM: shasums[1]!,
-      CREATE_SHASUM: shasums[2]!,
+      TYPES_ARTIFACT: `./release-artifacts/${artifacts[0]}`,
+      TEMPLATE_ARTIFACT: `./release-artifacts/${artifacts[1]}`,
+      CLI_ARTIFACT: `./release-artifacts/${artifacts[2]}`,
+      CREATE_ARTIFACT: `./release-artifacts/${artifacts[3]}`,
+      TYPES_SHASUM: shasums[0]!,
+      TEMPLATE_SHASUM: shasums[1]!,
+      CLI_SHASUM: shasums[2]!,
+      CREATE_SHASUM: shasums[3]!,
     },
     sourceSha,
     version,
@@ -353,14 +357,14 @@ describe('Draft Release workflow', () => {
     expect(serializedStage).not.toContain('"cache":');
     expect(serializedStage).toContain('persist-credentials\":false');
     expect(serializedStage).toContain('sha1sum');
-    expect(serializedStage.match(/\.\/release-artifacts\//g)).toHaveLength(3);
+    expect(serializedStage.match(/\.\/release-artifacts\//g)).toHaveLength(4);
 
     expect(serializedStage.match(/npm stage publish/g)).toHaveLength(1);
-    expect(serializedStage.match(/stage_package /g)).toHaveLength(3);
+    expect(serializedStage.match(/stage_package /g)).toHaveLength(4);
     expect(serializedStage).toMatch(/npm stage publish[^\n]+--tag \\"\$NPM_DIST_TAG\\"/);
     expect(
       [...serializedStage.matchAll(/stage_package '([^']+)'/g)].map((match) => match[1]),
-    ).toEqual(['@tenkit/template-generator', '@tenkit/cli', 'create-tenkit']);
+    ).toEqual(['@tenkit/types', '@tenkit/template-generator', '@tenkit/cli', 'create-tenkit']);
     expect(serializedStage).not.toContain('--tag candidate');
     expect(serializedStage).toContain('--access public');
     expect(serializedStage).toContain('--provenance');
@@ -525,12 +529,15 @@ describe('Draft Release workflow', () => {
         fakeBin: rehearsal.fakeBin,
         env: {
           ...rehearsal.commonEnv,
+          TYPES_STAGE_ID: '00000000-0000-0000-0000-000000000000',
           TEMPLATE_STAGE_ID: '11111111-1111-1111-1111-111111111111',
           CLI_STAGE_ID: '22222222-2222-2222-2222-222222222222',
           CREATE_STAGE_ID: '33333333-3333-3333-3333-333333333333',
+          TYPES_INTEGRITY: 'sha512-types',
           TEMPLATE_INTEGRITY: 'sha512-template',
           CLI_INTEGRITY: 'sha512-cli',
           CREATE_INTEGRITY: 'sha512-create',
+          TYPES_SHASUM: rehearsal.artifactEnv.TYPES_SHASUM,
           TEMPLATE_SHASUM: rehearsal.artifactEnv.TEMPLATE_SHASUM,
           CLI_SHASUM: rehearsal.artifactEnv.CLI_SHASUM,
           CREATE_SHASUM: rehearsal.artifactEnv.CREATE_SHASUM,
@@ -559,6 +566,9 @@ describe('Draft Release workflow', () => {
 
       const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
       expect(operations.filter((operation) => operation.startsWith('npm stage publish'))).toEqual([
+        expect.stringContaining(
+          `tenkit-types-${rehearsal.version}.tgz --tag ${rehearsal.npmDistTag}`,
+        ),
         expect.stringContaining(
           `tenkit-template-generator-${rehearsal.version}.tgz --tag ${rehearsal.npmDistTag}`,
         ),
@@ -590,7 +600,7 @@ describe('Draft Release workflow', () => {
         `Untouched npm dist-tag: \`${channel === 'stable' ? 'next' : 'latest'}\``,
       );
       expect(summary).toContain(
-        'Package approval order: `@tenkit/template-generator -> @tenkit/cli -> create-tenkit`',
+        'Package approval order: `@tenkit/types -> @tenkit/template-generator -> @tenkit/cli -> create-tenkit`',
       );
       expect(summary).toContain(
         `pnpm release:verify -- --source-sha ${rehearsal.sourceSha} --version ${rehearsal.version}`,
@@ -641,6 +651,7 @@ describe('Draft Release workflow', () => {
         'npm returned stage reference 22222222-2222-2222-2222-222222222222 for @tenkit/cli.',
       );
       const summary = await readFile(rehearsal.summary, 'utf8');
+      expect(summary).toContain('@tenkit/types: `00000000-0000-0000-0000-000000000000`');
       expect(summary).toContain(
         '@tenkit/template-generator: `11111111-1111-1111-1111-111111111111`',
       );
@@ -656,7 +667,7 @@ describe('Draft Release workflow', () => {
       );
 
       const operations = (await readFile(rehearsal.operationLog, 'utf8')).trim().split('\n');
-      expect(operations).toHaveLength(2);
+      expect(operations).toHaveLength(3);
       expect(operations).not.toContainEqual(expect.stringMatching(/^gh release create/));
     },
   );

@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import fs from 'fs-extra';
 import { join } from 'pathe';
 import { afterEach, assert, describe, expect, test } from 'vitest';
+import { SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS } from '@tenkit/types/generated-app-option-definitions';
 
 import {
   assertGeneratedProjectMatches,
   createExhaustiveGenerationCases,
   createInstalledVerificationCases,
+  createSupportedStackInstalledVerificationCases,
   finalizeGenerationMatrix,
   GENERATION_MATRIX_ROOT,
   planInstalledProjectVerificationCommands,
@@ -53,6 +55,7 @@ describe('generation matrix coverage', () => {
       new Set(['default', 'custom']),
     );
     assert.ok(cases.every(({ install, git }) => !install && !git));
+    assert.ok(cases.every(({ generatedAppOptions }) => generatedAppOptions.backend === 'none'));
     assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
 
     const customWhiteLabel = cases.find(
@@ -74,6 +77,34 @@ describe('generation matrix coverage', () => {
     );
     assert.deepEqual(defaultRuntimeTenants?.appVariantNames, ['Acme App']);
     assert.deepEqual(defaultRuntimeTenants?.appVariantAccents, ['#EB2556']);
+  });
+
+  test('derives installed Bare pnpm cases for every supported service stack and Setup Type', () => {
+    const cases = createSupportedStackInstalledVerificationCases();
+    const supportedServiceStacks = SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.filter(
+      ({ backend }) => backend !== 'none',
+    );
+
+    assert.equal(cases.length, supportedServiceStacks.length * 3);
+    assert.deepEqual(
+      new Set(cases.map(({ setupType }) => setupType)),
+      new Set([
+        'white-label-apps',
+        'single-app-runtime-tenants',
+        'generic-with-standalone-app-variants',
+      ]),
+    );
+    assert.ok(
+      cases.every(
+        ({ stylingChoice, packageManager, install, git }) =>
+          stylingChoice === 'bare' && packageManager === 'pnpm' && install && git,
+      ),
+    );
+    assert.deepEqual(
+      new Set(cases.map(({ generatedAppOptions }) => JSON.stringify(generatedAppOptions))),
+      new Set(supportedServiceStacks.map((options) => JSON.stringify(options))),
+    );
+    assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
   });
 
   test('uses nine installed cases to cover every Setup Type plus Styling combination', () => {
@@ -132,6 +163,28 @@ describe('generated project inspection', () => {
     );
   });
 
+  test('generates the Prisma client before an installed PostgreSQL project typecheck', () => {
+    const commands = planInstalledProjectVerificationCommands({
+      packageManager: 'pnpm',
+      targetDir: '/tmp/postgresql-prisma',
+      appVariantNames: ['Acme App'],
+      generatedAppOptions: {
+        backend: 'express',
+        auth: 'none',
+        database: 'postgresql',
+        orm: 'prisma',
+      },
+    });
+
+    assert.deepEqual(commands[0], {
+      command: 'pnpm',
+      args: ['run', 'db:generate'],
+      cwd: '/tmp/postgresql-prisma',
+      operation: 'generated app Prisma client generation',
+    });
+    assert.equal(commands[1]?.operation, 'generated app typecheck');
+  });
+
   test('compares every expected byte and rejects unexpected files', async () => {
     const root = await fs.mkdtemp(join(tmpdir(), 'tenkit-matrix-inspection-'));
     tempRoots.push(root);
@@ -157,6 +210,19 @@ describe('generated project inspection', () => {
         ],
       }),
     ).rejects.toThrow(/Unexpected generated file "unexpected\.txt"/);
+  });
+
+  test('ignores dependency directories at every workspace depth', async () => {
+    const root = await fs.mkdtemp(join(tmpdir(), 'tenkit-matrix-inspection-'));
+    tempRoots.push(root);
+    await fs.outputFile(join(root, 'README.md'), 'expected\n');
+    await fs.outputFile(join(root, 'apps/server/node_modules/.bin/esbuild'), 'installed');
+
+    await assertGeneratedProjectMatches({
+      targetDir: root,
+      tree: [{ path: 'README.md', contents: 'expected\n' }],
+      ignoredDirectories: ['node_modules'],
+    });
   });
 });
 
