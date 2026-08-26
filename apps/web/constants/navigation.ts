@@ -11,4 +11,8 @@ export const navLinks = [
     label: "Generated",
     href: "#generated",
   },
+  {
+    label: "Docs",
+    href: "/docs",
+  },
 ] as const

@@ -78,12 +78,19 @@ export function MobileNav({
                   key={link.label}
                   variant="ghost"
                 >
-                  {isHomePage ? (
+                  {isHomePage && link.href.startsWith("#") ? (
                     <Link href={link.href} onClick={closeMenu}>
                       {link.label}
                     </Link>
                   ) : (
-                    <Link href={`/${link.href}`} onClick={closeMenu}>
+                    <Link
+                      href={
+                        link.href.startsWith("/") || isHomePage
+                          ? link.href
+                          : `/${link.href}`
+                      }
+                      onClick={closeMenu}
+                    >
                       {link.label}
                     </Link>
                   )}

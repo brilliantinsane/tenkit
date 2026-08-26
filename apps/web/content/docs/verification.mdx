@@ -1,0 +1,30 @@
+---
+title: Verify a generated project
+description: Run the generated project's type, test, config, and selected workspace checks.
+---
+
+Generated projects expose one consistent verification surface. Run checks from the generated project root with the selected Package Manager.
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm test:integration
+pnpm expo:config
+```
+
+## What the checks prove
+
+- `typecheck` covers the root Expo project and every emitted workspace package.
+- `test` covers generated module behavior through its public interfaces.
+- `test:integration` exercises the selected Business Data Example, Auth boundary, Runtime Tenant Access, Database or Convex path, and lifecycle behavior that applies to the selection.
+- `expo:config` evaluates native identity for the selected App Variant and confirms the selected provider plugins and public environment shape.
+
+Express and NestJS projects also build compiled output and start only that compiled Backend in production verification. Backend `none` has no server build, and Convex is not presented as a Node production process.
+
+SQL projects apply the selected committed migration before seeding Starter Data. Prisma and Drizzle are mutually exclusive in generated output. Convex projects use Convex-owned schema and functions rather than a SQL Database or ORM.
+
+## Maintainer proof
+
+Tenkit's maintainers verify a fresh generated project outside the Tenkit workspace. The release baseline covers all three Setup Types crossed with the 32 supported stack combinations. Styling and Package Manager have separate representative coverage.
+
+The Playground is proof infrastructure, not generated output. A generated project must not import the Playground, Template source, prototypes, private paths, credentials, or matrix harnesses.

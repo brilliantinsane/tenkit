@@ -1,6 +1,6 @@
 "use client"
 
-import { HomeIcon, SearchIcon, Settings2Icon } from "lucide-react"
+import { BookOpenIcon, HomeIcon, SearchIcon, Settings2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 
@@ -27,6 +27,12 @@ const destinations = [
     icon: Settings2Icon,
     label: "Configurator",
     keywords: "create setup project",
+  },
+  {
+    href: "/docs",
+    icon: BookOpenIcon,
+    label: "Docs",
+    keywords: "documentation choices backend auth database orm",
   },
 ] as const
 

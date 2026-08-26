@@ -1,0 +1,36 @@
+---
+title: Setup Types, App Variants, and Runtime Tenants
+description: Choose the relationship model that determines native identity and runtime business context.
+---
+
+Setup Type is the relationship model between App Variants and Runtime Tenants. It is chosen before the other Generated App Options because it determines the generated native identity and access behavior.
+
+## White Label Apps
+
+Choose `white-label` when each branded native application needs its own store-facing identity. Each App Variant has its own name, Slug, scheme, bundle ID, package name, Accent, native assets, and EAS Project. The App Variant is fixed to its Business Data Example, so there is no Runtime Tenant selector.
+
+```bash
+pnpm create tenkit@latest --name branded-app --setup white-label --yes
+```
+
+## Single App Runtime Tenants
+
+Choose `runtime-tenants` when one native App Variant opens multiple businesses at runtime. The generated app has one native identity and lets the user select among its allowed Runtime Tenants. Runtime Tenant Access determines which contexts can be opened.
+
+```bash
+pnpm create tenkit@latest --name network-app --setup runtime-tenants --yes
+```
+
+## Generic With Standalone App Variants
+
+Choose `generic-standalone` when most Runtime Tenants belong inside one Generic App Variant but selected Runtime Tenants also ship as dedicated Standalone App Variants. The Generic App Variant cannot select a Runtime Tenant assigned to a Standalone App Variant. A Standalone App Variant is fixed to its one Runtime Tenant and has no selector.
+
+```bash
+pnpm create tenkit@latest --name hybrid-app --setup generic-standalone --yes
+```
+
+## What does not change
+
+Backend and Auth change infrastructure and access, not the Business Data Example's shape. Every supported combination still demonstrates a read-only name and short description. Styling and Package Manager Choices do not change Runtime Tenant Access results.
+
+An App Variant ID is a stable developer-facing identifier. A Slug is the Expo/EAS-facing project selection used by Build Preparation. A Runtime Tenant ID identifies a business context. They are different values with different owners.

@@ -101,10 +101,18 @@ export function HeaderClient({
             <nav aria-label="Primary" className="flex items-center gap-1">
               {navLinks.map((link) => (
                 <Button asChild key={link.label} size="sm" variant="ghost">
-                  {isHomePage ? (
+                  {isHomePage && link.href.startsWith("#") ? (
                     <a href={link.href}>{link.label}</a>
                   ) : (
-                    <Link href={`/${link.href}`}>{link.label}</Link>
+                    <Link
+                      href={
+                        link.href.startsWith("/") || isHomePage
+                          ? link.href
+                          : `/${link.href}`
+                      }
+                    >
+                      {link.label}
+                    </Link>
                   )}
                 </Button>
               ))}

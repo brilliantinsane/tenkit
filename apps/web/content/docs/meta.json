@@ -1,0 +1,10 @@
+{
+  "title": "Tenkit documentation",
+  "pages": [
+    "index",
+    "setup-types",
+    "generated-app-options",
+    "generated-project",
+    "verification"
+  ]
+}

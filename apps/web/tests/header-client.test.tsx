@@ -65,6 +65,7 @@ describe("HeaderClient", () => {
     expect(markup).toContain('href="#proof"')
     expect(markup).toContain('href="#setup-types"')
     expect(markup).toContain('href="#generated"')
+    expect(markup).toContain('data-next-link="true" href="/docs"')
     expect(
       markup.match(/data-next-link="true" href="\/configure"/g)
     ).toHaveLength(2)
@@ -83,10 +84,11 @@ describe("HeaderClient", () => {
     expect(markup).toContain('data-next-link="true" href="/#proof"')
     expect(markup).toContain('data-next-link="true" href="/#setup-types"')
     expect(markup).toContain('data-next-link="true" href="/#generated"')
+    expect(markup).toContain('data-next-link="true" href="/docs"')
     expect(
       markup.match(/data-next-link="true" href="\/configure"/g)
     ).toHaveLength(2)
-    expect(markup.match(/data-next-link="true"/g)).toHaveLength(6)
+    expect(markup.match(/data-next-link="true"/g)).toHaveLength(7)
   })
 
   test("exposes primary navigation from the mobile menu", async () => {
@@ -126,6 +128,11 @@ describe("HeaderClient", () => {
         .getByRole("link", { name: "Generated" })
         .getAttribute("href")
     ).toBe("#generated")
+    expect(
+      within(mobileMenu)
+        .getByRole("link", { name: "Docs" })
+        .getAttribute("href")
+    ).toBe("/docs")
     expect(
       within(mobileMenu)
         .getByRole("link", { name: "GitHub" })
