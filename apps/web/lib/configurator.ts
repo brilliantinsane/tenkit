@@ -19,7 +19,7 @@ import {
   SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
   type GeneratedAppOptions,
 } from "@tenkit/types/generated-app-option-definitions"
-import { isDefaultGeneratedAppOptions } from "@/lib/generated-app-options"
+import { isDefaultGeneratedAppOptions } from "./generated-app-options"
 
 const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
 const RANDOM_APP_VARIANT_NAMES = [
