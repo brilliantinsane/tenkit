@@ -8,6 +8,7 @@ import {
 } from "fumadocs-ui/layouts/docs/page"
 
 import { getMDXComponents } from "@/components/docs/mdx"
+import { SITE_CONFIG, createPageMetadata } from "@/lib/seo"
 import { source } from "@/lib/source"
 
 type DocsPageProps = {
@@ -48,11 +49,15 @@ export async function generateMetadata({
 }: DocsPageProps): Promise<Metadata> {
   const page = getDocsPage((await params).slug)
 
-  return {
+  if (!page.data.description) {
+    throw new Error(`Documentation page ${page.url} is missing a description.`)
+  }
+
+  return createPageMetadata({
+    path: page.url,
     title: page.data.title,
     description: page.data.description,
-    alternates: {
-      canonical: page.url,
-    },
-  }
+    ogImage: SITE_CONFIG.ogImage,
+    ogImageAlt: `Tenkit documentation: ${page.data.title}.`,
+  })
 }

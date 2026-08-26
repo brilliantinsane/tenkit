@@ -145,6 +145,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         setupType: randomizedState.setupType,
         styling: randomizedState.styling,
         packageManager: randomizedState.packageManager,
+        ...randomizedState.generatedAppOptions,
         git: randomizedState.git,
         install: randomizedState.install,
       })

@@ -303,6 +303,10 @@ describe("ConfigurePageContent interactions", () => {
         setupType: "runtime-tenants",
         styling: "uniwind",
         packageManager: "npm",
+        backend: "express",
+        auth: "none",
+        database: "none",
+        orm: "none",
         git: false,
         install: false,
       }
@@ -331,6 +335,10 @@ describe("ConfigurePageContent interactions", () => {
           surface: "configurator",
           setupType: "white-label",
           styling: "bare",
+          backend: "none",
+          auth: "none",
+          database: "none",
+          orm: "none",
           packageManager: "pnpm",
           git: true,
           install: true,
@@ -352,6 +360,10 @@ describe("ConfigurePageContent interactions", () => {
           surface: "configurator",
           setupType: "white-label",
           styling: "bare",
+          backend: "none",
+          auth: "none",
+          database: "none",
+          orm: "none",
           packageManager: "pnpm",
           git: true,
           install: true,
@@ -437,6 +449,21 @@ describe("ConfigurePageContent interactions", () => {
       expect(unselectedChoice.classList.contains("border-foreground")).toBe(
         false
       )
+    }
+  })
+
+  test("associates every Choice detail with its keyboard-accessible control", () => {
+    render(
+      <NuqsTestingAdapter>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    for (const choice of screen.getAllByRole("button", { pressed: true })) {
+      const descriptionId = choice.getAttribute("aria-describedby")
+
+      expect(descriptionId).not.toBeNull()
+      expect(document.getElementById(descriptionId ?? "")).not.toBeNull()
     }
   })
 

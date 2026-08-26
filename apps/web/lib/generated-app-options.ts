@@ -2,6 +2,7 @@ import {
   DEFAULT_GENERATED_APP_OPTIONS,
   getGeneratedAppOptionChoiceState,
   resolveGeneratedAppOptions,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
   SUPPORTED_GENERATED_AUTH_VALUES,
   SUPPORTED_GENERATED_BACKEND_VALUES,
   SUPPORTED_GENERATED_DATABASE_VALUES,
@@ -18,6 +19,13 @@ export const CONFIGURATOR_GENERATED_APP_OPTION_GROUPS = [
   "database",
   "orm",
 ] as const satisfies readonly GeneratedAppOptionGroup[]
+
+export const PUBLIC_GENERATED_APP_OPTION_COUNT =
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.length
+
+export const PUBLIC_GENERATED_APP_OPTION_SUMMARY = `${PUBLIC_GENERATED_APP_OPTION_COUNT} supported Backend, Auth, Database, and ORM combinations`
+
+export const PUBLIC_GENERATED_APP_STACK_SUMMARY = `${PUBLIC_GENERATED_APP_OPTION_COUNT} supported generated stacks`
 
 export const CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION = {
   backend: {

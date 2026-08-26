@@ -1,3 +1,5 @@
+import { PUBLIC_GENERATED_APP_OPTION_SUMMARY } from "@/lib/generated-app-options"
+
 export const SETUP_TYPES = [
   {
     slug: "white-label-apps",
@@ -58,9 +60,8 @@ export const FAQ_ITEMS = [
   },
   {
     id: "backend",
-    question: "Does Tenkit handle backend multi-tenancy?",
-    answer:
-      "No. Tenkit handles project generation for apps built with Expo, native identity, setup data, and local build workflows. Your backend, billing, and admin product stay in your stack.",
+    question: "Which Backend and data choices does Tenkit support?",
+    answer: `Tenkit generates the Backend, Auth, Database, and ORM choices you select. The released contract contains ${PUBLIC_GENERATED_APP_OPTION_SUMMARY}, including Express, NestJS, Convex, Better Auth, Clerk, PostgreSQL, MySQL, Prisma, and Drizzle where each combination is supported. Your generated project still owns provider accounts, credentials, billing, and production data.`,
   },
   {
     id: "setup-type",

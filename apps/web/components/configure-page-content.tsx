@@ -175,6 +175,7 @@ function ConfiguratorCommandPanel() {
             surface: "configurator",
             setupType: state.setupType,
             styling: state.styling,
+            generatedAppOptions: state.generatedAppOptions,
             git: state.git,
             install: state.install,
             projectNameCustomized:

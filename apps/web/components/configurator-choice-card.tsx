@@ -1,7 +1,7 @@
 "use client"
 
 import { CheckIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import { type ReactNode, useId } from "react"
 
 import { GlowingCard } from "@/components/glowing-card"
 import { cn } from "@/lib/utils"
@@ -55,11 +55,14 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
   disabled = false,
   className,
 }: ConfiguratorChoiceCardProps & { icon: ReactNode; disabled?: boolean }) {
+  const detailId = useId()
+
   return (
     <GlowingCard
       as="button"
       type="button"
       aria-pressed={selected}
+      aria-describedby={detail ? detailId : undefined}
       disabled={disabled}
       onClick={onSelect}
       className={cn(
@@ -76,6 +79,7 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
           label={label}
           detail={detail}
           icon={icon}
+          detailId={detailId}
         />
       </ChoiceCardContent>
     </GlowingCard>
@@ -87,11 +91,13 @@ function ResponsiveIconChoiceCardContent({
   label,
   detail,
   icon,
+  detailId,
 }: {
   selected: boolean
   label: string
   detail?: string
   icon: ReactNode
+  detailId: string
 }) {
   return (
     <span className="flex min-w-0 gap-3 text-left lg:h-full lg:w-full lg:flex-col lg:items-center lg:justify-start lg:gap-1 lg:text-center">
@@ -106,18 +112,29 @@ function ResponsiveIconChoiceCardContent({
         {icon}
       </span>
       <span className="min-w-0 lg:contents">
-        <ChoiceCardCopy label={label} detail={detail} />
+        <ChoiceCardCopy label={label} detail={detail} detailId={detailId} />
       </span>
     </span>
   )
 }
 
-function ChoiceCardCopy({ label, detail }: { label: string; detail?: string }) {
+function ChoiceCardCopy({
+  label,
+  detail,
+  detailId,
+}: {
+  label: string
+  detail?: string
+  detailId: string
+}) {
   return (
     <>
       <span className="block text-sm font-medium text-foreground">{label}</span>
       {detail ? (
-        <span className="mt-1 block text-xs leading-4 text-muted-foreground lg:mt-0 lg:flex lg:min-h-8 lg:max-w-32 lg:items-start lg:justify-center">
+        <span
+          id={detailId}
+          className="mt-1 block text-xs leading-4 text-muted-foreground lg:mt-0 lg:flex lg:min-h-8 lg:max-w-32 lg:items-start lg:justify-center"
+        >
           {detail}
         </span>
       ) : null}

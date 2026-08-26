@@ -52,6 +52,7 @@ The create flow asks for:
 - project name
 - Setup Type
 - App Variant names and Accents
+- Backend, Auth, Database, and ORM Choices
 - Styling Choice
 
 It then creates a child folder, installs dependencies with the package manager you used to launch the create command, initializes git when safe, and prints next steps.
@@ -98,6 +99,24 @@ generic-standalone
 | **Unistyles**  | `unistyles`  | Adaptive styling with Unistyles 3. |
 
 Select a non-default Styling Option Value with `--styling`. Bare remains the default when Styling is omitted or `--yes` accepts defaults.
+
+## Generated App Options
+
+Tenkit supports exactly 32 Backend, Auth, Database, and ORM combinations across all three Setup Types. The Public CLI resolves dependency-aware Choices in this order:
+
+```text
+Backend -> Auth -> Database -> ORM
+```
+
+- `none` creates the zero-service project.
+- Express and NestJS support Auth `none` or `clerk` without SQL, plus `none`, `better-auth`, or `clerk` with PostgreSQL or MySQL and Prisma or Drizzle.
+- Convex supports Auth `none`, `better-auth`, or `clerk` with Convex-managed persistence.
+
+Example:
+
+```bash
+pnpm create tenkit@latest --name express-clerk-app --setup white-label --backend express --auth clerk --database postgresql --orm prisma --yes
+```
 
 ## Core Concepts
 
@@ -234,6 +253,7 @@ Use `eas init` only to create or discover an App Variant's EAS Project ID. EAS P
 │   ├── playground/                       # Runnable Expo Playground app
 │   └── web/                              # Tenkit website
 ├── packages/
+│   ├── types/                            # Shared browser-safe public definitions
 │   ├── cli/                              # Public CLI implementation package
 │   ├── create-tenkit/                    # Thin package-manager create entrypoint
 │   ├── release-tools/                    # Release Set planning, packing, and verification

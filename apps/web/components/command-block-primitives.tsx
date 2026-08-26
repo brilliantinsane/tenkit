@@ -129,8 +129,16 @@ export function CommandActions({
         text={command}
         disabled={copyDisabled}
         onCopySuccess={(copiedCommand) => {
+          const analyticsProperties =
+            "generatedAppOptions" in createCommandAnalytics
+              ? (({ generatedAppOptions, ...boundedProperties }) => ({
+                  ...boundedProperties,
+                  ...generatedAppOptions,
+                }))(createCommandAnalytics)
+              : createCommandAnalytics
+
           trackDatabuddyEvent("create_command_copied", {
-            ...createCommandAnalytics,
+            ...analyticsProperties,
             packageManager,
           })
 

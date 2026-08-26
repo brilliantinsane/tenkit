@@ -60,4 +60,20 @@ describe("Fumadocs content contract", () => {
       expect(options).toContain(`- \`${styling}\``)
     }
   })
+
+  test("documents the released stack contract without stale pre-PR2 claims", () => {
+    const options = readFileSync(
+      path.join(docsRoot, "generated-app-options.mdx"),
+      "utf8"
+    )
+
+    expect(options).toContain(
+      "exactly 32 supported Backend/Auth/Database/ORM combinations"
+    )
+    expect(options).toContain("Express")
+    expect(options).toContain("Better Auth")
+    expect(options).toContain("PostgreSQL")
+    expect(options).toContain("Drizzle")
+    expect(options).not.toContain("Tenkit does not handle backend")
+  })
 })

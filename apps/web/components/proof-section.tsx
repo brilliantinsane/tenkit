@@ -5,10 +5,12 @@ import {
   GitForkIcon,
   Layers3Icon,
   PackageCheckIcon,
+  ServerCogIcon,
 } from "lucide-react"
 
 import { FullWidthDivider } from "@/components/full-width-divider"
 import { GlowingCard } from "@/components/glowing-card"
+import { PUBLIC_GENERATED_APP_STACK_SUMMARY } from "@/lib/generated-app-options"
 
 const proofItems = [
   {
@@ -40,6 +42,11 @@ const proofItems = [
     label: "Runtime Tenants",
     detail: "runtime context",
     icon: BoxesIcon,
+  },
+  {
+    label: PUBLIC_GENERATED_APP_STACK_SUMMARY,
+    detail: "shared released contract",
+    icon: ServerCogIcon,
   },
 ]
 

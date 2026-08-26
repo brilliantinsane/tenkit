@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest"
 
+import { SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS } from "@tenkit/types/generated-app-option-definitions"
+
 import { GET as getCommandsRoute } from "@/app/commands.md/route"
 import { GET as getFaqRoute } from "@/app/faq.md/route"
+import { GET as getGeneratedAppOptionsRoute } from "@/app/generated-app-options.md/route"
 import { GET as getIndexRoute } from "@/app/index.md/route"
 import { GET as getLlmsFullRoute } from "@/app/llms-full.txt/route"
 import { GET as getLlmsRoute } from "@/app/llms.txt/route"
@@ -27,6 +30,8 @@ import {
   createPageMetadata,
   EXTERNAL_TENKIT_SURFACES,
   getCommandsMarkdown,
+  getFaqMarkdown,
+  getGeneratedAppOptionsMarkdown,
   getIndexMarkdown,
   getLandingJsonLdGraph,
   getLlmsFullTxt,
@@ -90,7 +95,7 @@ describe("Tenkit Public Web App SEO", () => {
 
   test("uses the product description across web and social metadata", () => {
     expect(SITE_CONFIG.description).toBe(
-      "Build multi-tenant mobile apps with Expo and React Native. Generate white-label App Variants, Runtime Tenants, and hybrid architectures from one codebase."
+      "Generate Expo projects with explicit Setup Types and 32 supported Backend, Auth, Database, and ORM combinations."
     )
     expect(rootMetadata.description).toBe(SITE_CONFIG.description)
     expect(rootMetadata.openGraph?.description).toBe(SITE_CONFIG.description)
@@ -121,13 +126,19 @@ describe("Tenkit Public Web App SEO", () => {
       "Setup Type",
       "create-tenkit",
       "Build Preparation",
+      "Backend",
+      "Auth",
+      "Database",
+      "ORM",
+      "Prisma",
+      "Drizzle",
     ])
   })
 
   test("gives Configure unique canonical and social metadata", () => {
     const metadata = createPageMetadata(CONFIGURE_PAGE_SEO)
 
-    expect(metadata.title).toBe("Configure a Multi-Tenant App Built with Expo")
+    expect(metadata.title).toBe("Configure a Generated Expo Project")
     expect(metadata.alternates.canonical).toBe("/configure")
     expect(metadata.openGraph.url).toBe("https://www.tenkit.dev/configure")
     expect(metadata.openGraph.description).toBe(CONFIGURE_PAGE_SEO.description)
@@ -148,10 +159,10 @@ describe("Tenkit Public Web App SEO", () => {
 
   test("keeps Expo descriptive and separate from the Tenkit product name", () => {
     expect(SITE_CONFIG.title).toBe(
-      "Tenkit - Multi-Tenant Mobile Apps Built with Expo"
+      "Tenkit - Generated Expo Projects with 32 Supported Stacks"
     )
     expect(SITE_CONFIG.title).not.toContain("Tenkit Expo")
-    expect(CONFIGURE_PAGE_SEO.title).toContain("Built with Expo")
+    expect(CONFIGURE_PAGE_SEO.title).toBe("Configure a Generated Expo Project")
   })
 
   test("links every markdown mirror and external Tenkit surface from llms.txt", () => {
@@ -166,6 +177,30 @@ describe("Tenkit Public Web App SEO", () => {
     }
   })
 
+  test("projects the released Generated App Options contract across public content", () => {
+    const projectedContent = [
+      getIndexMarkdown(),
+      getCommandsMarkdown(),
+      getGeneratedAppOptionsMarkdown(),
+      getLlmsTxt(),
+      getLlmsFullTxt(),
+      getFaqMarkdown(),
+    ]
+
+    for (const content of projectedContent) {
+      expect(content).toContain(
+        "32 supported Backend, Auth, Database, and ORM combinations"
+      )
+      expect(content).toContain("Express")
+      expect(content).toContain("Better Auth")
+      expect(content).toContain("PostgreSQL")
+      expect(content).toContain("Drizzle")
+    }
+
+    expect(getGeneratedAppOptionsMarkdown()).toContain("convex/clerk/none/none")
+    expect(SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS).toHaveLength(32)
+  })
+
   test("includes every Setup Type and FAQ item in llms-full.txt", () => {
     const llmsFullTxt = getLlmsFullTxt()
 
@@ -178,6 +213,9 @@ describe("Tenkit Public Web App SEO", () => {
       expect(llmsFullTxt).toContain(item.question)
       expect(llmsFullTxt).toContain(item.answer)
     }
+    expect(llmsFullTxt).toContain(
+      "32 supported Backend, Auth, Database, and ORM combinations"
+    )
   })
 
   test("documents every Styling Choice and Unistyles creation for humans and AI", () => {
@@ -225,10 +263,23 @@ describe("Tenkit Public Web App SEO", () => {
     expect(entries.map((entry) => entry.url)).toEqual([
       "https://www.tenkit.dev/",
       "https://www.tenkit.dev/configure",
+      "https://www.tenkit.dev/docs",
+      "https://www.tenkit.dev/docs/setup-types",
+      "https://www.tenkit.dev/docs/generated-app-options",
+      "https://www.tenkit.dev/docs/generated-project",
+      "https://www.tenkit.dev/docs/verification",
     ])
     expect(
       entries.map((entry) => new Date(entry.lastModified ?? "").toISOString())
-    ).toEqual(["2026-07-14T00:00:00.000Z", "2026-07-14T00:00:00.000Z"])
+    ).toEqual([
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+      "2026-08-26T00:00:00.000Z",
+    ])
     expect(entries.every((entry) => entry.changeFrequency === undefined)).toBe(
       true
     )
@@ -270,6 +321,10 @@ describe("Tenkit Public Web App SEO", () => {
       },
       {
         response: getSetupTypesRoute(),
+        contentType: "text/markdown; charset=utf-8",
+      },
+      {
+        response: getGeneratedAppOptionsRoute(),
         contentType: "text/markdown; charset=utf-8",
       },
     ]
