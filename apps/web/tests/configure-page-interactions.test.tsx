@@ -112,6 +112,74 @@ describe("ConfigurePageContent interactions", () => {
     )
   })
 
+  test("round-trips a supported stack through progressive URL Choices", async () => {
+    const user = userEvent.setup()
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+
+    render(
+      <NuqsTestingAdapter
+        hasMemory
+        resetUrlUpdateQueueOnMount={false}
+        onUrlUpdate={onUrlUpdate}
+      >
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    await user.click(screen.getByRole("button", { name: /^Express/ }))
+    await user.click(screen.getByRole("button", { name: /^Better Auth/ }))
+
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("auth")).toBe(
+      "better-auth"
+    )
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("db")).toBe(
+      "postgresql"
+    )
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("orm")).toBe(
+      "prisma"
+    )
+
+    await user.click(screen.getByRole("button", { name: /^MySQL/ }))
+    await user.click(screen.getByRole("button", { name: /^Drizzle/ }))
+
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("backend")).toBe(
+      "express"
+    )
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("auth")).toBe(
+      "better-auth"
+    )
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("db")).toBe("mysql")
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("orm")).toBe(
+      "drizzle"
+    )
+  })
+
+  test("clears dependent URL Choices when Backend changes", async () => {
+    const user = userEvent.setup()
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+
+    render(
+      <NuqsTestingAdapter
+        hasMemory
+        resetUrlUpdateQueueOnMount={false}
+        onUrlUpdate={onUrlUpdate}
+      >
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    await user.click(screen.getByRole("button", { name: /^Express/ }))
+    await user.click(screen.getByRole("button", { name: /^Clerk/ }))
+    await user.click(screen.getByRole("button", { name: /^Convex/ }))
+
+    const searchParams = onUrlUpdate.mock.lastCall?.[0].searchParams
+    expect(searchParams?.get("backend")).toBe("convex")
+    expect(searchParams?.get("auth")).toBeNull()
+    expect(searchParams?.get("db")).toBeNull()
+    expect(searchParams?.get("orm")).toBeNull()
+    expect(screen.getAllByText(/Convex manages persistence/)).toHaveLength(2)
+  })
+
   test("keeps an invalid comma in an App Variant name visible for validation", async () => {
     render(
       <NuqsTestingAdapter hasMemory>
@@ -351,8 +419,8 @@ describe("ConfigurePageContent interactions", () => {
     const selectedChoices = screen.getAllByRole("button", { pressed: true })
     const unselectedChoices = screen.getAllByRole("button", { pressed: false })
 
-    expect(selectedChoices).toHaveLength(3)
-    expect(unselectedChoices).toHaveLength(6)
+    expect(selectedChoices).toHaveLength(7)
+    expect(unselectedChoices).toHaveLength(9)
 
     for (const selectedChoice of selectedChoices) {
       expect(

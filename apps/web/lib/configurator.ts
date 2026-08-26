@@ -14,6 +14,12 @@ import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
 } from "@tenkit/types/styling-definitions"
+import {
+  DEFAULT_GENERATED_APP_OPTIONS,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+  type GeneratedAppOptions,
+} from "@tenkit/types/generated-app-option-definitions"
+import { isDefaultGeneratedAppOptions } from "@/lib/generated-app-options"
 
 const CONFIGURATOR_ACCENT_HEX_PATTERN = /^#[0-9A-F]{6}$/
 const RANDOM_APP_VARIANT_NAMES = [
@@ -109,6 +115,7 @@ export type ConfiguratorState = {
   setupType: PublicSetupSlug
   styling: ConfiguratorStyling
   packageManager: ConfiguratorPackageManager
+  generatedAppOptions: GeneratedAppOptions
   appVariantNames: readonly string[]
   appVariantAccents: readonly string[]
   git: boolean
@@ -140,6 +147,7 @@ export function createDefaultConfiguratorState(
     setupType,
     styling: "bare",
     packageManager: "pnpm",
+    generatedAppOptions: DEFAULT_GENERATED_APP_OPTIONS,
     ...getDefaultAppVariantValues(setupType),
     git: true,
     install: true,
@@ -207,6 +215,10 @@ export function randomizeConfiguratorState(
     random
   )
   const setupDefaults = createDefaultConfiguratorState(setupType)
+  const generatedAppOptions = chooseDifferentGeneratedAppOptions(
+    state.generatedAppOptions,
+    random
+  )
 
   return {
     ...setupDefaults,
@@ -221,6 +233,7 @@ export function randomizeConfiguratorState(
       state.packageManager,
       random
     ),
+    generatedAppOptions,
     appVariantNames: createRandomAppVariantNames(
       setupDefaults.appVariantNames.length,
       random
@@ -247,6 +260,29 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`
 }
 
+function chooseDifferentGeneratedAppOptions(
+  currentValue: GeneratedAppOptions,
+  random: () => number
+): GeneratedAppOptions {
+  const currentIndex = SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.findIndex(
+    (option) =>
+      option.backend === currentValue.backend &&
+      option.auth === currentValue.auth &&
+      option.database === currentValue.database &&
+      option.orm === currentValue.orm
+  )
+
+  if (currentIndex === -1) {
+    throw new Error("The current Generated App Options cannot be randomized.")
+  }
+
+  return chooseDifferentValue(
+    SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+    SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS[currentIndex],
+    random
+  )
+}
+
 function getCreateLauncher(packageManager: ConfiguratorPackageManager): string {
   return packageManager === "npm"
     ? "npm create tenkit@latest --"
@@ -266,10 +302,26 @@ export function buildConfiguratorCommand(state: ConfiguratorState): string {
     state.setupType !== DEFAULT_CONFIGURATOR_SETUP_TYPE ||
     state.styling !== "bare" ||
     state.packageManager !== "pnpm" ||
+    !isDefaultGeneratedAppOptions(state.generatedAppOptions) ||
     !arraysEqual(state.appVariantNames, defaults.appVariantNames) ||
     !arraysEqual(state.appVariantAccents, defaults.appVariantAccents) ||
     !state.git ||
     !state.install
+
+  const generatedAppOptionArguments = !isDefaultGeneratedAppOptions(
+    state.generatedAppOptions
+  )
+    ? [
+        "--backend",
+        state.generatedAppOptions.backend,
+        "--auth",
+        state.generatedAppOptions.auth,
+        "--database",
+        state.generatedAppOptions.database,
+        "--orm",
+        state.generatedAppOptions.orm,
+      ]
+    : []
 
   if (!hasNonProjectChange) {
     return `pnpm create tenkit@latest --name ${normalizedProjectName} --yes`
@@ -287,6 +339,7 @@ export function buildConfiguratorCommand(state: ConfiguratorState): string {
     shellQuote(state.appVariantAccents.join(",")),
     "--styling",
     state.styling,
+    ...generatedAppOptionArguments,
     "--package-manager",
     state.packageManager,
     state.git ? "--git" : "--no-git",

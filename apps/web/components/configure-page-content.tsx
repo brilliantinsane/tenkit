@@ -4,10 +4,13 @@ import {
   AlertTriangleIcon,
   BoxesIcon,
   BracesIcon,
+  DatabaseIcon,
   DicesIcon,
   GitForkIcon,
   Layers3Icon,
   RotateCcwIcon,
+  ServerCogIcon,
+  ShieldCheckIcon,
   SwatchBookIcon,
   WindIcon,
 } from "lucide-react"
@@ -34,6 +37,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
+  CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS,
+  CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION,
+  getConfiguratorGeneratedAppOptionLabel,
+  getConfiguratorGeneratedAppOptionStatusCopy,
+} from "@/lib/generated-app-options"
+import type {
+  GeneratedAppOptionChoice,
+  GeneratedAppOptions,
+} from "@tenkit/types/generated-app-option-definitions"
+import {
   CONFIGURATOR_PACKAGE_MANAGER_OPTIONS,
   CONFIGURATOR_SETUP_TYPE_OPTIONS,
   CONFIGURATOR_STYLING_OPTIONS,
@@ -53,6 +66,13 @@ const SETUP_TYPE_ICONS = {
   (typeof CONFIGURATOR_SETUP_TYPE_OPTIONS)[number]["value"],
   ReactNode
 >
+
+const GENERATED_APP_OPTION_ICONS = {
+  backend: <ServerCogIcon className="size-4" aria-hidden="true" />,
+  auth: <ShieldCheckIcon className="size-4" aria-hidden="true" />,
+  database: <DatabaseIcon className="size-4" aria-hidden="true" />,
+  orm: <BracesIcon className="size-4" aria-hidden="true" />,
+} as const
 
 const STYLING_ICONS = {
   bare: <BracesIcon className="size-4" aria-hidden="true" />,
@@ -253,6 +273,117 @@ function ConfiguratorStylingSection() {
   )
 }
 
+function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
+  group,
+  choice,
+  options,
+  selection,
+  icon,
+  onSelect,
+}: {
+  group: "backend" | "auth" | "database" | "orm"
+  choice: GeneratedAppOptionChoice<Value>
+  options: readonly { value: Value; label: string; detail: string }[]
+  selection: GeneratedAppOptions
+  icon: ReactNode
+  onSelect: (value: Value) => void
+}) {
+  return (
+    <div
+      data-slot={`configurator-${group}-choices`}
+      className="flex flex-col gap-3"
+    >
+      <div className="flex flex-col gap-1">
+        <h3 className="font-heading text-base font-semibold">
+          {CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].label}
+        </h3>
+        <p className="text-sm leading-6 text-muted-foreground">
+          {getConfiguratorGeneratedAppOptionStatusCopy(group, selection)}
+        </p>
+      </div>
+      <div className="grid items-stretch gap-3 sm:grid-cols-3">
+        {options
+          .filter((option) => choice.values.includes(option.value))
+          .map((option) => {
+            const selected = selection[group] === option.value
+            const label = getConfiguratorGeneratedAppOptionLabel(
+              group,
+              option.value,
+              selection.backend
+            )
+
+            return (
+              <ConfiguratorCodeResponsiveIconChoiceCard
+                key={option.value}
+                selected={selected}
+                disabled={choice.status === "resolved"}
+                label={label}
+                detail={option.detail}
+                icon={icon}
+                onSelect={() => onSelect(option.value)}
+              />
+            )
+          })}
+      </div>
+      {choice.status === "resolved" ? (
+        <p className="text-xs text-muted-foreground">
+          Resolved by the choices above.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function ConfiguratorGeneratedAppOptionsSection() {
+  const { actions, state, meta } = useConfigurator()
+  const generatedAppOptions = meta.generatedAppOptions
+
+  return (
+    <ConfiguratorSection
+      title="Generated App Options"
+      description="Compose a supported Backend, Auth, Database, and ORM stack for the generated project."
+    >
+      <div className="flex flex-col gap-8">
+        <ConfiguratorGeneratedAppOptionGroup
+          group="backend"
+          choice={generatedAppOptions.choices.backend}
+          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.backend}
+          selection={state.generatedAppOptions}
+          icon={GENERATED_APP_OPTION_ICONS.backend}
+          onSelect={actions.selectBackend}
+        />
+        <Separator />
+        <ConfiguratorGeneratedAppOptionGroup
+          group="auth"
+          choice={generatedAppOptions.choices.auth}
+          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.auth}
+          selection={state.generatedAppOptions}
+          icon={GENERATED_APP_OPTION_ICONS.auth}
+          onSelect={actions.selectAuth}
+        />
+        <Separator />
+        <ConfiguratorGeneratedAppOptionGroup
+          group="database"
+          choice={generatedAppOptions.choices.database}
+          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database}
+          selection={state.generatedAppOptions}
+          icon={GENERATED_APP_OPTION_ICONS.database}
+          onSelect={actions.selectDatabase}
+        />
+        <Separator />
+        <ConfiguratorGeneratedAppOptionGroup
+          group="orm"
+          choice={generatedAppOptions.choices.orm}
+          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.orm}
+          selection={state.generatedAppOptions}
+          icon={GENERATED_APP_OPTION_ICONS.orm}
+          onSelect={actions.selectOrm}
+        />
+      </div>
+    </ConfiguratorSection>
+  )
+}
+
 function ConfiguratorAppVariantsSection() {
   const { actions, meta } = useConfigurator()
 
@@ -396,6 +527,7 @@ const Configurator = {
   CommandPanel: ConfiguratorCommandPanel,
   SetupTypeSection: ConfiguratorSetupTypeSection,
   StylingSection: ConfiguratorStylingSection,
+  GeneratedAppOptionsSection: ConfiguratorGeneratedAppOptionsSection,
   AppVariantsSection: ConfiguratorAppVariantsSection,
   PackageManagerSection: ConfiguratorPackageManagerSection,
 } as const
@@ -417,6 +549,7 @@ function ConfiguratorLayout() {
       >
         <Configurator.SetupTypeSection />
         <Configurator.StylingSection />
+        <Configurator.GeneratedAppOptionsSection />
         <Configurator.AppVariantsSection />
         <Configurator.PackageManagerSection />
       </div>

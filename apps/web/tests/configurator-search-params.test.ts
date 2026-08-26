@@ -21,6 +21,10 @@ describe("Configurator search params", () => {
       setupType: "generic-standalone",
       styling: "unistyles",
       packageManager: "npm",
+      backend: "express",
+      auth: "clerk",
+      database: "postgresql",
+      orm: "drizzle",
       appVariantNamesSerialized: "Tenkit Network,North Studio",
       appVariantAccentsSerialized: "#208AEF,#123ABC",
       git: false,
@@ -33,6 +37,10 @@ describe("Configurator search params", () => {
       setup: "generic-standalone",
       styling: "unistyles",
       pm: "npm",
+      backend: "express",
+      auth: "clerk",
+      db: "postgresql",
+      orm: "drizzle",
       vn: "Tenkit Network,North Studio",
       vacc: "#208AEF,#123ABC",
       git: "false",
@@ -40,6 +48,10 @@ describe("Configurator search params", () => {
     })
     expect(load(query)).toMatchObject({
       projectName: "My App",
+      backend: "express",
+      auth: "clerk",
+      database: "postgresql",
+      orm: "drizzle",
       styling: "unistyles",
       appVariantNamesSerialized: "Tenkit Network,North Studio",
       appVariantAccentsSerialized: "#208AEF,#123ABC",
@@ -55,6 +67,10 @@ describe("Configurator search params", () => {
         setupType: "white-label",
         styling: "bare",
         packageManager: "pnpm",
+        backend: "none",
+        auth: "none",
+        database: "none",
+        orm: "none",
         appVariantNamesSerialized: "",
         appVariantAccentsSerialized: "",
         git: true,
@@ -69,10 +85,29 @@ describe("Configurator search params", () => {
       setupType: null,
       styling: null,
       packageManager: null,
+      backend: null,
+      auth: null,
+      database: null,
+      orm: null,
       appVariantNamesSerialized: null,
       appVariantAccentsSerialized: null,
       git: null,
       install: null,
+    })
+  })
+
+  test("rejects unsupported raw option values at the URL parser boundary", () => {
+    expect(
+      load(
+        new URLSearchParams(
+          "?backend=hono&auth=passwordless&db=sqlite&orm=typeorm"
+        )
+      )
+    ).toMatchObject({
+      backend: "none",
+      auth: "none",
+      database: "none",
+      orm: "none",
     })
   })
 })

@@ -52,16 +52,18 @@ export function ConfiguratorCodeResponsiveIconChoiceCard({
   label,
   detail,
   icon,
+  disabled = false,
   className,
-}: ConfiguratorChoiceCardProps & { icon: ReactNode }) {
+}: ConfiguratorChoiceCardProps & { icon: ReactNode; disabled?: boolean }) {
   return (
     <GlowingCard
       as="button"
       type="button"
       aria-pressed={selected}
+      disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "relative w-full cursor-pointer overflow-hidden rounded-xl border bg-card/80 text-center shadow-sm transition-[border-color,box-shadow,transform] active:translate-y-px",
+        "relative w-full cursor-pointer overflow-hidden rounded-xl border bg-card/80 text-center shadow-sm transition-[border-color,box-shadow,transform] active:translate-y-px disabled:cursor-default disabled:opacity-70",
         selected && "border-foreground",
         className
       )}
