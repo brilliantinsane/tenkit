@@ -30,4 +30,14 @@ describe("CodeBlockCommand", () => {
     expect(commandRoot).not.toMatch(/class="[^"]*invisible/)
     expect(markup).toContain("pnpm create tenkit@latest")
   })
+
+  test("does not render executable scripts inside the command block", () => {
+    const markup = renderToStaticMarkup(
+      <CreateCommandAnalyticsProvider value={{ surface: "landing" }}>
+        <CodeBlockCommand pnpm="pnpm create tenkit@latest" />
+      </CreateCommandAnalyticsProvider>
+    )
+
+    expect(markup).not.toContain("<script")
+  })
 })
