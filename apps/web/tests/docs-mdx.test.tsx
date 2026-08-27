@@ -17,6 +17,8 @@ describe("documentation MDX components", () => {
 
     expect(markup).toContain('data-slot="code-block-command"')
     expect(markup).toContain("pnpm create tenkit@latest --yes")
+    expect(markup).toContain("npm create tenkit@latest -- --yes")
+    expect(markup).toContain("bun create tenkit@latest --yes")
   })
 
   test("rejects empty fenced commands", () => {

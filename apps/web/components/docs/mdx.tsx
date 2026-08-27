@@ -15,6 +15,27 @@ function getCodeText(node: ReactNode): string {
   return ""
 }
 
+function replacePackageManager(command: string, packageManager: "npm" | "bun") {
+  const prefix = "pnpm "
+
+  if (!command.startsWith(prefix)) return command
+
+  const commandWithoutPackageManager = command.slice(prefix.length)
+
+  if (
+    packageManager === "npm" &&
+    commandWithoutPackageManager.startsWith("create tenkit@latest")
+  ) {
+    const commandArguments = commandWithoutPackageManager.slice(
+      "create tenkit@latest".length
+    )
+
+    return `npm create tenkit@latest --${commandArguments}`
+  }
+
+  return `${packageManager} ${commandWithoutPackageManager}`
+}
+
 function DocsCodeBlock({ children }: { children?: ReactNode }) {
   const command = getCodeText(children).trimEnd()
 
@@ -24,7 +45,13 @@ function DocsCodeBlock({ children }: { children?: ReactNode }) {
 
   return (
     <CreateCommandAnalyticsProvider value={{ surface: "docs" }}>
-      <CodeBlockCommand pnpm={command} />
+      <div className="flex flex-col overflow-hidden rounded-xl border bg-card/80 p-1.5 shadow-sm backdrop-blur">
+        <CodeBlockCommand
+          pnpm={command}
+          npm={replacePackageManager(command, "npm")}
+          bun={replacePackageManager(command, "bun")}
+        />
+      </div>
     </CreateCommandAnalyticsProvider>
   )
 }

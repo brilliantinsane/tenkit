@@ -3,6 +3,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app"
 import { RootProvider } from "fumadocs-ui/provider/next"
 
 import { DatabuddyAnalytics } from "@/components/databuddy-analytics"
+import { TenkitSearchDialog } from "@/components/docs/search-dialog"
 import { Header } from "@/components/header"
 import { JotaiProvider } from "@/components/jotai-provider"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -63,7 +64,10 @@ export default function RootLayout({
         <NuqsAdapter>
           <JotaiProvider>
             <ThemeProvider>
-              <RootProvider theme={{ enabled: false }}>
+              <RootProvider
+                search={{ SearchDialog: TenkitSearchDialog }}
+                theme={{ enabled: false }}
+              >
                 <TooltipProvider>
                   <div className="contents" data-slot="app-content">
                     <div

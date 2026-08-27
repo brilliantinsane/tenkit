@@ -50,18 +50,12 @@ function DocsNavigation({ mobile = false }: { mobile?: boolean }) {
             className={
               mobile
                 ? "shrink-0 rounded-lg border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted hover:text-foreground aria-[current=page]:border-foreground/20 aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
-                : "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-foreground aria-[current=page]:text-background"
+                : "flex items-center rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-foreground aria-[current=page]:text-background"
             }
             href={link.href}
             key={link.href}
           >
             <span>{mobile ? link.shortLabel : link.label}</span>
-            {!mobile ? (
-              <ArrowUpRightIcon
-                aria-hidden="true"
-                className="size-3.5 opacity-0 transition-opacity group-hover:opacity-60 group-aria-[current=page]:opacity-60"
-              />
-            ) : null}
           </Link>
         )
       })}
