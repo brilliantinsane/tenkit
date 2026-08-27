@@ -16,11 +16,21 @@ function getCodeText(node: ReactNode): string {
 }
 
 function replacePackageManager(command: string, packageManager: "npm" | "bun") {
-  const prefix = "pnpm "
+  return command
+    .split("\n")
+    .map((line) => replacePackageManagerLine(line, packageManager))
+    .join("\n")
+}
 
-  if (!command.startsWith(prefix)) return command
+function replacePackageManagerLine(
+  line: string,
+  packageManager: "npm" | "bun"
+) {
+  const match = /^(\s*)pnpm\s+(.*)$/.exec(line)
 
-  const commandWithoutPackageManager = command.slice(prefix.length)
+  if (!match) return line
+
+  const [, indentation, commandWithoutPackageManager] = match
 
   if (
     packageManager === "npm" &&
@@ -30,10 +40,12 @@ function replacePackageManager(command: string, packageManager: "npm" | "bun") {
       "create tenkit@latest".length
     )
 
-    return `npm create tenkit@latest --${commandArguments}`
+    return commandArguments.trim().length > 0
+      ? `${indentation}npm create tenkit@latest --${commandArguments}`
+      : `${indentation}npm create tenkit@latest`
   }
 
-  return `${packageManager} ${commandWithoutPackageManager}`
+  return `${indentation}${packageManager} ${commandWithoutPackageManager}`
 }
 
 function DocsCodeBlock({ children }: { children?: ReactNode }) {
