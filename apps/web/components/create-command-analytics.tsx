@@ -7,6 +7,7 @@ import type { GeneratedAppOptions } from "@tenkit/types/generated-app-option-def
 
 export type CreateCommandAnalyticsContext =
   | { surface: "landing" }
+  | { surface: "docs" }
   | {
       surface: "configurator"
       setupType: ConfiguratorState["setupType"]

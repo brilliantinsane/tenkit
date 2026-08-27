@@ -1,12 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from "fumadocs-ui/layouts/docs/page"
 
+import { DocsTableOfContents } from "@/components/docs/docs-toc"
 import { getMDXComponents } from "@/components/docs/mdx"
 import { SITE_CONFIG, createPageMetadata } from "@/lib/seo"
 import { source } from "@/lib/source"
@@ -30,13 +25,26 @@ export default async function DocsPageRoute({ params }: DocsPageProps) {
   const MDXContent = page.data.body
 
   return (
-    <DocsPage toc={page.data.toc}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
-        <MDXContent components={getMDXComponents()} />
-      </DocsBody>
-    </DocsPage>
+    <article className="animate-in duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3 motion-reduce:animate-none">
+      <header className="mb-10 max-w-3xl border-b pb-8">
+        <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+          Tenkit documentation
+        </p>
+        <h1 className="font-heading text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
+          {page.data.title}
+        </h1>
+        <p className="mt-4 max-w-2xl text-lg leading-8 text-pretty text-muted-foreground">
+          {page.data.description}
+        </p>
+      </header>
+
+      <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_12rem] xl:gap-14">
+        <div className="docs-prose max-w-3xl min-w-0">
+          <MDXContent components={getMDXComponents()} />
+        </div>
+        <DocsTableOfContents toc={page.data.toc} />
+      </div>
+    </article>
   )
 }
 

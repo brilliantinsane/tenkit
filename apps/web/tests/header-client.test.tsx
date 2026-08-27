@@ -47,6 +47,15 @@ describe("HeaderClient", () => {
     expect(screen.queryByRole("navigation", { name: "Site header" })).toBeNull()
   })
 
+  test("exposes the single Fumadocs search trigger", () => {
+    render(<HeaderClient desktopStats={emptyStats} mobileStats={emptyStats} />)
+
+    expect(screen.getByRole("button", { name: "Open Search" })).toBeDefined()
+    expect(
+      screen.queryByRole("button", { name: "Open command palette" })
+    ).toBeNull()
+  })
+
   afterEach(() => {
     cleanup()
   })
