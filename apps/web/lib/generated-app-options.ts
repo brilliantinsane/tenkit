@@ -76,20 +76,29 @@ export const CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION = {
   }
 }
 
+function moveNoneToEnd<Value extends string>(
+  values: readonly Value[]
+): readonly Value[] {
+  return [
+    ...values.filter((value) => value !== "none"),
+    ...values.filter((value) => value === "none"),
+  ]
+}
+
 export const CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS = {
-  backend: SUPPORTED_GENERATED_BACKEND_VALUES.map((value) => ({
+  backend: moveNoneToEnd(SUPPORTED_GENERATED_BACKEND_VALUES).map((value) => ({
     value,
     ...CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION.backend.options[value],
   })),
-  auth: SUPPORTED_GENERATED_AUTH_VALUES.map((value) => ({
+  auth: moveNoneToEnd(SUPPORTED_GENERATED_AUTH_VALUES).map((value) => ({
     value,
     ...CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION.auth.options[value],
   })),
-  database: SUPPORTED_GENERATED_DATABASE_VALUES.map((value) => ({
+  database: moveNoneToEnd(SUPPORTED_GENERATED_DATABASE_VALUES).map((value) => ({
     value,
     ...CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION.database.options[value],
   })),
-  orm: SUPPORTED_GENERATED_ORM_VALUES.map((value) => ({
+  orm: moveNoneToEnd(SUPPORTED_GENERATED_ORM_VALUES).map((value) => ({
     value,
     ...CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION.orm.options[value],
   })),
@@ -102,6 +111,111 @@ export type ConfiguratorGeneratedAppOptionState = {
       GeneratedAppOptions[Group]
     >
   }
+}
+
+type ConfiguratorGeneratedAppOptionAdjustment = {
+  group: GeneratedAppOptionGroup
+  from: GeneratedAppOptions[GeneratedAppOptionGroup]
+  to: GeneratedAppOptions[GeneratedAppOptionGroup]
+}
+
+type ConfiguratorGeneratedAppOptionUpdate = {
+  selection: GeneratedAppOptions
+  adjustments: readonly ConfiguratorGeneratedAppOptionAdjustment[]
+}
+
+function comparePreservedGeneratedAppOptions(
+  currentSelection: GeneratedAppOptions,
+  selectedGroup: GeneratedAppOptionGroup,
+  left: GeneratedAppOptions,
+  right: GeneratedAppOptions
+): number {
+  for (const group of CONFIGURATOR_GENERATED_APP_OPTION_GROUPS) {
+    if (group === selectedGroup) {
+      continue
+    }
+
+    const leftPreservesCurrent = left[group] === currentSelection[group]
+    const rightPreservesCurrent = right[group] === currentSelection[group]
+
+    if (leftPreservesCurrent !== rightPreservesCurrent) {
+      return leftPreservesCurrent ? -1 : 1
+    }
+  }
+
+  return 0
+}
+
+export function applyConfiguratorGeneratedAppOptionChoice<
+  Group extends GeneratedAppOptionGroup,
+>(
+  currentSelection: GeneratedAppOptions,
+  selectedGroup: Group,
+  selectedValue: GeneratedAppOptions[Group]
+): ConfiguratorGeneratedAppOptionUpdate {
+  const compatibleSelections =
+    SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.filter(
+      (selection) => selection[selectedGroup] === selectedValue
+    )
+  const selection = compatibleSelections.sort((left, right) =>
+    comparePreservedGeneratedAppOptions(
+      currentSelection,
+      selectedGroup,
+      left,
+      right
+    )
+  )[0]
+
+  if (selection === undefined) {
+    throw new Error(
+      `Generated App Option ${selectedGroup}=${selectedValue} has no supported combination.`
+    )
+  }
+
+  const adjustments = CONFIGURATOR_GENERATED_APP_OPTION_GROUPS.flatMap(
+    (group): ConfiguratorGeneratedAppOptionAdjustment[] => {
+      if (
+        group === selectedGroup ||
+        selection[group] === currentSelection[group]
+      ) {
+        return []
+      }
+
+      return [
+        {
+          group,
+          from: currentSelection[group],
+          to: selection[group],
+        },
+      ]
+    }
+  )
+
+  return { selection, adjustments }
+}
+
+export function getConfiguratorGeneratedAppOptionAdjustmentDescription(
+  currentSelection: GeneratedAppOptions,
+  update: ConfiguratorGeneratedAppOptionUpdate
+): string {
+  return update.adjustments
+    .map((adjustment) => {
+      const groupLabel =
+        CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[adjustment.group].label
+      const fromLabel = getConfiguratorGeneratedAppOptionLabel(
+        adjustment.group,
+        adjustment.from,
+        currentSelection.backend
+      )
+      const toLabel = getConfiguratorGeneratedAppOptionLabel(
+        adjustment.group,
+        adjustment.to,
+        update.selection.backend
+      )
+
+      return `${groupLabel} changed from ${fromLabel} to ${toLabel}.`
+    })
+    .join(" ")
 }
 
 function chooseValue<Value extends string>(

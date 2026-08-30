@@ -1,12 +1,64 @@
 import { describe, expect, test } from "vitest"
 
 import {
+  applyConfiguratorGeneratedAppOptionChoice,
+  CONFIGURATOR_GENERATED_APP_OPTION_GROUPS,
+  CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS,
   getConfiguratorGeneratedAppOptionStatusCopy,
   getConfiguratorGeneratedAppOptionsState,
 } from "@/lib/generated-app-options"
-import { SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS } from "@tenkit/types/generated-app-option-definitions"
+import {
+  resolveGeneratedAppOptions,
+  SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS,
+} from "@tenkit/types/generated-app-option-definitions"
 
 describe("Configurator Generated App Options", () => {
+  test("keeps the selected Database and adjusts incompatible Generated App Options", () => {
+    expect(
+      applyConfiguratorGeneratedAppOptionChoice(
+        {
+          backend: "express",
+          auth: "better-auth",
+          database: "postgresql",
+          orm: "prisma",
+        },
+        "database",
+        "none"
+      )
+    ).toEqual({
+      selection: {
+        backend: "express",
+        auth: "none",
+        database: "none",
+        orm: "none",
+      },
+      adjustments: [
+        { group: "auth", from: "better-auth", to: "none" },
+        { group: "orm", from: "prisma", to: "none" },
+      ],
+    })
+  })
+
+  test("resolves every visible Choice from every supported combination", () => {
+    for (const currentSelection of SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS) {
+      for (const group of CONFIGURATOR_GENERATED_APP_OPTION_GROUPS) {
+        for (const option of CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS[group]) {
+          const update = applyConfiguratorGeneratedAppOptionChoice(
+            currentSelection,
+            group,
+            option.value
+          )
+
+          expect(update.selection[group]).toBe(option.value)
+          expect(resolveGeneratedAppOptions(update.selection)).toEqual({
+            status: "resolved",
+            selection: update.selection,
+          })
+        }
+      }
+    }
+  })
+
   test("projects each supported combination into progressive choices", () => {
     const state = getConfiguratorGeneratedAppOptionsState({
       backend: "express",

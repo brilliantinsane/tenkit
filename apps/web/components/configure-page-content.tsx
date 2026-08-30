@@ -42,10 +42,7 @@ import {
   getConfiguratorGeneratedAppOptionLabel,
   getConfiguratorGeneratedAppOptionStatusCopy,
 } from "@/lib/generated-app-options"
-import type {
-  GeneratedAppOptionChoice,
-  GeneratedAppOptions,
-} from "@tenkit/types/generated-app-option-definitions"
+import type { GeneratedAppOptions } from "@tenkit/types/generated-app-option-definitions"
 import {
   CONFIGURATOR_PACKAGE_MANAGER_OPTIONS,
   CONFIGURATOR_SETUP_TYPE_OPTIONS,
@@ -276,14 +273,12 @@ function ConfiguratorStylingSection() {
 
 function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
   group,
-  choice,
   options,
   selection,
   icon,
   onSelect,
 }: {
   group: "backend" | "auth" | "database" | "orm"
-  choice: GeneratedAppOptionChoice<Value>
   options: readonly { value: Value; label: string; detail: string }[]
   selection: GeneratedAppOptions
   icon: ReactNode
@@ -303,41 +298,32 @@ function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
         </p>
       </div>
       <div className="grid items-stretch gap-3 sm:grid-cols-3">
-        {options
-          .filter((option) => choice.values.includes(option.value))
-          .map((option) => {
-            const selected = selection[group] === option.value
-            const label = getConfiguratorGeneratedAppOptionLabel(
-              group,
-              option.value,
-              selection.backend
-            )
+        {options.map((option) => {
+          const selected = selection[group] === option.value
+          const label = getConfiguratorGeneratedAppOptionLabel(
+            group,
+            option.value,
+            selection.backend
+          )
 
-            return (
-              <ConfiguratorCodeResponsiveIconChoiceCard
-                key={option.value}
-                selected={selected}
-                disabled={choice.status === "resolved"}
-                label={label}
-                detail={option.detail}
-                icon={icon}
-                onSelect={() => onSelect(option.value)}
-              />
-            )
-          })}
+          return (
+            <ConfiguratorCodeResponsiveIconChoiceCard
+              key={option.value}
+              selected={selected}
+              label={label}
+              detail={option.detail}
+              icon={icon}
+              onSelect={() => onSelect(option.value)}
+            />
+          )
+        })}
       </div>
-      {choice.status === "resolved" ? (
-        <p className="text-xs text-muted-foreground">
-          Resolved by the choices above.
-        </p>
-      ) : null}
     </div>
   )
 }
 
 function ConfiguratorGeneratedAppOptionsSection() {
-  const { actions, state, meta } = useConfigurator()
-  const generatedAppOptions = meta.generatedAppOptions
+  const { actions, state } = useConfigurator()
 
   return (
     <ConfiguratorSection
@@ -347,7 +333,6 @@ function ConfiguratorGeneratedAppOptionsSection() {
       <div className="flex flex-col gap-8">
         <ConfiguratorGeneratedAppOptionGroup
           group="backend"
-          choice={generatedAppOptions.choices.backend}
           options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.backend}
           selection={state.generatedAppOptions}
           icon={GENERATED_APP_OPTION_ICONS.backend}
@@ -356,7 +341,6 @@ function ConfiguratorGeneratedAppOptionsSection() {
         <Separator />
         <ConfiguratorGeneratedAppOptionGroup
           group="auth"
-          choice={generatedAppOptions.choices.auth}
           options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.auth}
           selection={state.generatedAppOptions}
           icon={GENERATED_APP_OPTION_ICONS.auth}
@@ -365,7 +349,6 @@ function ConfiguratorGeneratedAppOptionsSection() {
         <Separator />
         <ConfiguratorGeneratedAppOptionGroup
           group="database"
-          choice={generatedAppOptions.choices.database}
           options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database}
           selection={state.generatedAppOptions}
           icon={GENERATED_APP_OPTION_ICONS.database}
@@ -374,7 +357,6 @@ function ConfiguratorGeneratedAppOptionsSection() {
         <Separator />
         <ConfiguratorGeneratedAppOptionGroup
           group="orm"
-          choice={generatedAppOptions.choices.orm}
           options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.orm}
           selection={state.generatedAppOptions}
           icon={GENERATED_APP_OPTION_ICONS.orm}

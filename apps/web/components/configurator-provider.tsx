@@ -2,6 +2,7 @@
 
 import { createContext, use, type ReactNode } from "react"
 import { useQueryStates } from "nuqs"
+import { toast } from "sonner"
 
 import {
   buildConfiguratorCommand,
@@ -20,11 +21,14 @@ import {
   type ConfiguratorStyling,
 } from "@/lib/configurator"
 import {
+  applyConfiguratorGeneratedAppOptionChoice,
+  getConfiguratorGeneratedAppOptionAdjustmentDescription,
   getConfiguratorGeneratedAppOptionsState,
-  type ConfiguratorGeneratedAppOptionState,
 } from "@/lib/generated-app-options"
 import type {
   GeneratedAuth,
+  GeneratedAppOptionGroup,
+  GeneratedAppOptions,
   GeneratedBackend,
   GeneratedDatabase,
   GeneratedOrm,
@@ -69,7 +73,6 @@ type ConfiguratorMeta = {
   appVariantSectionTitle: string
   appVariantSectionDescription: string
   appVariantFields: readonly ConfiguratorAppVariantField[]
-  generatedAppOptions: ConfiguratorGeneratedAppOptionState
   commands: Readonly<Record<ConfiguratorPackageManager, string>>
   commandIsCopyable: boolean
 }
@@ -137,6 +140,36 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       ? buildConfiguratorCommand({ ...state, packageManager: "bun" })
       : derivedState.command,
   } satisfies Record<ConfiguratorPackageManager, string>
+  const selectGeneratedAppOption = <Group extends GeneratedAppOptionGroup>(
+    group: Group,
+    value: GeneratedAppOptions[Group]
+  ) => {
+    if (value !== state.generatedAppOptions[group]) {
+      trackDatabuddyEvent("configurator_choice_changed", { group, value })
+    }
+
+    const update = applyConfiguratorGeneratedAppOptionChoice(
+      state.generatedAppOptions,
+      group,
+      value
+    )
+
+    void setQuery({
+      backend: update.selection.backend,
+      auth: update.selection.auth,
+      database: update.selection.database,
+      orm: update.selection.orm,
+    })
+
+    if (update.adjustments.length > 0) {
+      toast.info("Adjusted Generated App Options for compatibility", {
+        description: getConfiguratorGeneratedAppOptionAdjustmentDescription(
+          state.generatedAppOptions,
+          update
+        ),
+      })
+    }
+  }
   const actions: ConfiguratorActions = {
     randomize: () => {
       const randomizedState = randomizeConfiguratorState(state)
@@ -211,62 +244,16 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       void setQuery({ packageManager })
     },
     selectBackend: (backend) => {
-      if (backend !== state.generatedAppOptions.backend) {
-        trackDatabuddyEvent("configurator_choice_changed", {
-          group: "backend",
-          value: backend,
-        })
-      }
-
-      void setQuery({ backend, auth: null, database: null, orm: null })
+      selectGeneratedAppOption("backend", backend)
     },
     selectAuth: (auth) => {
-      if (auth !== state.generatedAppOptions.auth) {
-        trackDatabuddyEvent("configurator_choice_changed", {
-          group: "auth",
-          value: auth,
-        })
-      }
-
-      const nextGeneratedAppOptions = getConfiguratorGeneratedAppOptionsState({
-        backend: state.generatedAppOptions.backend,
-        auth,
-      }).selection
-
-      void setQuery({
-        auth,
-        database: nextGeneratedAppOptions.database,
-        orm: nextGeneratedAppOptions.orm,
-      })
+      selectGeneratedAppOption("auth", auth)
     },
     selectDatabase: (database) => {
-      if (database !== state.generatedAppOptions.database) {
-        trackDatabuddyEvent("configurator_choice_changed", {
-          group: "database",
-          value: database,
-        })
-      }
-
-      const nextGeneratedAppOptions = getConfiguratorGeneratedAppOptionsState({
-        backend: state.generatedAppOptions.backend,
-        auth: state.generatedAppOptions.auth,
-        database,
-      }).selection
-
-      void setQuery({
-        database,
-        orm: nextGeneratedAppOptions.orm,
-      })
+      selectGeneratedAppOption("database", database)
     },
     selectOrm: (orm) => {
-      if (orm !== state.generatedAppOptions.orm) {
-        trackDatabuddyEvent("configurator_choice_changed", {
-          group: "orm",
-          value: orm,
-        })
-      }
-
-      void setQuery({ orm })
+      selectGeneratedAppOption("orm", orm)
     },
     updateAppVariantName: (position, name) => {
       const appVariantNames = updateAppVariantValue(
@@ -347,7 +334,6 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
           appVariantSectionTitle: appVariantSection.sectionTitle,
           appVariantSectionDescription: appVariantSection.sectionDescription,
           appVariantFields,
-          generatedAppOptions: generatedAppOptionsState,
           commands,
           commandIsCopyable: derivedState.commandIsCopyable,
         },

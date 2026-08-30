@@ -6,9 +6,11 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing"
+import { toast } from "sonner"
 import { afterEach, describe, expect, test, vi } from "vitest"
 
 import { ConfigurePageContent } from "@/components/configure-page-content"
@@ -26,6 +28,96 @@ afterEach(() => {
 })
 
 describe("ConfigurePageContent interactions", () => {
+  test("keeps every Generated App Option Choice visible with None last", () => {
+    render(
+      <NuqsTestingAdapter>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const expectedChoices = [
+      {
+        slot: "configurator-backend-choices",
+        names: [/^Express/, /^NestJS/, /^Convex/, /^None/],
+      },
+      {
+        slot: "configurator-auth-choices",
+        names: [/^Better Auth/, /^Clerk/, /^None/],
+      },
+      {
+        slot: "configurator-database-choices",
+        names: [/^PostgreSQL/, /^MySQL/, /^None/],
+      },
+      {
+        slot: "configurator-orm-choices",
+        names: [/^Prisma/, /^Drizzle/, /^None/],
+      },
+    ]
+
+    for (const { slot, names } of expectedChoices) {
+      const group = document.querySelector(`[data-slot="${slot}"]`)
+
+      if (!(group instanceof HTMLElement)) {
+        throw new Error(`Expected Configurator Choice group ${slot}.`)
+      }
+
+      const choices = within(group).getAllByRole("button")
+
+      expect(choices).toEqual(
+        names.map((name) => within(group).getByRole("button", { name }))
+      )
+      expect(choices.every((choice) => !choice.hasAttribute("disabled"))).toBe(
+        true
+      )
+    }
+  })
+
+  test("adjusts incompatible Choices and explains the compatibility change", async () => {
+    const user = userEvent.setup()
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+    const toastInfo = vi.spyOn(toast, "info")
+
+    render(
+      <NuqsTestingAdapter
+        hasMemory
+        resetUrlUpdateQueueOnMount={false}
+        searchParams="?backend=express&auth=better-auth&db=postgresql&orm=prisma"
+        onUrlUpdate={onUrlUpdate}
+      >
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const databaseChoices = document.querySelector(
+      '[data-slot="configurator-database-choices"]'
+    )
+
+    if (!(databaseChoices instanceof HTMLElement)) {
+      throw new Error("Expected Configurator Database Choices.")
+    }
+
+    await user.click(
+      within(databaseChoices).getByRole("button", { name: /^None/ })
+    )
+
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("backend")).toBe(
+        "express"
+      )
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("auth")).toBeNull()
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("db")).toBeNull()
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("orm")).toBeNull()
+    })
+    expect(toastInfo).toHaveBeenCalledOnce()
+    expect(toastInfo).toHaveBeenCalledWith(
+      "Adjusted Generated App Options for compatibility",
+      {
+        description:
+          "Auth changed from Better Auth to None. ORM changed from Prisma to None.",
+      }
+    )
+  })
+
   test("writes selections, inputs, and toggles to the route query", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
@@ -154,9 +246,10 @@ describe("ConfigurePageContent interactions", () => {
     )
   })
 
-  test("clears dependent URL Choices when Backend changes", async () => {
+  test("preserves compatible URL Choices when Backend changes", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+    const toastInfo = vi.spyOn(toast, "info")
 
     render(
       <NuqsTestingAdapter
@@ -174,10 +267,11 @@ describe("ConfigurePageContent interactions", () => {
 
     const searchParams = onUrlUpdate.mock.lastCall?.[0].searchParams
     expect(searchParams?.get("backend")).toBe("convex")
-    expect(searchParams?.get("auth")).toBeNull()
+    expect(searchParams?.get("auth")).toBe("clerk")
     expect(searchParams?.get("db")).toBeNull()
     expect(searchParams?.get("orm")).toBeNull()
     expect(screen.getAllByText(/Convex manages persistence/)).toHaveLength(2)
+    expect(toastInfo).not.toHaveBeenCalled()
   })
 
   test("keeps an invalid comma in an App Variant name visible for validation", async () => {
@@ -432,7 +526,7 @@ describe("ConfigurePageContent interactions", () => {
     const unselectedChoices = screen.getAllByRole("button", { pressed: false })
 
     expect(selectedChoices).toHaveLength(7)
-    expect(unselectedChoices).toHaveLength(9)
+    expect(unselectedChoices).toHaveLength(15)
 
     for (const selectedChoice of selectedChoices) {
       expect(
