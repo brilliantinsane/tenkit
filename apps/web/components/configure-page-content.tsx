@@ -272,7 +272,7 @@ function ConfiguratorStylingSection() {
   )
 }
 
-function ConfiguratorGeneratedAppOptionGroup<
+function ConfiguratorGeneratedAppOptionSection<
   Value extends GeneratedAppOptions[keyof GeneratedAppOptions],
 >({
   group,
@@ -288,19 +288,17 @@ function ConfiguratorGeneratedAppOptionGroup<
   onSelect: (value: Value) => void
 }) {
   return (
-    <div
-      data-slot={`configurator-${group}-choices`}
-      className="flex flex-col gap-3"
+    <ConfiguratorSection
+      title={CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].label}
+      description={getConfiguratorGeneratedAppOptionStatusCopy(
+        group,
+        selection
+      )}
     >
-      <div className="flex flex-col gap-1">
-        <h3 className="font-heading text-base font-semibold">
-          {CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].label}
-        </h3>
-        <p className="text-sm leading-6 text-muted-foreground">
-          {getConfiguratorGeneratedAppOptionStatusCopy(group, selection)}
-        </p>
-      </div>
-      <div className="grid items-stretch gap-3 sm:grid-cols-3">
+      <div
+        data-slot={`configurator-${group}-choices`}
+        className="grid items-stretch gap-3 sm:grid-cols-3"
+      >
         {options.map((option) => {
           const selected = selection[group] === option.value
           const label = getConfiguratorGeneratedAppOptionLabel(
@@ -327,52 +325,44 @@ function ConfiguratorGeneratedAppOptionGroup<
           )
         })}
       </div>
-    </div>
+    </ConfiguratorSection>
   )
 }
 
-function ConfiguratorGeneratedAppOptionsSection() {
+function ConfiguratorGeneratedAppOptionSections() {
   const { actions, state } = useConfigurator()
 
   return (
-    <ConfiguratorSection
-      title="Generated App Options"
-      description="Compose a supported Backend, Auth, Database, and ORM stack for the generated project."
-    >
-      <div className="flex flex-col gap-8">
-        <ConfiguratorGeneratedAppOptionGroup
-          group="backend"
-          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.backend}
-          selection={state.generatedAppOptions}
-          icon={GENERATED_APP_OPTION_ICONS.backend}
-          onSelect={actions.selectBackend}
-        />
-        <Separator />
-        <ConfiguratorGeneratedAppOptionGroup
-          group="auth"
-          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.auth}
-          selection={state.generatedAppOptions}
-          icon={GENERATED_APP_OPTION_ICONS.auth}
-          onSelect={actions.selectAuth}
-        />
-        <Separator />
-        <ConfiguratorGeneratedAppOptionGroup
-          group="database"
-          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database}
-          selection={state.generatedAppOptions}
-          icon={GENERATED_APP_OPTION_ICONS.database}
-          onSelect={actions.selectDatabase}
-        />
-        <Separator />
-        <ConfiguratorGeneratedAppOptionGroup
-          group="orm"
-          options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.orm}
-          selection={state.generatedAppOptions}
-          icon={GENERATED_APP_OPTION_ICONS.orm}
-          onSelect={actions.selectOrm}
-        />
-      </div>
-    </ConfiguratorSection>
+    <>
+      <ConfiguratorGeneratedAppOptionSection
+        group="backend"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.backend}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.backend}
+        onSelect={actions.selectBackend}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="auth"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.auth}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.auth}
+        onSelect={actions.selectAuth}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="database"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.database}
+        onSelect={actions.selectDatabase}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="orm"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.orm}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.orm}
+        onSelect={actions.selectOrm}
+      />
+    </>
   )
 }
 
@@ -519,7 +509,7 @@ const Configurator = {
   CommandPanel: ConfiguratorCommandPanel,
   SetupTypeSection: ConfiguratorSetupTypeSection,
   StylingSection: ConfiguratorStylingSection,
-  GeneratedAppOptionsSection: ConfiguratorGeneratedAppOptionsSection,
+  GeneratedAppOptionSections: ConfiguratorGeneratedAppOptionSections,
   AppVariantsSection: ConfiguratorAppVariantsSection,
   PackageManagerSection: ConfiguratorPackageManagerSection,
 } as const
@@ -541,7 +531,7 @@ function ConfiguratorLayout() {
       >
         <Configurator.SetupTypeSection />
         <Configurator.StylingSection />
-        <Configurator.GeneratedAppOptionsSection />
+        <Configurator.GeneratedAppOptionSections />
         <Configurator.AppVariantsSection />
         <Configurator.PackageManagerSection />
       </div>

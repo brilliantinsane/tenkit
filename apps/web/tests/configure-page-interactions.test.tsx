@@ -38,28 +38,45 @@ describe("ConfigurePageContent interactions", () => {
     const expectedChoices = [
       {
         slot: "configurator-backend-choices",
+        sectionTitle: "Backend",
         names: [/^Express/, /^NestJS/, /^Convex/, /^None/],
       },
       {
         slot: "configurator-auth-choices",
+        sectionTitle: "Auth",
         names: [/^Better Auth/, /^Clerk/, /^None/],
       },
       {
         slot: "configurator-database-choices",
+        sectionTitle: "Database",
         names: [/^PostgreSQL/, /^MySQL/, /^None/],
       },
       {
         slot: "configurator-orm-choices",
+        sectionTitle: "ORM",
         names: [/^Prisma/, /^Drizzle/, /^None/],
       },
     ]
+    const generatedAppOptionSections = new Set<HTMLElement>()
 
-    for (const { slot, names } of expectedChoices) {
+    for (const { slot, sectionTitle, names } of expectedChoices) {
       const group = document.querySelector(`[data-slot="${slot}"]`)
 
       if (!(group instanceof HTMLElement)) {
         throw new Error(`Expected Configurator Choice group ${slot}.`)
       }
+
+      const section = group.closest('[data-slot="configurator-section"]')
+
+      if (!(section instanceof HTMLElement)) {
+        throw new Error(`Expected Configurator section for ${sectionTitle}.`)
+      }
+
+      within(section).getByRole("heading", {
+        level: 2,
+        name: sectionTitle,
+      })
+      generatedAppOptionSections.add(section)
 
       const choices = within(group).getAllByRole("button")
 
@@ -70,6 +87,8 @@ describe("ConfigurePageContent interactions", () => {
         true
       )
     }
+
+    expect(generatedAppOptionSections.size).toBe(4)
   })
 
   test("explains compatibility adjustments before a Choice is selected", () => {

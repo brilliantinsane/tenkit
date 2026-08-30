@@ -116,7 +116,7 @@ describe("ConfigurePageContent", () => {
         "sm:gap-8",
       ])
     )
-    expect(markup.match(/data-slot="configurator-section"/g)).toHaveLength(5)
+    expect(markup.match(/data-slot="configurator-section"/g)).toHaveLength(8)
     expect(markup).not.toContain("lg:col-start-2")
     expect(markup).not.toContain("px-4 py-12")
   })
