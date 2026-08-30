@@ -37,11 +37,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
+  CONFIGURATOR_DATABASE_CHOICES,
   CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS,
   CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION,
+  getConfiguratorDatabaseChoiceNotice,
   getConfiguratorGeneratedAppOptionChoiceNotice,
-  getConfiguratorGeneratedAppOptionLabel,
   getConfiguratorGeneratedAppOptionStatusCopy,
+  isConfiguratorDatabaseChoiceSelected,
 } from "@/lib/generated-app-options"
 import type { GeneratedAppOptions } from "@tenkit/types/generated-app-option-definitions"
 import {
@@ -279,12 +281,16 @@ function ConfiguratorGeneratedAppOptionSection<
   options,
   selection,
   icon,
+  isSelected,
+  getNotice,
   onSelect,
 }: {
   group: "backend" | "auth" | "database" | "orm"
   options: readonly { value: Value; label: string; detail: string }[]
   selection: GeneratedAppOptions
   icon: ReactNode
+  isSelected?: (value: Value) => boolean
+  getNotice?: (value: Value) => string | undefined
   onSelect: (value: Value) => void
 }) {
   return (
@@ -300,23 +306,22 @@ function ConfiguratorGeneratedAppOptionSection<
         className="grid items-stretch gap-3 sm:grid-cols-3"
       >
         {options.map((option) => {
-          const selected = selection[group] === option.value
-          const label = getConfiguratorGeneratedAppOptionLabel(
-            group,
-            option.value,
-            selection.backend
-          )
-          const notice = getConfiguratorGeneratedAppOptionChoiceNotice(
-            selection,
-            group,
-            option.value
-          )
+          const selected = isSelected
+            ? isSelected(option.value)
+            : selection[group] === option.value
+          const notice = getNotice
+            ? getNotice(option.value)
+            : getConfiguratorGeneratedAppOptionChoiceNotice(
+                selection,
+                group,
+                option.value
+              )
 
           return (
             <ConfiguratorCodeResponsiveIconChoiceCard
               key={option.value}
               selected={selected}
-              label={label}
+              label={option.label}
               detail={option.detail}
               notice={notice}
               icon={icon}
@@ -350,9 +355,15 @@ function ConfiguratorGeneratedAppOptionSections() {
       />
       <ConfiguratorGeneratedAppOptionSection
         group="database"
-        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database}
+        options={CONFIGURATOR_DATABASE_CHOICES}
         selection={state.generatedAppOptions}
         icon={GENERATED_APP_OPTION_ICONS.database}
+        isSelected={(value) =>
+          isConfiguratorDatabaseChoiceSelected(state.generatedAppOptions, value)
+        }
+        getNotice={(value) =>
+          getConfiguratorDatabaseChoiceNotice(state.generatedAppOptions, value)
+        }
         onSelect={actions.selectDatabase}
       />
       <ConfiguratorGeneratedAppOptionSection

@@ -104,6 +104,23 @@ export const CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS = {
   })),
 } as const
 
+export const CONFIGURATOR_DATABASE_CHOICES = [
+  ...CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database.filter(
+    (option) => option.value !== "none"
+  ),
+  { value: "convex", label: "Convex", detail: "Managed database" },
+  ...CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.database.filter(
+    (option) => option.value === "none"
+  ),
+] as const
+
+export type ConfiguratorDatabaseChoice =
+  (typeof CONFIGURATOR_DATABASE_CHOICES)[number]["value"]
+
+type ConfiguratorDatabaseChoiceTarget =
+  | { group: "backend"; value: GeneratedAppOptions["backend"] }
+  | { group: "database"; value: GeneratedAppOptions["database"] }
+
 export type ConfiguratorGeneratedAppOptionState = {
   selection: GeneratedAppOptions
   choices: {
@@ -230,6 +247,32 @@ function formatConjunction(values: readonly string[]): string {
   return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`
 }
 
+function formatChoiceNotice(
+  effects: readonly Pick<
+    ConfiguratorGeneratedAppOptionAdjustment,
+    "group" | "to"
+  >[],
+  backend: GeneratedAppOptions["backend"]
+): string | undefined {
+  if (effects.length === 0) {
+    return undefined
+  }
+
+  const adjustedValues = effects.map((effect) => {
+    const groupLabel =
+      CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[effect.group].label
+    const valueLabel = getConfiguratorGeneratedAppOptionLabel(
+      effect.group,
+      effect.to,
+      backend
+    )
+
+    return `${groupLabel} to ${valueLabel}`
+  })
+
+  return `Also sets ${formatConjunction(adjustedValues)}.`
+}
+
 export function getConfiguratorGeneratedAppOptionChoiceNotice<
   Group extends GeneratedAppOptionGroup,
 >(
@@ -247,19 +290,84 @@ export function getConfiguratorGeneratedAppOptionChoiceNotice<
     return undefined
   }
 
-  const adjustedValues = update.adjustments.map((adjustment) => {
-    const groupLabel =
-      CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[adjustment.group].label
-    const valueLabel = getConfiguratorGeneratedAppOptionLabel(
-      adjustment.group,
-      adjustment.to,
-      update.selection.backend
-    )
+  return formatChoiceNotice(update.adjustments, update.selection.backend)
+}
 
-    return `${groupLabel} to ${valueLabel}`
-  })
+export function isConfiguratorDatabaseChoiceSelected(
+  selection: GeneratedAppOptions,
+  value: ConfiguratorDatabaseChoice
+): boolean {
+  if (value === "convex") {
+    return selection.backend === "convex"
+  }
 
-  return `Also sets ${formatConjunction(adjustedValues)}.`
+  if (value === "none") {
+    return selection.backend !== "convex" && selection.database === "none"
+  }
+
+  return selection.database === value
+}
+
+function getConfiguratorDatabaseChoiceTarget(
+  selection: GeneratedAppOptions,
+  value: ConfiguratorDatabaseChoice
+): ConfiguratorDatabaseChoiceTarget {
+  if (value === "convex") {
+    return { group: "backend", value: "convex" }
+  }
+
+  if (value === "none" && selection.backend === "convex") {
+    return { group: "backend", value: "none" }
+  }
+
+  return { group: "database", value }
+}
+
+export function applyConfiguratorDatabaseChoice(
+  selection: GeneratedAppOptions,
+  value: ConfiguratorDatabaseChoice
+): ConfiguratorGeneratedAppOptionUpdate {
+  const target = getConfiguratorDatabaseChoiceTarget(selection, value)
+  const update = applyConfiguratorGeneratedAppOptionChoice(
+    selection,
+    target.group,
+    target.value
+  )
+
+  if (target.group === "database") {
+    return update
+  }
+
+  return {
+    selection: update.selection,
+    adjustments: [
+      ...(selection.backend === target.value
+        ? []
+        : [
+            {
+              group: "backend" as const,
+              from: selection.backend,
+              to: target.value,
+            },
+          ]),
+      ...update.adjustments.filter(
+        (adjustment) => adjustment.group !== "database"
+      ),
+    ],
+  }
+}
+
+export function getConfiguratorDatabaseChoiceNotice(
+  selection: GeneratedAppOptions,
+  value: ConfiguratorDatabaseChoice
+): string | undefined {
+  if (isConfiguratorDatabaseChoiceSelected(selection, value)) {
+    return undefined
+  }
+
+  const update = applyConfiguratorDatabaseChoice(selection, value)
+
+  return formatChoiceNotice(update.adjustments, update.selection.backend)
 }
 
 function chooseValue<Value extends string>(

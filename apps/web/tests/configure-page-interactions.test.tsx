@@ -49,7 +49,7 @@ describe("ConfigurePageContent interactions", () => {
       {
         slot: "configurator-database-choices",
         sectionTitle: "Database",
-        names: [/^PostgreSQL/, /^MySQL/, /^None/],
+        names: [/^PostgreSQL/, /^MySQL/, /^Convex/, /^None/],
       },
       {
         slot: "configurator-orm-choices",
@@ -89,6 +89,75 @@ describe("ConfigurePageContent interactions", () => {
     }
 
     expect(generatedAppOptionSections.size).toBe(4)
+  })
+
+  test("keeps Backend and Database Convex Choices selected together", async () => {
+    const user = userEvent.setup()
+    const toastInfo = vi.spyOn(toast, "info")
+
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const backendChoices = document.querySelector(
+      '[data-slot="configurator-backend-choices"]'
+    )
+    const databaseChoices = document.querySelector(
+      '[data-slot="configurator-database-choices"]'
+    )
+
+    if (!(backendChoices instanceof HTMLElement)) {
+      throw new Error("Expected Configurator Backend Choices.")
+    }
+
+    if (!(databaseChoices instanceof HTMLElement)) {
+      throw new Error("Expected Configurator Database Choices.")
+    }
+
+    const backendConvex = within(backendChoices).getByRole("button", {
+      name: /^Convex/,
+    })
+    const backendExpress = within(backendChoices).getByRole("button", {
+      name: /^Express/,
+    })
+    const databaseConvex = within(databaseChoices).getByRole("button", {
+      name: /^Convex/,
+    })
+    const databaseNone = within(databaseChoices).getByRole("button", {
+      name: /^None/,
+    })
+
+    expect(databaseConvex.getAttribute("aria-pressed")).toBe("false")
+    expect(databaseNone.getAttribute("aria-pressed")).toBe("true")
+
+    await user.click(backendConvex)
+
+    await waitFor(() => {
+      expect(databaseConvex.getAttribute("aria-pressed")).toBe("true")
+      expect(databaseNone.getAttribute("aria-pressed")).toBe("false")
+    })
+
+    await user.click(backendExpress)
+
+    await waitFor(() => {
+      expect(databaseConvex.getAttribute("aria-pressed")).toBe("false")
+      expect(databaseNone.getAttribute("aria-pressed")).toBe("true")
+    })
+
+    await user.click(databaseConvex)
+
+    await waitFor(() => {
+      expect(backendConvex.getAttribute("aria-pressed")).toBe("true")
+      expect(databaseConvex.getAttribute("aria-pressed")).toBe("true")
+      expect(databaseNone.getAttribute("aria-pressed")).toBe("false")
+    })
+    expect(toastInfo).toHaveBeenCalledOnce()
+    expect(toastInfo).toHaveBeenCalledWith(
+      "Adjusted Generated App Options for compatibility",
+      { description: "Backend changed from Express to Convex." }
+    )
   })
 
   test("explains compatibility adjustments before a Choice is selected", () => {
@@ -315,7 +384,17 @@ describe("ConfigurePageContent interactions", () => {
 
     await user.click(screen.getByRole("button", { name: /^Express/ }))
     await user.click(screen.getByRole("button", { name: /^Clerk/ }))
-    await user.click(screen.getByRole("button", { name: /^Convex/ }))
+    const backendChoices = document.querySelector(
+      '[data-slot="configurator-backend-choices"]'
+    )
+
+    if (!(backendChoices instanceof HTMLElement)) {
+      throw new Error("Expected Configurator Backend Choices.")
+    }
+
+    await user.click(
+      within(backendChoices).getByRole("button", { name: /^Convex/ })
+    )
 
     const searchParams = onUrlUpdate.mock.lastCall?.[0].searchParams
     expect(searchParams?.get("backend")).toBe("convex")
@@ -578,7 +657,7 @@ describe("ConfigurePageContent interactions", () => {
     const unselectedChoices = screen.getAllByRole("button", { pressed: false })
 
     expect(selectedChoices).toHaveLength(7)
-    expect(unselectedChoices).toHaveLength(15)
+    expect(unselectedChoices).toHaveLength(16)
 
     for (const selectedChoice of selectedChoices) {
       expect(

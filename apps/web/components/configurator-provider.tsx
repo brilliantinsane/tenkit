@@ -21,16 +21,18 @@ import {
   type ConfiguratorStyling,
 } from "@/lib/configurator"
 import {
+  applyConfiguratorDatabaseChoice,
   applyConfiguratorGeneratedAppOptionChoice,
   getConfiguratorGeneratedAppOptionAdjustmentDescription,
   getConfiguratorGeneratedAppOptionsState,
+  isConfiguratorDatabaseChoiceSelected,
+  type ConfiguratorDatabaseChoice,
 } from "@/lib/generated-app-options"
 import type {
   GeneratedAuth,
   GeneratedAppOptionGroup,
   GeneratedAppOptions,
   GeneratedBackend,
-  GeneratedDatabase,
   GeneratedOrm,
 } from "@tenkit/types/generated-app-option-definitions"
 import {
@@ -60,7 +62,7 @@ type ConfiguratorActions = {
   selectPackageManager: (packageManager: ConfiguratorPackageManager) => void
   selectBackend: (value: GeneratedBackend) => void
   selectAuth: (value: GeneratedAuth) => void
-  selectDatabase: (value: GeneratedDatabase) => void
+  selectDatabase: (value: ConfiguratorDatabaseChoice) => void
   selectOrm: (value: GeneratedOrm) => void
   updateAppVariantName: (position: number, name: string) => void
   updateAppVariantAccent: (position: number, accent: string) => void
@@ -140,20 +142,9 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       ? buildConfiguratorCommand({ ...state, packageManager: "bun" })
       : derivedState.command,
   } satisfies Record<ConfiguratorPackageManager, string>
-  const selectGeneratedAppOption = <Group extends GeneratedAppOptionGroup>(
-    group: Group,
-    value: GeneratedAppOptions[Group]
+  const commitGeneratedAppOptionUpdate = (
+    update: ReturnType<typeof applyConfiguratorGeneratedAppOptionChoice>
   ) => {
-    if (value !== state.generatedAppOptions[group]) {
-      trackDatabuddyEvent("configurator_choice_changed", { group, value })
-    }
-
-    const update = applyConfiguratorGeneratedAppOptionChoice(
-      state.generatedAppOptions,
-      group,
-      value
-    )
-
     void setQuery({
       backend: update.selection.backend,
       auth: update.selection.auth,
@@ -169,6 +160,22 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         ),
       })
     }
+  }
+  const selectGeneratedAppOption = <Group extends GeneratedAppOptionGroup>(
+    group: Group,
+    value: GeneratedAppOptions[Group]
+  ) => {
+    if (value !== state.generatedAppOptions[group]) {
+      trackDatabuddyEvent("configurator_choice_changed", { group, value })
+    }
+
+    const update = applyConfiguratorGeneratedAppOptionChoice(
+      state.generatedAppOptions,
+      group,
+      value
+    )
+
+    commitGeneratedAppOptionUpdate(update)
   }
   const actions: ConfiguratorActions = {
     randomize: () => {
@@ -250,7 +257,21 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       selectGeneratedAppOption("auth", auth)
     },
     selectDatabase: (database) => {
-      selectGeneratedAppOption("database", database)
+      if (
+        !isConfiguratorDatabaseChoiceSelected(
+          state.generatedAppOptions,
+          database
+        )
+      ) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "database",
+          value: database,
+        })
+      }
+
+      commitGeneratedAppOptionUpdate(
+        applyConfiguratorDatabaseChoice(state.generatedAppOptions, database)
+      )
     },
     selectOrm: (orm) => {
       selectGeneratedAppOption("orm", orm)

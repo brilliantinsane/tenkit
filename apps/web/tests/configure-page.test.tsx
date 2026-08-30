@@ -61,7 +61,7 @@ describe("ConfigurePageContent", () => {
       markup.match(
         /data-slot="configurator-choice-card-content" class="[^"]*bg-accent dark:bg-background/g
       )
-    ).toHaveLength(22)
+    ).toHaveLength(23)
     expect(markup).toMatch(
       /data-slot="expandable-code-block-command" class="[^"]*bg-accent dark:bg-background/
     )
@@ -82,7 +82,7 @@ describe("ConfigurePageContent", () => {
     )
     expect(
       markup.match(/pointer-events-none absolute inset-px z-10/g)
-    ).toHaveLength(22)
+    ).toHaveLength(23)
     expect(markup.match(/data-position="bottom"/g)).toHaveLength(1)
     expect(markup.match(/data-position="top"/g)).toHaveLength(1)
   })
