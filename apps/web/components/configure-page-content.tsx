@@ -39,6 +39,7 @@ import { Separator } from "@/components/ui/separator"
 import {
   CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS,
   CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION,
+  getConfiguratorGeneratedAppOptionChoiceNotice,
   getConfiguratorGeneratedAppOptionLabel,
   getConfiguratorGeneratedAppOptionStatusCopy,
 } from "@/lib/generated-app-options"
@@ -271,7 +272,9 @@ function ConfiguratorStylingSection() {
   )
 }
 
-function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
+function ConfiguratorGeneratedAppOptionGroup<
+  Value extends GeneratedAppOptions[keyof GeneratedAppOptions],
+>({
   group,
   options,
   selection,
@@ -305,6 +308,11 @@ function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
             option.value,
             selection.backend
           )
+          const notice = getConfiguratorGeneratedAppOptionChoiceNotice(
+            selection,
+            group,
+            option.value
+          )
 
           return (
             <ConfiguratorCodeResponsiveIconChoiceCard
@@ -312,6 +320,7 @@ function ConfiguratorGeneratedAppOptionGroup<Value extends string>({
               selected={selected}
               label={label}
               detail={option.detail}
+              notice={notice}
               icon={icon}
               onSelect={() => onSelect(option.value)}
             />

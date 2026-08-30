@@ -218,6 +218,50 @@ export function getConfiguratorGeneratedAppOptionAdjustmentDescription(
     .join(" ")
 }
 
+function formatConjunction(values: readonly string[]): string {
+  if (values.length < 2) {
+    return values[0] ?? ""
+  }
+
+  if (values.length === 2) {
+    return values.join(" and ")
+  }
+
+  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`
+}
+
+export function getConfiguratorGeneratedAppOptionChoiceNotice<
+  Group extends GeneratedAppOptionGroup,
+>(
+  currentSelection: GeneratedAppOptions,
+  group: Group,
+  value: GeneratedAppOptions[Group]
+): string | undefined {
+  const update = applyConfiguratorGeneratedAppOptionChoice(
+    currentSelection,
+    group,
+    value
+  )
+
+  if (update.adjustments.length === 0) {
+    return undefined
+  }
+
+  const adjustedValues = update.adjustments.map((adjustment) => {
+    const groupLabel =
+      CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[adjustment.group].label
+    const valueLabel = getConfiguratorGeneratedAppOptionLabel(
+      adjustment.group,
+      adjustment.to,
+      update.selection.backend
+    )
+
+    return `${groupLabel} to ${valueLabel}`
+  })
+
+  return `Also sets ${formatConjunction(adjustedValues)}.`
+}
+
 function chooseValue<Value extends string>(
   choice: GeneratedAppOptionChoice<Value>,
   requestedValue: string | undefined,

@@ -72,6 +72,39 @@ describe("ConfigurePageContent interactions", () => {
     }
   })
 
+  test("explains compatibility adjustments before a Choice is selected", () => {
+    render(
+      <NuqsTestingAdapter searchParams="?backend=express&auth=better-auth&db=postgresql&orm=prisma">
+        <ConfigurePageContent />
+      </NuqsTestingAdapter>
+    )
+
+    const databaseChoices = document.querySelector(
+      '[data-slot="configurator-database-choices"]'
+    )
+
+    if (!(databaseChoices instanceof HTMLElement)) {
+      throw new Error("Expected Configurator Database Choices.")
+    }
+
+    const noneChoice = within(databaseChoices).getByRole("button", {
+      name: /^None/,
+    })
+    const adjustmentNotice = within(noneChoice).getByText(
+      "Also sets Auth to None and ORM to None."
+    )
+
+    expect(noneChoice.hasAttribute("disabled")).toBe(false)
+    expect(noneChoice.getAttribute("aria-describedby")?.split(" ")).toContain(
+      adjustmentNotice.id
+    )
+    expect(
+      within(
+        within(databaseChoices).getByRole("button", { name: /^MySQL/ })
+      ).queryByText(/^Also sets/)
+    ).toBeNull()
+  })
+
   test("adjusts incompatible Choices and explains the compatibility change", async () => {
     const user = userEvent.setup()
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
