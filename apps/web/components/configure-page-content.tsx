@@ -4,10 +4,13 @@ import {
   AlertTriangleIcon,
   BoxesIcon,
   BracesIcon,
+  DatabaseIcon,
   DicesIcon,
   GitForkIcon,
   Layers3Icon,
   RotateCcwIcon,
+  ServerCogIcon,
+  ShieldCheckIcon,
   SwatchBookIcon,
   WindIcon,
 } from "lucide-react"
@@ -34,6 +37,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
+  CONFIGURATOR_DATABASE_CHOICES,
+  CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS,
+  CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION,
+  getConfiguratorDatabaseChoiceNotice,
+  getConfiguratorGeneratedAppOptionChoiceNotice,
+  getConfiguratorGeneratedAppOptionStatusCopy,
+  isConfiguratorDatabaseChoiceSelected,
+} from "@/lib/generated-app-options"
+import type { GeneratedAppOptions } from "@tenkit/types/generated-app-option-definitions"
+import {
   CONFIGURATOR_PACKAGE_MANAGER_OPTIONS,
   CONFIGURATOR_SETUP_TYPE_OPTIONS,
   CONFIGURATOR_STYLING_OPTIONS,
@@ -53,6 +66,13 @@ const SETUP_TYPE_ICONS = {
   (typeof CONFIGURATOR_SETUP_TYPE_OPTIONS)[number]["value"],
   ReactNode
 >
+
+const GENERATED_APP_OPTION_ICONS = {
+  backend: <ServerCogIcon className="size-4" aria-hidden="true" />,
+  auth: <ShieldCheckIcon className="size-4" aria-hidden="true" />,
+  database: <DatabaseIcon className="size-4" aria-hidden="true" />,
+  orm: <BracesIcon className="size-4" aria-hidden="true" />,
+} as const
 
 const STYLING_ICONS = {
   bare: <BracesIcon className="size-4" aria-hidden="true" />,
@@ -155,6 +175,7 @@ function ConfiguratorCommandPanel() {
             surface: "configurator",
             setupType: state.setupType,
             styling: state.styling,
+            generatedAppOptions: state.generatedAppOptions,
             git: state.git,
             install: state.install,
             projectNameCustomized:
@@ -250,6 +271,109 @@ function ConfiguratorStylingSection() {
         ))}
       </div>
     </ConfiguratorSection>
+  )
+}
+
+function ConfiguratorGeneratedAppOptionSection<
+  Value extends GeneratedAppOptions[keyof GeneratedAppOptions],
+>({
+  group,
+  options,
+  selection,
+  icon,
+  isSelected,
+  getNotice,
+  onSelect,
+}: {
+  group: "backend" | "auth" | "database" | "orm"
+  options: readonly { value: Value; label: string; detail: string }[]
+  selection: GeneratedAppOptions
+  icon: ReactNode
+  isSelected?: (value: Value) => boolean
+  getNotice?: (value: Value) => string | undefined
+  onSelect: (value: Value) => void
+}) {
+  return (
+    <ConfiguratorSection
+      title={CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].label}
+      description={getConfiguratorGeneratedAppOptionStatusCopy(
+        group,
+        selection
+      )}
+    >
+      <div
+        data-slot={`configurator-${group}-choices`}
+        className="grid items-stretch gap-3 sm:grid-cols-3"
+      >
+        {options.map((option) => {
+          const selected = isSelected
+            ? isSelected(option.value)
+            : selection[group] === option.value
+          const notice = getNotice
+            ? getNotice(option.value)
+            : getConfiguratorGeneratedAppOptionChoiceNotice(
+                selection,
+                group,
+                option.value
+              )
+
+          return (
+            <ConfiguratorCodeResponsiveIconChoiceCard
+              key={option.value}
+              selected={selected}
+              label={option.label}
+              detail={option.detail}
+              notice={notice}
+              icon={icon}
+              onSelect={() => onSelect(option.value)}
+            />
+          )
+        })}
+      </div>
+    </ConfiguratorSection>
+  )
+}
+
+function ConfiguratorGeneratedAppOptionSections() {
+  const { actions, state } = useConfigurator()
+
+  return (
+    <>
+      <ConfiguratorGeneratedAppOptionSection
+        group="backend"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.backend}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.backend}
+        onSelect={actions.selectBackend}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="auth"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.auth}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.auth}
+        onSelect={actions.selectAuth}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="database"
+        options={CONFIGURATOR_DATABASE_CHOICES}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.database}
+        isSelected={(value) =>
+          isConfiguratorDatabaseChoiceSelected(state.generatedAppOptions, value)
+        }
+        getNotice={(value) =>
+          getConfiguratorDatabaseChoiceNotice(state.generatedAppOptions, value)
+        }
+        onSelect={actions.selectDatabase}
+      />
+      <ConfiguratorGeneratedAppOptionSection
+        group="orm"
+        options={CONFIGURATOR_GENERATED_APP_OPTION_OPTIONS.orm}
+        selection={state.generatedAppOptions}
+        icon={GENERATED_APP_OPTION_ICONS.orm}
+        onSelect={actions.selectOrm}
+      />
+    </>
   )
 }
 
@@ -396,6 +520,7 @@ const Configurator = {
   CommandPanel: ConfiguratorCommandPanel,
   SetupTypeSection: ConfiguratorSetupTypeSection,
   StylingSection: ConfiguratorStylingSection,
+  GeneratedAppOptionSections: ConfiguratorGeneratedAppOptionSections,
   AppVariantsSection: ConfiguratorAppVariantsSection,
   PackageManagerSection: ConfiguratorPackageManagerSection,
 } as const
@@ -417,6 +542,7 @@ function ConfiguratorLayout() {
       >
         <Configurator.SetupTypeSection />
         <Configurator.StylingSection />
+        <Configurator.GeneratedAppOptionSections />
         <Configurator.AppVariantsSection />
         <Configurator.PackageManagerSection />
       </div>

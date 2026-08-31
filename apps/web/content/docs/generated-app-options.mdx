@@ -1,0 +1,63 @@
+---
+title: Generated App Options
+description: Choose a supported Backend, Auth provider, Database, and ORM without inventing an unverified stack.
+---
+
+import { CompatibilityMatrix } from "@/components/docs/compatibility-matrix"
+
+Generated App Options describe infrastructure selected at project creation. The supported list is read directly from `@tenkit/types`, so this page cannot add a combination that the Public CLI and Template generator do not support.
+
+## Defaults
+
+Plain `--yes` selects the zero-service project:
+
+| Option Group | Default Option Value | Meaning                      |
+| ------------ | -------------------- | ---------------------------- |
+| Backend      | `none`               | Root Expo project only       |
+| Auth         | `none`               | Public Business Data Example |
+| Database     | `none`               | No SQL workspace             |
+| ORM          | `none`               | No SQL data access layer     |
+
+Styling defaults to `bare`. Package Manager is detected when possible and falls back to `pnpm`. Git initialization and dependency installation remain enabled unless explicitly disabled.
+
+## Choices
+
+### Styling
+
+- `bare` keeps the generated project on standard React Native styles. It is the default.
+- `uniwind` adds Tailwind styling for React Native.
+- `unistyles` adds adaptive React Native styling with Unistyles 3.
+
+### Backend
+
+- `none` keeps the generated Expo project root-only.
+- `express` adds a TypeScript Express server workspace.
+- `nestjs` adds a conventional NestJS server workspace using the default Express adapter.
+- `convex` adds a Convex server workspace that owns its schema, functions, data, and Auth integration.
+
+### Auth
+
+- `none` adds no Auth screens, provider, session state, Auth workspace, or Auth tables.
+- `better-auth` provides Email and Password Auth. On Express or NestJS it requires SQL persistence with a selected Database and ORM. On Convex, Convex owns the integration.
+- `clerk` provides hosted identity. It can pair with a Database-less Express or NestJS Backend because Clerk owns identity persistence. Convex verifies Clerk tokens inside Convex functions.
+
+### Database and ORM
+
+Node Backends may use `none`, `postgresql`, or `mysql`. SQL requires either `prisma` or `drizzle`; an ORM without a Database is not generated. Convex manages persistence and therefore displays Database as Convex-managed and ORM as not applicable.
+
+## Compatibility
+
+The complete released contract contains exactly 32 supported Backend/Auth/Database/ORM combinations:
+
+<CompatibilityMatrix />
+
+These values are exact. Unsupported combinations fail before Template reading or filesystem work. The Public Web App only presents compatible follow-up Choices and copied commands resolve through the same shared contract.
+
+## Common rejected selections
+
+- Backend `none` cannot use Auth, Database, or ORM values other than `none`.
+- Better Auth on Express or NestJS requires PostgreSQL or MySQL plus Prisma or Drizzle.
+- PostgreSQL or MySQL requires Prisma or Drizzle.
+- Convex does not expose SQL Database or ORM Choices.
+
+TypeORM, Expo API Routes, tRPC, oRPC, Fastify, and server Runtime selection are not first-release Generated App Options. Bun is a Package Manager Choice, not a Bun server Runtime selection.

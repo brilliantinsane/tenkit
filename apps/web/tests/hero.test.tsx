@@ -30,7 +30,7 @@ describe("HeroSection", () => {
     )
     expect(markup).toContain("max-[360px]:text-[6vw]")
     expect(markup).toContain(
-      "Generate an Expo project with white-label and tenant setup built in."
+      "Generate an Expo project with Setup Type, Backend, Auth, Database, ORM, and Styling choices built in."
     )
     expect(markup).toContain('href="/configure"')
     expect(markup.indexOf('href="/configure"')).toBeLessThan(
@@ -41,6 +41,7 @@ describe("HeroSection", () => {
     expect(markup).toContain("Shared product code")
     expect(markup).toContain("Typed setup files")
     expect(markup).toContain("Native identity and build workflows")
+    expect(markup).toContain("32 supported generated stacks")
     expect(markup).toContain('data-slot="hero-command-card"')
     expect(markup).toMatch(
       /data-slot="hero-command-card" class="[^"]*max-w-2xl/

@@ -61,7 +61,7 @@ describe("ConfigurePageContent", () => {
       markup.match(
         /data-slot="configurator-choice-card-content" class="[^"]*bg-accent dark:bg-background/g
       )
-    ).toHaveLength(9)
+    ).toHaveLength(23)
     expect(markup).toMatch(
       /data-slot="expandable-code-block-command" class="[^"]*bg-accent dark:bg-background/
     )
@@ -82,7 +82,7 @@ describe("ConfigurePageContent", () => {
     )
     expect(
       markup.match(/pointer-events-none absolute inset-px z-10/g)
-    ).toHaveLength(9)
+    ).toHaveLength(23)
     expect(markup.match(/data-position="bottom"/g)).toHaveLength(1)
     expect(markup.match(/data-position="top"/g)).toHaveLength(1)
   })
@@ -116,7 +116,7 @@ describe("ConfigurePageContent", () => {
         "sm:gap-8",
       ])
     )
-    expect(markup.match(/data-slot="configurator-section"/g)).toHaveLength(4)
+    expect(markup.match(/data-slot="configurator-section"/g)).toHaveLength(8)
     expect(markup).not.toContain("lg:col-start-2")
     expect(markup).not.toContain("px-4 py-12")
   })

@@ -1,10 +1,11 @@
 # @tenkit/web
 
-The Tenkit marketing website.
+The Tenkit Public Web App.
 
 This app is a Next.js package inside the Tenkit monorepo. It presents the public
-Tenkit product story, links to the GitHub repository and npm package, and keeps
-the web surface separate from the Expo Playground.
+Tenkit product story, Configurator, Fumadocs, public projections, and links to
+the GitHub repository and npm package. It stays separate from the Expo
+Playground.
 
 ## Highlights
 
@@ -15,6 +16,8 @@ the web surface separate from the Expo Playground.
 - Lives under `apps/web` and is addressed as the `@tenkit/web` workspace
   package.
 - Root workspace scripts are available for the common web checks and build.
+- The Configurator and documentation consume the released `@tenkit/types`
+  Generated App Options contract, which contains 32 supported combinations.
 
 ## Local Development
 

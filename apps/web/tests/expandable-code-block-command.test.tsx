@@ -25,6 +25,12 @@ describe("ExpandableCodeBlockCommand", () => {
             surface: "configurator",
             setupType: "white-label",
             styling: "bare",
+            generatedAppOptions: {
+              backend: "none",
+              auth: "none",
+              database: "none",
+              orm: "none",
+            },
             git: true,
             install: true,
             projectNameCustomized: false,

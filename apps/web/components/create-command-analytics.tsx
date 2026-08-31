@@ -3,13 +3,16 @@
 import { createContext, use, type ReactNode } from "react"
 
 import type { ConfiguratorState, ConfiguratorStyling } from "@/lib/configurator"
+import type { GeneratedAppOptions } from "@tenkit/types/generated-app-option-definitions"
 
 export type CreateCommandAnalyticsContext =
   | { surface: "landing" }
+  | { surface: "docs" }
   | {
       surface: "configurator"
       setupType: ConfiguratorState["setupType"]
       styling: ConfiguratorStyling
+      generatedAppOptions: GeneratedAppOptions
       git: boolean
       install: boolean
       projectNameCustomized: boolean

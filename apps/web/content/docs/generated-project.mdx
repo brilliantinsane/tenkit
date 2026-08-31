@@ -1,0 +1,63 @@
+---
+title: Configure a generated project
+description: Set up safe environment values, understand the generated workspace, and run the selected stack.
+---
+
+Generation creates one standalone project. The Expo app remains at the project root for every Backend. The generated README is the source for the exact selected stack; this page explains the shared order of operations.
+
+## Environment setup
+
+Copy each committed `.env.example` to its local ignored counterpart when the generated README calls for it. Never commit real environment files or credentials.
+
+Public mobile values use `EXPO_PUBLIC_` only when the value is safe to ship to the client:
+
+- `APP_VARIANT_SLUG` selects the App Variant for Build Preparation.
+- `EXPO_PUBLIC_API_URL` points to an Express or NestJS Backend.
+- `EXPO_PUBLIC_CONVEX_URL` points to Convex.
+- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` identifies the Clerk frontend configuration.
+
+Server-only values never use the `EXPO_PUBLIC_` prefix. Database URLs, Better Auth secrets, and Clerk secret keys belong in the selected Backend environment. Convex deployment values are managed by the Convex CLI and provider setup.
+
+Public identifiers such as an EAS Project ID, App Variant Slug, Clerk publishable key, or Convex URL are not credentials. Secrets, bearer tokens, cookies, and private keys must come from your provider's local or deployment secret store.
+
+## Workspace shape
+
+The selected stack determines additions:
+
+| Selection                             | Generated shape                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| Backend `none`                        | Root Expo project only                                                          |
+| Express or NestJS                     | Root Expo project plus `apps/server`                                            |
+| Node Backend with PostgreSQL or MySQL | Adds `packages/db`                                                              |
+| Node Backend with Better Auth         | Adds `packages/auth`                                                            |
+| Convex                                | `apps/server` owns Convex schema, functions, Starter Data, and Auth integration |
+
+Unselected technologies leave no provider, workspace, route, dependency, migration, or environment residue. `packages/db` and `packages/auth` do not own competing environment files.
+
+## First run
+
+From the generated project directory:
+
+```bash
+cd <project-name>
+```
+
+Install dependencies if installation was skipped or unsuccessful:
+
+```bash
+pnpm install
+```
+
+Complete provider and environment setup before the first run. Then use the generated README's canonical command:
+
+```bash
+pnpm start
+```
+
+For Express, NestJS, and Convex selections, the canonical development command is:
+
+```bash
+pnpm run dev
+```
+
+The Public CLI does not start Expo or a Backend automatically. Build Preparation and deployment commands stay in the generated README so they can be run deliberately for the selected App Variant and environment.

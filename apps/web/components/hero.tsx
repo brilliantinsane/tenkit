@@ -9,6 +9,7 @@ import { GitHubMark } from "@/components/github-mark"
 import { HeroDemoVideo } from "@/components/hero-demo-video"
 import { Button } from "@/components/ui/button"
 import { GITHUB_REPO_URL } from "@/constants/globals"
+import { PUBLIC_GENERATED_APP_STACK_SUMMARY } from "@/lib/generated-app-options"
 import { HERO_POSTER_PATH } from "@/lib/hero-media"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +18,7 @@ const generatedProjectOutcomes = [
   "Shared product code",
   "Typed setup files",
   "Native identity and build workflows",
+  PUBLIC_GENERATED_APP_STACK_SUMMARY,
 ] as const
 
 export function HeroSection() {
@@ -49,7 +51,8 @@ export function HeroSection() {
             "animate-in delay-200 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3"
           )}
         >
-          Generate an Expo project with white-label and tenant setup built in.
+          Generate an Expo project with Setup Type, Backend, Auth, Database,
+          ORM, and Styling choices built in.
         </p>
 
         <div className="flex w-full max-w-sm animate-in flex-col items-stretch justify-center gap-3 pt-1 delay-300 duration-500 ease-out fill-mode-backwards fade-in slide-in-from-bottom-3 sm:w-fit sm:max-w-none sm:flex-row sm:items-center">

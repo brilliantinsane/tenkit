@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import type { Graph } from "schema-dts"
 
+import { SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS } from "@tenkit/types/generated-app-option-definitions"
 import {
   SUPPORTED_GENERATED_STYLING_CHOICES,
   type GeneratedStylingChoice,
@@ -8,14 +9,20 @@ import {
 
 import { GITHUB_REPO_URL, NPM_PACKAGE_URL } from "@/constants/globals"
 import { FAQ_ITEMS, SETUP_TYPES } from "@/constants/landing"
+import {
+  CONFIGURATOR_GENERATED_APP_OPTION_GROUPS,
+  CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION,
+  getConfiguratorGeneratedAppOptionLabel,
+  PUBLIC_GENERATED_APP_OPTION_COUNT,
+  PUBLIC_GENERATED_APP_OPTION_SUMMARY,
+} from "@/lib/generated-app-options"
 
 export const SITE_CONFIG = {
   name: "Tenkit",
   url: "https://www.tenkit.dev",
-  title: "Tenkit - Multi-Tenant Mobile Apps Built with Expo",
+  title: `Tenkit - Generated Expo Projects with ${PUBLIC_GENERATED_APP_OPTION_COUNT} Supported Stacks`,
   titleTemplate: "%s | Tenkit",
-  description:
-    "Build multi-tenant mobile apps with Expo and React Native. Generate white-label App Variants, Runtime Tenants, and hybrid architectures from one codebase.",
+  description: `Generate Expo projects with explicit Setup Types and ${PUBLIC_GENERATED_APP_OPTION_SUMMARY}.`,
   applicationName: "Tenkit",
   author: {
     name: "Tenkit",
@@ -27,8 +34,7 @@ export const SITE_CONFIG = {
   ogImageWidth: 1200,
   ogImageHeight: 630,
   ogImageType: "image/png",
-  ogImageAlt:
-    "Tenkit preview image for multi-tenant setup types and generated app workflows for apps built with Expo.",
+  ogImageAlt: `Tenkit preview image for Setup Types and ${PUBLIC_GENERATED_APP_OPTION_COUNT} generated Backend, Auth, Database, and ORM combinations.`,
   keywords: [
     "multi-tenant apps built with Expo",
     "multi-tenant mobile apps using Expo",
@@ -52,17 +58,22 @@ export const SITE_CONFIG = {
     "Setup Type",
     "create-tenkit",
     "Build Preparation",
+    "Backend",
+    "Auth",
+    "Database",
+    "ORM",
+    "Prisma",
+    "Drizzle",
   ],
 } as const
 
 export const CONFIGURE_PAGE_SEO = {
   path: "/configure",
-  title: "Configure a Multi-Tenant App Built with Expo",
-  description:
-    "Configure a multi-tenant starter built with Expo: choose a Setup Type, Styling Option, App Variants, and a reproducible create-tenkit command.",
+  title: "Configure a Generated Expo Project",
+  description: `Choose a Setup Type, Styling Option, App Variants, and a supported Backend, Auth, Database, and ORM stack from ${PUBLIC_GENERATED_APP_OPTION_COUNT} combinations. Copy a reproducible create-tenkit command.`,
   ogImage: "/configure/opengraph-image?v=1",
   ogImageAlt:
-    "Tenkit Configurator preview for choosing a Setup Type, Styling Choice, and App Variants for a generated app built with Expo.",
+    "Tenkit Configurator preview for choosing Setup Type, Styling, Backend, Auth, Database, and ORM options.",
 } as const
 
 type PageSeo = {
@@ -128,6 +139,19 @@ export const MARKDOWN_MIRRORS = [
     title: "Tenkit FAQ",
     description: "Frequently asked questions from the landing page.",
   },
+  {
+    path: "/generated-app-options.md",
+    title: "Tenkit Generated App Options",
+    description: "The released Backend, Auth, Database, and ORM contract.",
+  },
+] as const
+
+export const INDEXABLE_DOCS_ROUTES = [
+  "/docs",
+  "/docs/setup-types",
+  "/docs/generated-app-options",
+  "/docs/generated-project",
+  "/docs/verification",
 ] as const
 
 export const EXTERNAL_TENKIT_SURFACES = [
@@ -168,6 +192,12 @@ export const STYLING_CHOICES = SUPPORTED_GENERATED_STYLING_CHOICES.map(
 export const TENKIT_COMMANDS = [
   {
     command:
+      "pnpm create tenkit@latest --name express-clerk-app --setup white-label --backend express --auth clerk --database postgresql --orm prisma --yes",
+    description:
+      "Create a White Label Apps project with a supported Express, Clerk, PostgreSQL, and Prisma stack.",
+  },
+  {
+    command:
       "pnpm create tenkit@latest --name unistyles-app --setup white-label --styling unistyles --yes",
     description:
       "Create a White Label Apps project with the Unistyles Styling Option Value.",
@@ -206,6 +236,23 @@ function markdownLink(label: string, url: string) {
   return `[${label}](${url})`
 }
 
+function getGeneratedAppOptionFeatures() {
+  return CONFIGURATOR_GENERATED_APP_OPTION_GROUPS.map(
+    (group) =>
+      `${CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].label}: ${Object.values(
+        CONFIGURATOR_GENERATED_APP_OPTION_PRESENTATION[group].options
+      )
+        .map(({ label }) => label)
+        .join(", ")}`
+  )
+}
+
+function getGeneratedAppOptionValueSummary() {
+  return getGeneratedAppOptionFeatures()
+    .map((feature) => `- ${feature}`)
+    .join("\n")
+}
+
 export function getIndexMarkdown() {
   return `# Tenkit
 
@@ -235,6 +282,12 @@ ${STYLING_CHOICES.map(
   (styling) =>
     `- ${styling.label} (\`${styling.value}\`): ${styling.description}`
 ).join("\n")}
+
+## Generated App Options
+
+${PUBLIC_GENERATED_APP_OPTION_SUMMARY}. The Public Web App and Public CLI resolve these values from one shared contract.
+
+${getGeneratedAppOptionValueSummary()}
 `
 }
 
@@ -265,12 +318,41 @@ export function getCommandsMarkdown() {
 
 Tenkit uses pnpm for package scripts and dependency management.
 
+${PUBLIC_GENERATED_APP_OPTION_SUMMARY}. Use the Configurator or Public CLI to select a supported stack.
+
+${getGeneratedAppOptionValueSummary()}
+
 ${TENKIT_COMMANDS.map(
   (item) => `## \`${item.command}\`
 
 ${item.description}
 `
 ).join("\n")}
+`
+}
+
+export function getGeneratedAppOptionsMarkdown() {
+  const combinations = SUPPORTED_GENERATED_APP_OPTION_COMBINATIONS.map(
+    (selection) => {
+      const values = CONFIGURATOR_GENERATED_APP_OPTION_GROUPS.map((group) =>
+        getConfiguratorGeneratedAppOptionLabel(
+          group,
+          selection[group],
+          selection.backend
+        )
+      )
+
+      return `- ${selection.backend}/${selection.auth}/${selection.database}/${selection.orm}: ${values.join(" / ")}`
+    }
+  )
+
+  return `# Tenkit Generated App Options
+
+${PUBLIC_GENERATED_APP_OPTION_SUMMARY}.
+
+Backend, Auth, Database, and ORM values are resolved together. The Public Web App does not add combinations beyond this list.
+
+${combinations.join("\n")}
 `
 }
 
@@ -292,6 +374,10 @@ export function getLlmsTxt() {
 > ${SITE_CONFIG.description}
 
 Tenkit is a toolkit for generated apps built with Expo, with explicit Setup Types, App Variants, Runtime Tenants, EAS Projects, and Build Preparation.
+
+${PUBLIC_GENERATED_APP_OPTION_SUMMARY}. Supported values are presented by the Configurator and resolved by the Public CLI.
+
+${getGeneratedAppOptionValueSummary()}
 
 ## Markdown Mirrors
 
@@ -316,6 +402,8 @@ ${getIndexMarkdown()}
 ${getSetupTypesMarkdown()}
 
 ${getCommandsMarkdown()}
+
+${getGeneratedAppOptionsMarkdown()}
 
 ${getFaqMarkdown()}
 `
@@ -357,6 +445,10 @@ export function getLandingJsonLdGraph(): Graph {
         applicationCategory: "DeveloperApplication",
         operatingSystem: "iOS, Android, Web",
         description: SITE_CONFIG.description,
+        featureList: [
+          PUBLIC_GENERATED_APP_OPTION_SUMMARY,
+          ...getGeneratedAppOptionFeatures(),
+        ],
         url: homeUrl,
         image: ogImageUrl(),
         installUrl: NPM_PACKAGE_URL,

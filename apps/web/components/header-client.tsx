@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
 
-import { CommandMenu } from "@/components/command-menu"
 import { ConfigureHeaderLink } from "@/components/configure-header-link"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { navLinks } from "@/constants/navigation"
 import { useScroll } from "@/hooks/use-scroll"
 import { cn } from "@/lib/utils"
+import { SearchTrigger } from "fumadocs-ui/layouts/shared/slots/search-trigger"
 
 export type HeaderStatsSlots = {
   github: ReactNode
@@ -101,10 +101,18 @@ export function HeaderClient({
             <nav aria-label="Primary" className="flex items-center gap-1">
               {navLinks.map((link) => (
                 <Button asChild key={link.label} size="sm" variant="ghost">
-                  {isHomePage ? (
+                  {isHomePage && link.href.startsWith("#") ? (
                     <a href={link.href}>{link.label}</a>
                   ) : (
-                    <Link href={`/${link.href}`}>{link.label}</Link>
+                    <Link
+                      href={
+                        link.href.startsWith("/") || isHomePage
+                          ? link.href
+                          : `/${link.href}`
+                      }
+                    >
+                      {link.label}
+                    </Link>
                   )}
                 </Button>
               ))}
@@ -114,7 +122,7 @@ export function HeaderClient({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <CommandMenu />
+            <SearchTrigger className="rounded-md" />
             <div className="md:hidden">
               <ConfigureHeaderLink />
             </div>

@@ -68,6 +68,22 @@ describe("Configurator command state", () => {
     ).toContain("--yes")
   })
 
+  test("includes every selected Generated App Option in the Public CLI command", () => {
+    expect(
+      buildConfiguratorCommand({
+        ...createDefaultConfiguratorState(),
+        generatedAppOptions: {
+          backend: "express",
+          auth: "better-auth",
+          database: "postgresql",
+          orm: "drizzle",
+        },
+      })
+    ).toContain(
+      "--backend express --auth better-auth --database postgresql --orm drizzle"
+    )
+  })
+
   test("keeps invalid values out of the copyable command", () => {
     const derivedState = deriveConfiguratorState({
       ...createDefaultConfiguratorState(),

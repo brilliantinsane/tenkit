@@ -11,6 +11,7 @@ dist/
 apps/*/.expo/
 apps/*/.next/
 apps/*/dist/
+apps/*/.source/
 web-build/
 apps/*/web-build/
 expo-env.d.ts

@@ -1,0 +1,29 @@
+---
+title: Tenkit documentation
+description: Learn how Tenkit's Setup Types and generated project Choices fit together.
+---
+
+Tenkit generates standalone Expo projects around an explicit **Setup Type** and exactly 32 supported **Generated App Options** combinations.
+
+Tenkit is short for Tenant Kit: a focused kit for generating multi-tenant Expo projects without hiding the relationship between App Variants and Runtime Tenants.
+
+Use the Configurator to explore a selection, then copy a reproducible Public CLI command:
+
+```bash
+pnpm create tenkit@latest
+```
+
+The generated project keeps its Expo app at the root. A selected Backend may add an `apps/server` workspace, and selected SQL storage may add a `packages/db` workspace. The generated project contains one resolved stack, not a runtime switch between technologies.
+
+## Read this first
+
+- [Setup Types](/docs/setup-types) explains App Variant and Runtime Tenant behavior.
+- [Generated App Options](/docs/generated-app-options) explains defaults and dependency-aware Choices.
+- [Generated Project](/docs/generated-project) covers environment setup, workspace shape, and first run.
+- [Verification](/docs/verification) covers the generated project's local checks.
+
+## What Tenkit owns
+
+Tenkit owns the generated project shape, Setup Type behavior, App Variant native identity, Runtime Tenant Access bootstrap, and Build Preparation guidance. Your generated project owns its product code, provider accounts, credentials, deployment, and production data.
+
+The Public Web App explains and serializes Choices. The Public CLI owns project creation policy. The generated app's local CLI owns operations inside that generated project.

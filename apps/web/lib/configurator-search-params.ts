@@ -12,6 +12,13 @@ import {
   DEFAULT_CONFIGURATOR_PROJECT_NAME,
   DEFAULT_CONFIGURATOR_SETUP_TYPE,
 } from "@/lib/configurator"
+import {
+  DEFAULT_GENERATED_APP_OPTIONS,
+  SUPPORTED_GENERATED_AUTH_VALUES,
+  SUPPORTED_GENERATED_BACKEND_VALUES,
+  SUPPORTED_GENERATED_DATABASE_VALUES,
+  SUPPORTED_GENERATED_ORM_VALUES,
+} from "@tenkit/types/generated-app-option-definitions"
 
 const withDefaultClearing = { clearOnDefault: true } as const
 
@@ -28,6 +35,18 @@ export const configuratorSearchParams = {
   packageManager: parseAsStringLiteral(CONFIGURATOR_PACKAGE_MANAGER_VALUES)
     .withDefault("pnpm")
     .withOptions(withDefaultClearing),
+  backend: parseAsStringLiteral(SUPPORTED_GENERATED_BACKEND_VALUES)
+    .withDefault(DEFAULT_GENERATED_APP_OPTIONS.backend)
+    .withOptions(withDefaultClearing),
+  auth: parseAsStringLiteral(SUPPORTED_GENERATED_AUTH_VALUES)
+    .withDefault(DEFAULT_GENERATED_APP_OPTIONS.auth)
+    .withOptions(withDefaultClearing),
+  database: parseAsStringLiteral(SUPPORTED_GENERATED_DATABASE_VALUES)
+    .withDefault(DEFAULT_GENERATED_APP_OPTIONS.database)
+    .withOptions(withDefaultClearing),
+  orm: parseAsStringLiteral(SUPPORTED_GENERATED_ORM_VALUES)
+    .withDefault(DEFAULT_GENERATED_APP_OPTIONS.orm)
+    .withOptions(withDefaultClearing),
   appVariantNamesSerialized: parseAsString
     .withDefault("")
     .withOptions(withDefaultClearing),
@@ -43,6 +62,10 @@ export const configuratorUrlKeys: UrlKeys<typeof configuratorSearchParams> = {
   setupType: "setup",
   styling: "styling",
   packageManager: "pm",
+  backend: "backend",
+  auth: "auth",
+  database: "db",
+  orm: "orm",
   appVariantNamesSerialized: "vn",
   appVariantAccentsSerialized: "vacc",
   git: "git",
@@ -55,6 +78,10 @@ export function getConfiguratorDefaultsReset() {
     setupType: null,
     styling: null,
     packageManager: null,
+    backend: null,
+    auth: null,
+    database: null,
+    orm: null,
     appVariantNamesSerialized: null,
     appVariantAccentsSerialized: null,
     git: null,

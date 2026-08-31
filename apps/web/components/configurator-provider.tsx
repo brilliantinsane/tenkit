@@ -2,6 +2,7 @@
 
 import { createContext, use, type ReactNode } from "react"
 import { useQueryStates } from "nuqs"
+import { toast } from "sonner"
 
 import {
   buildConfiguratorCommand,
@@ -19,6 +20,21 @@ import {
   type ConfiguratorState,
   type ConfiguratorStyling,
 } from "@/lib/configurator"
+import {
+  applyConfiguratorDatabaseChoice,
+  applyConfiguratorGeneratedAppOptionChoice,
+  getConfiguratorGeneratedAppOptionAdjustmentDescription,
+  getConfiguratorGeneratedAppOptionsState,
+  isConfiguratorDatabaseChoiceSelected,
+  type ConfiguratorDatabaseChoice,
+} from "@/lib/generated-app-options"
+import type {
+  GeneratedAuth,
+  GeneratedAppOptionGroup,
+  GeneratedAppOptions,
+  GeneratedBackend,
+  GeneratedOrm,
+} from "@tenkit/types/generated-app-option-definitions"
 import {
   configuratorSearchParams,
   configuratorUrlKeys,
@@ -44,6 +60,10 @@ type ConfiguratorActions = {
   selectSetupType: (setupType: ConfiguratorState["setupType"]) => void
   selectStyling: (styling: ConfiguratorStyling) => void
   selectPackageManager: (packageManager: ConfiguratorPackageManager) => void
+  selectBackend: (value: GeneratedBackend) => void
+  selectAuth: (value: GeneratedAuth) => void
+  selectDatabase: (value: ConfiguratorDatabaseChoice) => void
+  selectOrm: (value: GeneratedOrm) => void
   updateAppVariantName: (position: number, name: string) => void
   updateAppVariantAccent: (position: number, accent: string) => void
   setGit: (git: boolean) => void
@@ -84,11 +104,18 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
     shallow: true,
   })
   const defaults = createDefaultConfiguratorState(query.setupType)
+  const generatedAppOptionsState = getConfiguratorGeneratedAppOptionsState({
+    backend: query.backend,
+    auth: query.auth,
+    database: query.database,
+    orm: query.orm,
+  })
   const state: ConfiguratorState = {
     projectName: query.projectName,
     setupType: query.setupType,
     styling: query.styling,
     packageManager: query.packageManager,
+    generatedAppOptions: generatedAppOptionsState.selection,
     appVariantNames: parseSerializedAppVariantNames(
       query.appVariantNamesSerialized,
       defaults.appVariantNames
@@ -115,6 +142,41 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       ? buildConfiguratorCommand({ ...state, packageManager: "bun" })
       : derivedState.command,
   } satisfies Record<ConfiguratorPackageManager, string>
+  const commitGeneratedAppOptionUpdate = (
+    update: ReturnType<typeof applyConfiguratorGeneratedAppOptionChoice>
+  ) => {
+    void setQuery({
+      backend: update.selection.backend,
+      auth: update.selection.auth,
+      database: update.selection.database,
+      orm: update.selection.orm,
+    })
+
+    if (update.adjustments.length > 0) {
+      toast.info("Adjusted Generated App Options for compatibility", {
+        description: getConfiguratorGeneratedAppOptionAdjustmentDescription(
+          state.generatedAppOptions,
+          update
+        ),
+      })
+    }
+  }
+  const selectGeneratedAppOption = <Group extends GeneratedAppOptionGroup>(
+    group: Group,
+    value: GeneratedAppOptions[Group]
+  ) => {
+    if (value !== state.generatedAppOptions[group]) {
+      trackDatabuddyEvent("configurator_choice_changed", { group, value })
+    }
+
+    const update = applyConfiguratorGeneratedAppOptionChoice(
+      state.generatedAppOptions,
+      group,
+      value
+    )
+
+    commitGeneratedAppOptionUpdate(update)
+  }
   const actions: ConfiguratorActions = {
     randomize: () => {
       const randomizedState = randomizeConfiguratorState(state)
@@ -123,6 +185,7 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         setupType: randomizedState.setupType,
         styling: randomizedState.styling,
         packageManager: randomizedState.packageManager,
+        ...randomizedState.generatedAppOptions,
         git: randomizedState.git,
         install: randomizedState.install,
       })
@@ -131,6 +194,10 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
         setupType: randomizedState.setupType,
         styling: randomizedState.styling,
         packageManager: randomizedState.packageManager,
+        backend: randomizedState.generatedAppOptions.backend,
+        auth: randomizedState.generatedAppOptions.auth,
+        database: randomizedState.generatedAppOptions.database,
+        orm: randomizedState.generatedAppOptions.orm,
         appVariantNamesSerialized: serializeAppVariantNames(
           randomizedState.appVariantNames,
           randomizedState.setupType
@@ -182,6 +249,32 @@ export function ConfiguratorProvider({ children }: { children: ReactNode }) {
       }
 
       void setQuery({ packageManager })
+    },
+    selectBackend: (backend) => {
+      selectGeneratedAppOption("backend", backend)
+    },
+    selectAuth: (auth) => {
+      selectGeneratedAppOption("auth", auth)
+    },
+    selectDatabase: (database) => {
+      if (
+        !isConfiguratorDatabaseChoiceSelected(
+          state.generatedAppOptions,
+          database
+        )
+      ) {
+        trackDatabuddyEvent("configurator_choice_changed", {
+          group: "database",
+          value: database,
+        })
+      }
+
+      commitGeneratedAppOptionUpdate(
+        applyConfiguratorDatabaseChoice(state.generatedAppOptions, database)
+      )
+    },
+    selectOrm: (orm) => {
+      selectGeneratedAppOption("orm", orm)
     },
     updateAppVariantName: (position, name) => {
       const appVariantNames = updateAppVariantValue(
